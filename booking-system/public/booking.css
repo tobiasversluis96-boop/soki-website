@@ -1,0 +1,536 @@
+/**
+ * booking.css
+ * Booking-flow specific styles.
+ * Loaded after /styles.css — extends, does not duplicate it.
+ */
+
+/* ─── Booking session picker cards ────────────────────────────────────────── */
+
+.pick-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+}
+
+.pick-card {
+  border: 1.5px solid rgba(242,194,153,0.6);
+  border-radius: 20px;
+  padding: 1.5rem 1.75rem;
+  cursor: pointer;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease;
+  background: var(--white);
+}
+
+.pick-card:hover {
+  border-color: var(--terra);
+  box-shadow: 0 8px 32px rgba(217,77,26,0.12);
+  transform: translateY(-2px);
+}
+
+.pick-card.selected {
+  border-color: var(--terra);
+  background: rgba(217,77,26,0.04);
+}
+
+.pick-card__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  margin-bottom: 2px;
+}
+
+.pick-card__name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--brown);
+  margin-bottom: 4px;
+}
+
+.pick-card__duration {
+  font-family: var(--font-sub);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.pick-card__price {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--terra);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.pick-card__price span {
+  font-size: 0.85rem;
+  font-family: var(--font-sub);
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.pick-card__desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  font-weight: 300;
+}
+
+/* ─── Calendar ─────────────────────────────────────────────────────────────── */
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.cal-header h3 {
+  font-size: 1.1rem;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.cal-nav-btn {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(242,194,153,0.8);
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--brown);
+  transition: background var(--ease), border-color var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-nav-btn:hover {
+  background: var(--peach-light);
+  border-color: var(--terra);
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 1.5rem;
+}
+
+.cal-day-name {
+  text-align: center;
+  font-family: var(--font-sub);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-family: var(--font-sub);
+  cursor: default;
+  transition: background 0.15s;
+}
+
+.cal-day.empty   { visibility: hidden; }
+.cal-day.past    { color: rgba(140,90,68,0.25); }
+
+.cal-day.has-slots {
+  cursor: pointer;
+  background: var(--peach-light);
+  font-weight: 500;
+  color: var(--brown);
+}
+
+.cal-day.has-slots:hover { background: var(--peach); }
+
+.cal-day.selected {
+  background: var(--terra) !important;
+  color: var(--white) !important;
+  font-weight: 700;
+}
+
+/* ─── Time slot list ────────────────────────────────────────────────────────── */
+
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slot-item {
+  border: 1.5px solid rgba(242,194,153,0.6);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.slot-item:hover:not(.slot-item--full) {
+  border-color: var(--terra);
+  box-shadow: 0 4px 16px rgba(217,77,26,0.1);
+}
+
+.slot-item.selected {
+  border-color: var(--terra);
+  background: rgba(217,77,26,0.04);
+}
+
+.slot-item--full {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.slot-item__time {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--brown);
+}
+
+.slot-item__info {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Calendar ──────────────────────────────────────────────────────────────── */
+
+.booking-calendar {
+  background: var(--white);
+  border: 1.5px solid rgba(242,194,153,0.6);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(242,194,153,0.4);
+}
+
+.cal-month-label {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brown);
+}
+
+.cal-nav-btn {
+  background: none;
+  border: 1.5px solid rgba(242,194,153,0.7);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--brown);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cal-nav-btn:hover {
+  background: rgba(217,77,26,0.07);
+  border-color: var(--terra);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0.6rem 1rem 0;
+}
+
+.cal-weekdays span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 0.5rem 1rem 1rem;
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--brown);
+  background: none;
+  border: none;
+  cursor: default;
+  position: relative;
+  gap: 3px;
+}
+
+.cal-cell--empty { background: none; }
+
+.cal-cell--past .cal-day { color: rgba(74,28,12,0.25); }
+
+.cal-cell--today .cal-day {
+  font-weight: 700;
+  color: var(--terra);
+}
+
+.cal-cell--available {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cal-cell--available:hover {
+  background: rgba(217,77,26,0.08);
+}
+
+.cal-cell--selected {
+  background: var(--terra) !important;
+  color: #fff;
+}
+
+.cal-cell--selected .cal-day { color: #fff; }
+.cal-cell--selected .cal-dot { background: #fff; }
+
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--terra);
+}
+
+.cal-slots-date {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--terra);
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Group size selector ───────────────────────────────────────────────────── */
+
+.group-selector {
+  background: var(--white);
+  border: 1.5px solid rgba(242,194,153,0.6);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.group-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 1.5rem 0;
+}
+
+.group-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(242,194,153,0.8);
+  background: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--brown);
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sub);
+  line-height: 1;
+}
+
+.group-btn:hover {
+  background: var(--peach-light);
+  border-color: var(--terra);
+}
+
+.group-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.group-count {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--brown);
+  min-width: 64px;
+  line-height: 1;
+}
+
+.group-total {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--terra);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.group-caption {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ─── Payment Request Button / Apple Pay / Google Pay ──────────────────────── */
+
+#payment-request-btn-container {
+  margin-bottom: 1rem;
+}
+
+#payment-request-btn {
+  margin-bottom: 1rem;
+}
+
+.pay-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.pay-divider::before,
+.pay-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(242,194,153,0.6);
+}
+
+/* ─── Stripe element ────────────────────────────────────────────────────────── */
+
+#stripe-element {
+  border: 1.5px solid rgba(242,194,153,0.8);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  background: var(--white);
+  margin-bottom: 1rem;
+  transition: border-color var(--ease);
+}
+
+#stripe-element.StripeElement--focus { border-color: var(--terra); }
+
+#stripe-errors {
+  color: #C0392B;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  min-height: 1.2em;
+}
+
+/* ─── Button extras ─────────────────────────────────────────────────────────── */
+
+.btn--full { width: 100%; justify-content: center; }
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ─── Gcal button ───────────────────────────────────────────────────────────── */
+
+.btn--gcal {
+  background-color: var(--peach-light);
+  color: var(--brown);
+  border: 1.5px solid rgba(242,194,153,0.8);
+}
+
+.btn--gcal:hover {
+  background-color: var(--peach);
+  border-color: var(--peach);
+  transform: translateY(-2px);
+}
+
+/* ─── Next available date on session cards ──────────────────────────────────── */
+
+.pick-card__next-date {
+  font-size: 0.78rem;
+  color: var(--terra);
+  margin-top: 0.5rem;
+  font-weight: 500;
+  min-height: 1.2em;
+}
+
+/* ─── Slot date list (step 2) ──────────────────────────────────────────────── */
+
+.slot-date-group {
+  margin-bottom: 1.5rem;
+}
+
+.slot-date-header {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--terra);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(242,194,153,0.3);
+}
+
+.slot-list-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* ─── Spots availability colors ────────────────────────────────────────────── */
+
+.spots--green { color: #2E7D32; }
+.spots--orange { color: #E65100; }
+.spots--red { color: #C62828; font-weight: 600; }
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .pick-cards { grid-template-columns: 1fr; }
+  .booking-wrap { padding: 1.5rem 1rem 4rem; }
+  .group-selector { padding: 1.5rem; }
+  .group-count { font-size: 3rem; }
+  .step-nav { flex-direction: column; }
+  .step-nav .btn { justify-content: center; }
+  .history-item { flex-wrap: wrap; }
+  .history-item__right { width: 100%; text-align: left; }
+}

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My account — Soki Social Sauna Utrecht</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/booking.css">
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav" id="nav">
+  <div class="container nav__inner">
+    <a href="/" class="nav__logo">
+      <span class="nav__logo-name">Soki</span>
+      <span class="nav__logo-tagline">sauna van de stad</span>
+    </a>
+    <ul class="nav__links">
+      <li><a href="/" data-i18n="nav.home">Home</a></li>
+      <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+      <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
+      <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+      <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+    </ul>
+    <div class="nav__cta">
+      <a href="/account" class="nav__account active" id="navAccount" style="display:none"></a>
+      <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch to Dutch">NL</button>
+      <a href="/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+    </div>
+    <button class="nav__toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="nav__mobile" id="navMobile">
+  <a href="/" data-i18n="nav.home">Home</a>
+  <a href="/sessions.html" data-i18n="nav.sessions">Sessions</a>
+  <a href="/about.html" data-i18n="nav.about">About us</a>
+  <a href="/gallery.html" data-i18n="nav.gallery">Gallery</a>
+  <a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+  <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+  <a href="/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;" data-i18n="book.now">Book now</a>
+</div>
+
+
+<!-- ===== AUTH GATE ===== -->
+<div id="auth-gate" style="display:none; text-align:center; padding:calc(var(--nav-height) + 5rem) 1.5rem 5rem;">
+  <span class="eyebrow">Account</span>
+  <h2 data-i18n="account.gate.h2">Log in to continue</h2>
+  <p style="margin:1rem auto 2rem;" data-i18n="account.gate.p">You need to be logged in to view your bookings.</p>
+  <a href="/booking" class="btn btn--primary" data-i18n="account.gate.cta">Make a booking</a>
+</div>
+
+
+<!-- ===== ACCOUNT APP ===== -->
+<div id="account-app" style="display:none">
+
+  <!-- Hero -->
+  <div class="account-hero">
+    <div class="container">
+      <span class="eyebrow" data-i18n="account.eyebrow">Your account</span>
+      <h1 id="account-name">–</h1>
+      <p id="account-email"></p>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="section">
+    <div class="container" style="max-width:800px">
+
+      <!-- Awaiting payment -->
+      <div id="pending-section" style="display:none; margin-bottom:var(--space-2xl)">
+        <div class="section-header">
+          <span class="eyebrow" data-i18n="pending.eyebrow">Payment required</span>
+          <h2 data-i18n="pending.h2">Pending payments</h2>
+        </div>
+        <div id="pending-bookings"></div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="account.upcoming.eyebrow">Upcoming sessions</span>
+        <h2 data-i18n="account.upcoming.h2">Upcoming bookings</h2>
+      </div>
+      <div id="upcoming-bookings">
+        <p class="slots-loading" data-i18n="slots.loading">Loading…</p>
+      </div>
+
+      <!-- Past -->
+      <div class="section-header" style="margin-top:var(--space-2xl)">
+        <span class="eyebrow" data-i18n="account.past.eyebrow">History</span>
+        <h2 data-i18n="account.past.h2">Previous sessions</h2>
+      </div>
+      <div id="past-bookings">
+        <p class="slots-loading" data-i18n="slots.loading">Loading…</p>
+      </div>
+
+      <!-- Subscription -->
+      <div id="subscription-section" style="margin-top:var(--space-2xl)">
+      </div>
+
+      <!-- Messages -->
+      <div class="section-header" style="margin-top:var(--space-2xl)">
+        <span class="eyebrow">Messages</span>
+        <h2>Contact us</h2>
+      </div>
+      <div id="messages-list" style="margin-bottom:var(--space-lg)"></div>
+
+      <!-- New message form -->
+      <div style="background:#fff;border:1px solid var(--border-color,#E8D5BF);border-radius:16px;padding:24px;">
+        <h3 style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:18px;color:var(--brown,#4A1C0C);margin-bottom:16px;">Send a message</h3>
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#8C7B6B);margin-bottom:6px;">Subject</label>
+          <input id="msg-subject" type="text" maxlength="200" placeholder="Question about my booking…" style="width:100%;padding:11px 14px;border:2px solid var(--border-color,#E8D5BF);border-radius:10px;font-size:15px;font-family:inherit;outline:none;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#8C7B6B);margin-bottom:6px;">Message</label>
+          <textarea id="msg-body" rows="4" maxlength="5000" placeholder="Write your message here…" style="width:100%;padding:11px 14px;border:2px solid var(--border-color,#E8D5BF);border-radius:10px;font-size:15px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+        </div>
+        <div id="msg-error" style="display:none;color:#C62828;font-size:13px;margin-bottom:12px;"></div>
+        <button id="msg-send-btn" class="btn btn--primary" style="min-width:140px;">Send message</button>
+      </div>
+
+      <!-- CTA -->
+      <div class="text-center" style="margin-top:var(--space-2xl)">
+        <a href="/booking" class="btn btn--primary" style="margin-right:1rem" data-i18n="account.new">New booking</a>
+        <button class="btn btn--outline" id="logout-btn" data-i18n="account.logout">Log out</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <div class="logo-text">Soki</div>
+        <div class="logo-tag">sauna van de stad</div>
+        <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht.</p>
+      </div>
+      <div class="footer__col">
+        <h4 data-i18n="footer.navigate">Navigate</h4>
+        <ul>
+          <li><a href="/" data-i18n="nav.home">Home</a></li>
+          <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+          <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
+          <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4 data-i18n="footer.findus">Find us</h4>
+        <ul>
+          <li><a href="#">Gietijzerstraat 3, Utrecht</a></li>
+          <li><a href="mailto:info@sokisocialsauna.nl">info@sokisocialsauna.nl</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>© 2024 Soki Social Sauna · KVK: 93466307</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Cancel confirmation modal -->
+<div id="cancel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:400px;width:100%;text-align:center;">
+    <h3 style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:24px;color:var(--brown);margin-bottom:12px;" data-i18n="booking.cancel.title">Cancel booking?</h3>
+    <p style="color:var(--text-muted);margin-bottom:24px;" data-i18n="booking.cancel.confirm">Cancellations are only possible up to 24 hours before the session. Confirmed bookings will be refunded.</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button id="cancel-modal-no" class="btn btn--outline" data-i18n="booking.cancel.no">Keep booking</button>
+      <button id="cancel-modal-yes" class="btn" style="background:#FFEBEE;color:#C62828;border:none;" data-i18n="booking.cancel.yes">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+<div id="cancel-error" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#C62828;color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;z-index:1000;"></div>
+
+<script src="/translations.js"></script>
+<script src="/main.js"></script>
+<script src="/account.js"></script>
+</body>
+</html>

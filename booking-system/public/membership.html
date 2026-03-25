@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Membership — Soki Social Sauna Utrecht</title>
+  <meta name="description" content="Become a member at Soki Social Sauna. Save with monthly memberships from €39/month.">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/booking.css">
+  <style>
+    .membership-hero {
+      padding: calc(var(--nav-height) + 4rem) 1.5rem 3rem;
+      text-align: center;
+      background: var(--brown);
+    }
+    .membership-hero .eyebrow { color: var(--peach); }
+    .membership-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 7vw, 4rem);
+      color: var(--peach);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.5rem;
+    }
+    .membership-hero p {
+      color: rgba(242,194,153,0.65);
+      max-width: 520px;
+      margin: 0 auto;
+      font-size: 1.05rem;
+    }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      max-width: 760px;
+      margin: -2rem auto 0;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .plan-card {
+      background: #fff;
+      border: 1.5px solid rgba(242,194,153,0.6);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      transition: border-color 0.3s, box-shadow 0.3s, transform 0.15s;
+    }
+    .plan-card:hover {
+      border-color: var(--terra);
+      box-shadow: 0 8px 32px rgba(217,77,26,0.12);
+      transform: translateY(-2px);
+    }
+    .plan-card--popular {
+      border-color: var(--terra);
+      box-shadow: 0 8px 32px rgba(217,77,26,0.15);
+    }
+    .plan-card__badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--terra);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 16px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+    .plan-card__name {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--brown);
+      margin-bottom: 4px;
+    }
+    .plan-card__price {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      color: var(--terra);
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .plan-card__price span {
+      font-size: 1rem;
+      font-family: var(--font-sub);
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+    .plan-card__credits {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+    .plan-card__features {
+      list-style: none;
+      margin-bottom: 1.5rem;
+      padding: 0;
+    }
+    .plan-card__features li {
+      font-size: 0.88rem;
+      color: var(--brown);
+      padding: 5px 0;
+      padding-left: 22px;
+      position: relative;
+      line-height: 1.5;
+    }
+    .plan-card__features li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--terra);
+    }
+    .plan-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .faq-section {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: var(--space-2xl) 1.5rem;
+    }
+    .faq-section .section-header {
+      text-align: center;
+      margin-bottom: var(--space-lg);
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(242,194,153,0.4);
+      padding: 1.25rem 0;
+    }
+    .faq-item:first-child { border-top: 1px solid rgba(242,194,153,0.4); }
+    .faq-item__q {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--brown);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .faq-item__q::after {
+      content: '+';
+      font-size: 1.3rem;
+      color: var(--terra);
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-item__q::after {
+      transform: rotate(45deg);
+    }
+    .faq-item__a {
+      display: none;
+      padding-top: 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+    .faq-item.open .faq-item__a { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav" id="nav">
+  <div class="container nav__inner">
+    <a href="/" class="nav__logo">
+      <span class="nav__logo-name">Soki</span>
+      <span class="nav__logo-tagline">sauna van de stad</span>
+    </a>
+    <ul class="nav__links">
+      <li><a href="/" data-i18n="nav.home">Home</a></li>
+      <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+      <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
+      <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+      <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+    </ul>
+    <div class="nav__cta">
+      <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+      <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch to Dutch">NL</button>
+      <a href="/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+    </div>
+    <button class="nav__toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="nav__mobile" id="navMobile">
+  <a href="/" data-i18n="nav.home">Home</a>
+  <a href="/sessions.html" data-i18n="nav.sessions">Sessions</a>
+  <a href="/about.html" data-i18n="nav.about">About us</a>
+  <a href="/gallery.html" data-i18n="nav.gallery">Gallery</a>
+  <a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+  <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+  <a href="/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;" data-i18n="book.now">Book now</a>
+</div>
+
+
+<!-- ===== HERO ===== -->
+<div class="membership-hero">
+  <div class="container">
+    <span class="eyebrow">Membership</span>
+    <h1>Become a member</h1>
+    <p>Save on every session with a monthly membership. Flexible plans, cancel anytime.</p>
+  </div>
+</div>
+
+
+<!-- ===== PLAN CARDS ===== -->
+<div class="plans-grid" id="plans-grid">
+  <div class="plan-card" id="plan-everyday">
+    <div class="plan-card__name">Everyday Member</div>
+    <div class="plan-card__price">&euro;39 <span>/month</span></div>
+    <div class="plan-card__credits">4 credits per month</div>
+    <ul class="plan-card__features">
+      <li>Everyday Sauna = 1 credit</li>
+      <li>All other sessions = 2 credits</li>
+      <li>Skip the payment step when booking</li>
+      <li>Credits reset monthly</li>
+      <li>Cancel anytime</li>
+    </ul>
+    <button class="btn btn--outline" id="btn-everyday" onclick="subscribe(null)">Subscribe</button>
+  </div>
+
+  <div class="plan-card plan-card--popular" id="plan-unlimited">
+    <div class="plan-card__badge">Most popular</div>
+    <div class="plan-card__name">Unlimited</div>
+    <div class="plan-card__price">&euro;89 <span>/month</span></div>
+    <div class="plan-card__credits">Unlimited access</div>
+    <ul class="plan-card__features">
+      <li>Unlimited sessions, all types</li>
+      <li>No credits to track</li>
+      <li>Skip the payment step when booking</li>
+      <li>Best value for regulars</li>
+      <li>Cancel anytime</li>
+    </ul>
+    <button class="btn btn--primary" id="btn-unlimited" onclick="subscribe(null)">Subscribe</button>
+  </div>
+</div>
+
+
+<!-- ===== FAQ ===== -->
+<div class="faq-section">
+  <div class="section-header">
+    <span class="eyebrow">FAQ</span>
+    <h2>Frequently asked questions</h2>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-item__q">How do credits work?</div>
+    <div class="faq-item__a">
+      With the Everyday Member plan you get 4 credits per month. An Everyday Sauna session costs 1 credit, while Social Sauna, Ambient Sauna and Aufguss sessions each cost 2 credits. When booking, credits are automatically deducted instead of paying with card.
+    </div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-item__q">Can I cancel my membership?</div>
+    <div class="faq-item__a">
+      Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period — you won't be charged again after cancelling.
+    </div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-item__q">When do credits reset?</div>
+    <div class="faq-item__a">
+      Credits reset at the start of each billing cycle (the date you subscribed). Unused credits do not roll over to the next month.
+    </div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-item__q">What if I run out of credits?</div>
+    <div class="faq-item__a">
+      If you don't have enough credits for a session, you can still book and pay with card as usual. Or consider upgrading to the Unlimited plan for worry-free access.
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <div class="logo-text">Soki</div>
+        <div class="logo-tag">sauna van de stad</div>
+        <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht.</p>
+      </div>
+      <div class="footer__col">
+        <h4 data-i18n="footer.navigate">Navigate</h4>
+        <ul>
+          <li><a href="/" data-i18n="nav.home">Home</a></li>
+          <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+          <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
+          <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+          <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4 data-i18n="footer.findus">Find us</h4>
+        <ul>
+          <li><a href="#">Gietijzerstraat 3, Utrecht</a></li>
+          <li><a href="mailto:info@sokisocialsauna.nl">info@sokisocialsauna.nl</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>&copy; 2024 Soki Social Sauna &middot; KVK: 93466307</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/translations.js"></script>
+<script src="/main.js"></script>
+<script>
+(function() {
+  var everydayPlanId = null;
+  var unlimitedPlanId = null;
+
+  fetch('/api/subscriptions/plans').then(function(r) { return r.json(); }).then(function(plans) {
+    plans.forEach(function(p) {
+      if (p.credits_per_month !== null) {
+        everydayPlanId = p.id;
+      } else {
+        unlimitedPlanId = p.id;
+      }
+    });
+
+    document.getElementById('btn-everyday').onclick = function() { subscribe(everydayPlanId); };
+    document.getElementById('btn-unlimited').onclick = function() { subscribe(unlimitedPlanId); };
+  });
+
+  window.subscribe = function(planId) {
+    if (!planId) return;
+    var token = localStorage.getItem('soki_token');
+    if (!token) {
+      window.location.href = '/login?redirect=/membership';
+      return;
+    }
+
+    fetch('/api/subscriptions/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ plan_id: planId }),
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.error) { alert(res.error); return; }
+      window.location.href = res.url;
+    });
+  };
+
+  // FAQ toggles
+  document.querySelectorAll('.faq-item__q').forEach(function(q) {
+    q.addEventListener('click', function() {
+      q.parentElement.classList.toggle('open');
+    });
+  });
+})();
+</script>
+</body>
+</html>

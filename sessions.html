@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sessions — Soki Social Sauna Utrecht</title>
+  <meta name="description" content="Book a sauna session at Soki Utrecht — Everyday Sauna, Social Sauna, Ambient Sauna with DJs, and Aufguss ritual sessions." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-name">Soki</span>
+        <span class="nav__logo-tagline">sauna van de stad</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html"data-i18n="nav.home">Home</a></li>
+        <li><a href="sessions.html" class="active">Sessions</a></li>
+        <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+        <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+      </ul>
+      <div class="nav__cta">
+        <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+        <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
+        <a href="/booking" class="btn btn--primary">Reserveer</a>
+      </div>
+      <button class="nav__toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav__mobile" id="navMobile">
+    <a href="index.html"data-i18n="nav.home">Home</a>
+    <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
+    <a href="about.html" data-i18n="nav.about">About us</a>
+    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
+    <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+    <a href="/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;">Reserveer</a>
+    <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
+  </div>
+
+
+  <!-- ===== PAGE HERO ===== -->
+  <section class="page-hero">
+    <div class="container">
+      <h1 data-i18n="sessions.h1">Our sessions</h1>
+      <p class="lead" data-i18n="sessions.lead">Sauna, ice baths and something a little more. Every session includes complimentary water and (maté)tea.</p>
+    </div>
+  </section>
+
+
+  <!-- ===== SESSION TYPE CARDS ===== -->
+  <section class="section">
+    <div class="container">
+
+      <style>
+        .session-type-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
+          margin-bottom: 4rem;
+        }
+        .session-type-card {
+          border: 1.5px solid var(--peach);
+          border-radius: 16px;
+          overflow: hidden;
+          background: var(--white);
+          display: grid;
+          grid-template-columns: 1fr 180px;
+        }
+        .session-type-card__body {
+          display: flex;
+          flex-direction: column;
+        }
+        .session-type-card__header {
+          padding: 0.9rem 1.25rem;
+        }
+        .session-type-card__header-inner {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .session-type-card__text {
+          padding: 1rem 1.25rem;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .session-type-card__text p {
+          font-size: 0.82rem;
+          margin-bottom: 0.5rem;
+          line-height: 1.5;
+        }
+        .session-type-card__text p:last-of-type { margin-bottom: 0; }
+        .session-type-card__cta { margin-top: auto; padding-top: 1rem; }
+        .session-type-card__img {
+          position: relative;
+          overflow: hidden;
+        }
+        .session-type-card__img img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        @media (max-width: 900px) {
+          .session-type-grid { grid-template-columns: 1fr; }
+          .session-type-card { grid-template-columns: 1fr; }
+          .session-type-card__img { height: 220px; }
+        }
+      </style>
+
+      <div class="session-type-grid">
+
+        <!-- Everyday Sauna -->
+        <div class="session-type-card">
+          <div class="session-type-card__body">
+            <div class="session-type-card__header" style="background:var(--terra);">
+              <div class="session-type-card__header-inner">
+                <h3 style="color:var(--white); font-size:1.1rem;">Everyday Sauna</h3>
+                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--peach); font-weight:700;">€15</span>
+              </div>
+              <p style="color:rgba(242,242,242,0.75); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">50 minutes</p>
+            </div>
+            <div class="session-type-card__text">
+              <p data-i18n="sessions.everyday.p1">Enjoy 50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge where you can listen to music, read a book or socialise.</p>
+              <p data-i18n="sessions.everyday.p2">Free-flow experience: no fixed programme, just move between sauna and ice baths at your own pace.</p>
+              <div class="session-type-card__cta">
+                <a href="/booking?type=1" class="btn btn--primary" data-i18n="book.now">Book now</a>
+              </div>
+            </div>
+          </div>
+          <div class="session-type-card__img">
+            <img src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=600&auto=format&fit=crop&q=80" alt="Everyday Sauna" loading="lazy" />
+          </div>
+        </div>
+
+        <!-- Social Sauna -->
+        <div class="session-type-card">
+          <div class="session-type-card__body">
+            <div class="session-type-card__header" style="background:var(--brown-soft);">
+              <div class="session-type-card__header-inner">
+                <h3 style="color:var(--white); font-size:1.1rem;">Social Sauna</h3>
+                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--peach); font-weight:700;">€22.50</span>
+              </div>
+              <p style="color:rgba(242,242,242,0.75); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">110 minutes</p>
+            </div>
+            <div class="session-type-card__text">
+              <p data-i18n="sessions.social.p1">Enjoy 1hr 40 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge where you can listen to music, read a book or simply socialise.</p>
+              <p data-i18n="sessions.social.p2">Free-flow experience: no fixed programme, just move between sauna and ice baths at your own pace.</p>
+              <div class="session-type-card__cta">
+                <a href="/booking?type=2" class="btn btn--primary" data-i18n="book.now">Book now</a>
+              </div>
+            </div>
+          </div>
+          <div class="session-type-card__img">
+            <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&auto=format&fit=crop&q=80" alt="Social Sauna" loading="lazy" />
+          </div>
+        </div>
+
+        <!-- Ambient Sauna -->
+        <div class="session-type-card">
+          <div class="session-type-card__body">
+            <div class="session-type-card__header" style="background:var(--terra);">
+              <div class="session-type-card__header-inner">
+                <h3 style="color:var(--white); font-size:1.1rem;">Ambient Sauna</h3>
+                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--peach); font-weight:700;">€25</span>
+              </div>
+              <p style="color:rgba(242,242,242,0.75); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">70 minutes · Fri, Sat &amp; alternate Sun</p>
+            </div>
+            <div class="session-type-card__text">
+              <p data-i18n="sessions.ambient.p1">Friday and Saturday nights, and every other Sunday: a curated DJ lineup transforms the sauna into an immersive listening lounge.</p>
+              <p data-i18n="sessions.ambient.p2">70-minute session with full sauna and ice bath access, before or after unwinding in our low-lit lounge with cushions and ambient music.</p>
+              <div class="session-type-card__cta">
+                <a href="/booking?type=3" class="btn btn--primary" data-i18n="book.now">Book now</a>
+              </div>
+            </div>
+          </div>
+          <div class="session-type-card__img">
+            <img src="https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=600&auto=format&fit=crop&q=80" alt="Ambient Sauna" loading="lazy" />
+          </div>
+        </div>
+
+        <!-- Aufguss -->
+        <div class="session-type-card">
+          <div class="session-type-card__body">
+            <div class="session-type-card__header" style="background:var(--brown);">
+              <div class="session-type-card__header-inner">
+                <h3 style="color:var(--peach); font-size:1.1rem;">Aufguss</h3>
+                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--terra); font-weight:700;">€27.50</span>
+              </div>
+              <p style="color:rgba(242,194,153,0.6); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">110 minutes · Every other Sunday</p>
+            </div>
+            <div class="session-type-card__text">
+              <p data-i18n="sessions.aufguss.p1">A traditional ritual led by our sauna masters — essential oils poured over hot stones create a burst of steam that carries you through a guided, sensory journey.</p>
+              <p data-i18n="sessions.aufguss.p2">Includes a visualisation and homemade salt scrub, with full sauna and ice bath access woven in.</p>
+              <div class="session-type-card__cta">
+                <a href="/booking?type=4" class="btn btn--primary" data-i18n="book.now">Book now</a>
+              </div>
+            </div>
+          </div>
+          <div class="session-type-card__img">
+            <img src="https://images.unsplash.com/photo-1588346135463-8d8b9018d7a2?w=600&auto=format&fit=crop&q=80" alt="Aufguss" loading="lazy" />
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ===== PROGRAMME ===== -->
+  <section class="section section--peach">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="sessions.programme.eyebrow">What's on this month</span>
+        <h2 data-i18n="sessions.programme.h2">Programme</h2>
+        <p>Alongside our regular Everyday and Social Sauna sessions, we run a weekly programme of special creative and community events on Thursday, Friday and Saturday evenings, and Sunday afternoons.</p>
+      </div>
+
+      <!-- Filters -->
+      <div class="sessions-filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="everyday">Everyday</button>
+        <button class="filter-btn" data-filter="social">Social</button>
+        <button class="filter-btn" data-filter="ambient">Ambient</button>
+        <button class="filter-btn" data-filter="aufguss">Aufguss</button>
+      </div>
+
+      <div class="sessions-month" style="margin-bottom: 3rem;">
+        <h4 style="font-family:var(--font-display); font-size:1rem; letter-spacing:0.12em; color:var(--terra); margin-bottom:1.5rem; padding-bottom:0.5rem; border-bottom: 1px solid rgba(217,77,26,0.2);">March 2026</h4>
+
+        <div class="sessions-list">
+
+          <div class="session-card" data-type="everyday">
+            <div class="session-card__date">
+              <div class="day">25</div>
+              <div class="month">Mar</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Everyday Sauna</h4>
+              <div class="session-card__meta">
+                <span class="time">16:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--mixed">€15 · 50 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="social">
+            <div class="session-card__date">
+              <div class="day">26</div>
+              <div class="month">Mar</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Social Sauna</h4>
+              <div class="session-card__meta">
+                <span class="time">16:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--flinta">€22.50 · 110 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="ambient">
+            <div class="session-card__date">
+              <div class="day">27</div>
+              <div class="month">Mar</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Ambient Sauna — Beste Hira</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 23:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--sound">€25 · 70 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="ambient">
+            <div class="session-card__date">
+              <div class="day">28</div>
+              <div class="month">Mar</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Ambient Sauna — Rebloom</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 23:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--sound">€25 · 70 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="aufguss">
+            <div class="session-card__date">
+              <div class="day">29</div>
+              <div class="month">Mar</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Aufguss / Opgieting — Luke</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--special">€27.50 · 110 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--primary">Book now</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="sessions-month">
+        <h4 style="font-family:var(--font-display); font-size:1rem; letter-spacing:0.12em; color:var(--terra); margin-bottom:1.5rem; padding-bottom:0.5rem; border-bottom: 1px solid rgba(217,77,26,0.2);">April 2026</h4>
+
+        <div class="sessions-list">
+
+          <div class="session-card" data-type="everyday">
+            <div class="session-card__date">
+              <div class="day">1</div>
+              <div class="month">Apr</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Everyday Sauna</h4>
+              <div class="session-card__meta">
+                <span class="time">16:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--mixed">€15 · 50 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="ambient">
+            <div class="session-card__date">
+              <div class="day">3</div>
+              <div class="month">Apr</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Ambient Sauna — Live DJ (tbc)</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 23:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--sound">€25 · 70 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="ambient">
+            <div class="session-card__date">
+              <div class="day">4</div>
+              <div class="month">Apr</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Ambient Sauna — BUMPAH</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 23:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--sound">€25 · 70 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="aufguss">
+            <div class="session-card__date">
+              <div class="day">5</div>
+              <div class="month">Apr</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Aufguss / Opgieting — Luke</h4>
+              <div class="session-card__meta">
+                <span class="time">12:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--special">€27.50 · 110 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--primary">Book now</a>
+            </div>
+          </div>
+
+          <div class="session-card" data-type="social">
+            <div class="session-card__date">
+              <div class="day">9</div>
+              <div class="month">Apr</div>
+            </div>
+            <div class="session-card__sep"></div>
+            <div class="session-card__info">
+              <h4>Social Sauna</h4>
+              <div class="session-card__meta">
+                <span class="time">16:00 – 22:00</span>
+                <span class="location">Gietijzerstraat 3, Utrecht</span>
+              </div>
+              <div class="session-card__meta" style="margin-top:6px;">
+                <span class="tag tag--flinta">€22.50 · 110 min</span>
+              </div>
+            </div>
+            <div class="session-card__action">
+              <a href="#" class="btn btn--outline">Book now</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ===== PRACTICAL INFO ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="eyebrow" data-i18n="sessions.info.eyebrow">Good to know</span>
+        <h2 data-i18n="sessions.info.h2">Before you come</h2>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:1.5rem;">
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">🧖</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.bring.h4">What to bring</h4>
+          <p style="font-size:0.9rem;">Swimwear (mandatory), two towels, flip-flops or slides, and a water bottle. We provide complimentary water and maté tea.</p>
+        </div>
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">🏠</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.facilities.h4">Facilities</h4>
+          <p style="font-size:0.9rem;">Traditional Finnish sauna, ice bath tubs, relaxation areas, rain showers, changing facilities and an outdoor terrace.</p>
+        </div>
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">📍</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.getting.h4">Getting here</h4>
+          <p style="font-size:0.9rem;">Gietijzerstraat 3, Utrecht — easily accessible by bike or train to Station Zuilen. Free parking available (except 06:00–11:00).</p>
+        </div>
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">🕐</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.hours.h4">Opening hours</h4>
+          <p style="font-size:0.9rem;">Wed & Thu: 16:00–22:00<br/>Fri & Sat: 12:00–23:00<br/>Sun: 12:00–22:00<br/>Mon & Tue: Closed</p>
+        </div>
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">🎟️</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.booking.h4">Booking &amp; cancellation</h4>
+          <p style="font-size:0.9rem;">Online booking recommended. Cancel up to 48 hours ahead for full credit. 24–48 hours: 50% refund. Under 24 hours: no refund.</p>
+        </div>
+
+        <div style="background:var(--peach-light); border-radius:16px; padding:2rem;">
+          <div style="font-size:1.8rem; margin-bottom:1rem;">👥</div>
+          <h4 style="font-family:var(--font-display); font-size:1.1rem; color:var(--brown); margin-bottom:0.5rem;" data-i18n="sessions.groups.h4">Groups &amp; solo visits</h4>
+          <p style="font-size:0.9rem;">Solo visits are very welcome. Groups of up to 15 people per time slot. For larger bookings, reach out to us directly.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <div class="logo-text">Soki</div>
+          <div class="logo-tag">sauna van de stad</div>
+          <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.navigate">Navigate</h4>
+          <ul>
+            <li><a href="index.html"data-i18n="nav.home">Home</a></li>
+            <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+            <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+            <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.findus">Find us</h4>
+          <ul>
+            <li><a href="#">Gietijzerstraat 3</a></li>
+            <li><a href="#">3534 AV, Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–22:00</a></li>
+            <li><a href="#">Fri–Sat: 12:00–23:00</a></li>
+            <li><a href="#">Sun: 12:00–22:00</a></li>
+            <li><a href="mailto:info@sokisocialsauna.nl">info@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>© 2024 Soki Social Sauna · KVK: 93466307 · <a href="#" style="color:inherit;">Terms &amp; conditions</a> · <a href="#" style="color:inherit;">Privacy policy</a></p>
+        <div class="footer__social">
+          <a href="#">Instagram</a>
+          <a href="#">Newsletter</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="translations.js"></script>
+  <script src="sanity-content.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

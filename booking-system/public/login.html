@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inloggen – Soki Social Sauna</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --terra: #D94D1A;
+      --brown: #4A1C0C;
+      --peach: #F2C299;
+      --border: #E8D5BF;
+      --muted: #7A5A4A;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--brown);
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.25);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .brand__name {
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--terra);
+      line-height: 1;
+    }
+    .brand__sub {
+      font-size: 11px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Google button */
+    .google-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border: 2px solid var(--border);
+      border-radius: 100px;
+      background: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      color: #3c3c3c;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .google-btn:hover { background: #f8f4f1; border-color: #c4a882; }
+    .google-btn svg { flex-shrink: 0; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab.active { color: var(--terra); border-bottom-color: var(--terra); }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .form-input:focus { border-color: var(--terra); }
+
+    .form-error { color: #C0392B; font-size: 13px; margin-top: 6px; min-height: 18px; }
+
+    .btn {
+      width: 100%;
+      padding: 13px 24px;
+      border-radius: 100px;
+      border: none;
+      background: var(--terra);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s;
+      margin-top: 4px;
+    }
+    .btn:hover { opacity: .88; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: -8px;
+      margin-bottom: 16px;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .forgot-link:hover { color: var(--terra); }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .back-link a { color: var(--terra); text-decoration: none; font-weight: 600; }
+    .back-link a:hover { text-decoration: underline; }
+
+    /* Forgot password inline panel */
+    #forgot-panel {
+      display: none;
+    }
+    #forgot-panel .form-msg {
+      font-size: 13px;
+      color: #2E7D32;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="brand__name">Soki</div>
+    <div class="brand__sub">Sauna van de stad</div>
+  </div>
+
+  <!-- Google button -->
+  <button class="google-btn" id="google-btn">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+    Doorgaan met Google
+  </button>
+
+  <div class="divider">of</div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tab-login" onclick="switchTab('login')">Inloggen</div>
+    <div class="tab" id="tab-register" onclick="switchTab('register')">Registreren</div>
+  </div>
+
+  <!-- Login form -->
+  <div class="form-panel active" id="panel-login">
+    <div class="form-group">
+      <label class="form-label">E-mailadres</label>
+      <input class="form-input" type="email" id="login-email" placeholder="jouw@email.nl" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Wachtwoord</label>
+      <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <span class="forgot-link" id="forgot-link">Wachtwoord vergeten?</span>
+    <div class="form-error" id="login-error"></div>
+    <button class="btn" id="login-btn">Inloggen</button>
+
+    <!-- Forgot password panel -->
+    <div id="forgot-panel">
+      <div class="divider" style="margin: 20px 0 16px" data-i18n="login.forgot.divider">Wachtwoord herstellen</div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="login.forgot.email.label">E-mailadres</label>
+        <input class="form-input" type="email" id="forgot-email" placeholder="jouw@email.nl">
+      </div>
+      <button class="btn" id="forgot-btn" style="background: var(--muted)" data-i18n="login.forgot.btn">Stuur herstelmail</button>
+      <div class="form-msg" id="forgot-msg"></div>
+    </div>
+  </div>
+
+  <!-- Register form -->
+  <div class="form-panel" id="panel-register">
+    <div class="form-group">
+      <label class="form-label">Naam</label>
+      <input class="form-input" type="text" id="reg-name" placeholder="Voor- en achternaam" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">E-mailadres</label>
+      <input class="form-input" type="email" id="reg-email" placeholder="jouw@email.nl" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Wachtwoord</label>
+      <input class="form-input" type="password" id="reg-password" placeholder="Minimaal 8 tekens" autocomplete="new-password">
+    </div>
+    <div class="form-error" id="reg-error"></div>
+    <button class="btn" id="reg-btn">Account aanmaken</button>
+  </div>
+
+  <div class="back-link">
+    <a href="/">← Terug naar de website</a>
+  </div>
+</div>
+
+<script>
+  // Read redirect target from query string (e.g. /login?redirect=/booking)
+  var redirectTo = new URLSearchParams(location.search).get('redirect') || '/account';
+
+  // If already logged in, redirect immediately
+  var existingToken = localStorage.getItem('soki_token');
+  if (existingToken) {
+    fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + existingToken } })
+      .then(function(r) { if (r.ok) window.location.href = redirectTo; })
+      .catch(function() {});
+  }
+
+  function switchTab(tab) {
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+    document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+  }
+
+  function onAuthSuccess(data) {
+    localStorage.setItem('soki_token', data.token);
+    window.location.href = redirectTo;
+  }
+
+  // ── Google sign-in ──────────────────────────────────────────────────────────
+  document.getElementById('google-btn').addEventListener('click', function() {
+    fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
+      if (!cfg.googleClientId) { alert('Google aanmelden is niet ingesteld.'); return; }
+
+      // Load GSI script dynamically then trigger One Tap / popup
+      var script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.onload = function() {
+        google.accounts.id.initialize({
+          client_id: cfg.googleClientId,
+          callback: function(response) {
+            fetch('/api/auth/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ credential: response.credential }),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.error) { alert(data.error); return; }
+              onAuthSuccess(data);
+            });
+          },
+          ux_mode: 'popup',
+        });
+        google.accounts.id.prompt();
+      };
+      document.head.appendChild(script);
+    });
+  });
+
+  // ── Login ───────────────────────────────────────────────────────────────────
+  document.getElementById('login-btn').addEventListener('click', async function() {
+    var email    = document.getElementById('login-email').value.trim();
+    var password = document.getElementById('login-password').value;
+    var errEl    = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    if (!email || !password) { errEl.textContent = 'Vul je e-mail en wachtwoord in.'; return; }
+
+    this.disabled = true;
+    var res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then(function(r) { return r.json(); });
+    this.disabled = false;
+
+    if (res.error) { errEl.textContent = res.error; return; }
+    onAuthSuccess(res);
+  });
+
+  // Enter key on login fields
+  ['login-email', 'login-password'].forEach(function(id) {
+    document.getElementById(id).addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
+  });
+
+  // ── Forgot password ─────────────────────────────────────────────────────────
+  document.getElementById('forgot-link').addEventListener('click', function() {
+    var panel = document.getElementById('forgot-panel');
+    panel.style.display = panel.style.display === 'none' || !panel.style.display ? 'block' : 'none';
+  });
+
+  document.getElementById('forgot-btn').addEventListener('click', async function() {
+    var email = document.getElementById('forgot-email').value.trim();
+    var msg   = document.getElementById('forgot-msg');
+    if (!email) { msg.textContent = 'Vul je e-mailadres in.'; msg.style.color = '#C0392B'; return; }
+
+    this.disabled = true;
+    await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    msg.textContent = 'Als dit e-mailadres bekend is, ontvang je een link.'; // login.forgot.success
+    msg.style.color = '#2E7D32';
+  });
+
+  // ── Register ────────────────────────────────────────────────────────────────
+  document.getElementById('reg-btn').addEventListener('click', async function() {
+    var name     = document.getElementById('reg-name').value.trim();
+    var email    = document.getElementById('reg-email').value.trim();
+    var password = document.getElementById('reg-password').value;
+    var errEl    = document.getElementById('reg-error');
+    errEl.textContent = '';
+
+    if (!name || !email || !password) { errEl.textContent = 'Vul alle velden in.'; return; }
+    if (password.length < 8)          { errEl.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.'; return; }
+
+    this.disabled = true;
+    var res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    }).then(function(r) { return r.json(); });
+    this.disabled = false;
+
+    if (res.error) { errEl.textContent = res.error; return; }
+    onAuthSuccess(res);
+  });
+</script>
+</body>
+</html>
