@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOKI: Social Sauna, Ice Bath &amp; Listening Space in Utrecht</title>
+  <meta name="description" content="SOKI is a new kind of sauna space in Utrecht, fusing wellness with culture, music and community. Book a sauna, ice bath or ambient session." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="images/favicon.png" />
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-name">SOKI</span>
+        <span class="nav__logo-tagline">sauna van de stad</span>
+      </a>
+
+      <ul class="nav__links">
+        <li><a href="index.html" class="active" data-i18n="nav.home">Home</a></li>
+        <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+        <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+        <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav__cta">
+        <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
+        <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+        <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav__mobile" id="navMobile">
+    <a href="index.html" data-i18n="nav.home">Home</a>
+    <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
+    <a href="about.html" data-i18n="nav.about">About us</a>
+    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
+    <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+    <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
+    <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
+  </div>
+
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="hero__bg">
+      <img
+        src="/images/hero-sauna.webp"
+        alt="Group of friends relaxing together in a warm wooden sauna"
+        loading="eager"
+      />
+    </div>
+
+    <div class="container hero__content">
+      <span class="hero__eyebrow">Utrecht · Social Sauna</span>
+      <h1 data-i18n="home.hero.h1">Sweat, relax, connect</h1>
+      <p class="lead" data-i18n="home.hero.lead">
+        SOKI is a new kind of sauna space that fuses wellness with culture,
+        music and community. A warm, inspiring place where wellbeing, creativity
+        and genuine human connection come first.
+      </p>
+      <div class="hero__actions">
+        <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" data-i18n="home.hero.book">Book a session</a>
+        <a href="about.html" class="btn btn--outline-light" data-i18n="home.hero.story">Our story</a>
+      </div>
+    </div>
+
+    <div class="hero__scroll-hint">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+      Scroll
+    </div>
+  </section>
+
+
+  <!-- ===== INTRO ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="intro-grid">
+        <div class="intro-grid__image">
+          <img
+            src="https://images.unsplash.com/photo-1618220179428-22790b461013?w=900&auto=format&fit=crop&q=80"
+            alt="Warm wooden sauna interior"
+            loading="lazy"
+          />
+
+        </div>
+
+        <div class="intro-grid__text">
+          <span class="eyebrow" data-i18n="home.intro.eyebrow">A hidden oasis just beyond the city limits</span>
+          <h2 data-i18n="home.intro.h2">Reshaping the sauna experience</h2>
+          <p data-i18n="home.intro.p1">
+            Step inside and leave the noise behind. This is a space to slow down,
+            reconnect with yourself, meet others and break free from everyday constraints.
+          </p>
+          <p data-i18n="home.intro.p2">
+            Instead of a silent, anonymous spa, we're building a living, breathing venue
+            where you can sweat, relax and also discover art, talks, DJ sets or small
+            performances.
+          </p>
+          <p data-i18n="home.intro.p3">
+            Our aim is to offer a true alternative to the usual social spaces like bars
+            and clubs: a warm, inspiring place where wellbeing, creativity and genuine
+            human connection come first.
+          </p>
+          <a href="about.html" class="btn btn--ghost">
+            <span data-i18n="read.story">Read our story</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== SESSION TYPES ===== -->
+  <section class="section section--peach">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2 data-i18n="home.sessions.h2">Choose your session</h2>
+        <p data-i18n="home.sessions.lead">Every session includes access to sauna, ice baths and our lounge. Complimentary water and (maté)tea included.</p>
+      </div>
+
+      <div class="session-types-grid">
+
+        <a href="/booking?type=1" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=700&auto=format&fit=crop&q=80"
+              alt="Everyday Sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€15 · 50 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Everyday Sauna</h3>
+            <p data-i18n="type.everyday.desc">50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge. A free-flow experience: no fixed programme, just move at your own pace.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=2" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=700&auto=format&fit=crop&q=80"
+              alt="Social Sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€20 · 80 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Social Sauna</h3>
+            <p data-i18n="type.social.desc">1hr 20 minutes of access to our sauna and ice baths, plus unlimited lounge time. Curl up with a book, meditate, catch up with friends or meet someone new.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=3" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=700&auto=format&fit=crop&q=80"
+              alt="Ambient Sauna with DJ"
+              loading="lazy"
+            />
+            <span class="type-card__label">€25 · 70 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Ambient Sauna</h3>
+            <p data-i18n="type.ambient.desc">A curated DJ transforms the sauna into an immersive listening lounge. 70 minutes of sauna access, stay for the full 4-hour event with live music from 19:00–23:00.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=4" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1588346135463-8d8b9018d7a2?w=700&auto=format&fit=crop&q=80"
+              alt="Aufguss ritual sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€25 · 90 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Aufguss / Opgieting</h3>
+            <p data-i18n="type.aufguss.desc">A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation and a homemade salt scrub.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+      </div>
+
+      <div class="text-center" style="margin-top: 3rem;">
+        <a href="sessions.html" class="btn btn--dark" data-i18n="view.programme">View full programme</a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== VALUES ===== -->
+  <section class="section section--brown">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="eyebrow" data-i18n="home.values.eyebrow">What we stand for</span>
+        <h2 data-i18n="home.values.h2">More than a sauna</h2>
+      </div>
+
+      <div class="values-grid">
+        <div class="value-item">
+          <div class="value-item__icon">🌿</div>
+          <h4 data-i18n="home.values.wellness.h4">Wellness without walls</h4>
+          <p data-i18n="home.values.wellness.p">We want to make sauna sessions and cold plunges affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
+        </div>
+        <div class="value-item">
+          <div class="value-item__icon">🎵</div>
+          <h4 data-i18n="home.values.culture.h4">Culture &amp; community</h4>
+          <p data-i18n="home.values.culture.p">We're building a living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
+        </div>
+        <div class="value-item">
+          <div class="value-item__icon">🤝</div>
+          <h4 data-i18n="home.values.connection.h4">Real human connection</h4>
+          <p data-i18n="home.values.connection.p">In today's digital world, we create space for genuine encounters. An alternative to bars and clubs where you can truly be yourself.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== UPCOMING PROGRAMME ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="home.upcoming.eyebrow">What's on</span>
+        <h2 data-i18n="home.upcoming.h2">Upcoming sessions</h2>
+        <p data-i18n="home.upcoming.lead">Reserve your spot. Live availability updated in real time.</p>
+      </div>
+
+      <div class="sessions-list" id="upcoming-slots-list">
+        <div class="slots-loading">Laden…</div>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <a href="sessions.html" class="btn btn--ghost">
+          <span data-i18n="home.upcoming.viewfull">View full programme</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== LOCATION ===== -->
+  <section class="section location-section">
+    <div class="container">
+      <div class="location-grid">
+
+        <!-- Left: info -->
+        <div class="location-info">
+          <span class="eyebrow" data-i18n="location.eyebrow">Find us</span>
+          <h2 data-i18n="location.h2">Drop by</h2>
+
+          <p class="location-address">
+            Europalaan 2B<br>
+            3526 KS Utrecht
+          </p>
+
+          <div class="location-block">
+            <div class="location-label" data-i18n="location.hours">Hours</div>
+            <div data-i18n-html="location.hours.detail">
+              Mon – Fri: 07:00 – 22:00<br>
+              Sat – Sun: 08:00 – 22:00
+            </div>
+          </div>
+
+          <div class="location-block">
+            <div class="location-label" data-i18n="location.contact">Contact</div>
+            <a href="mailto:hello@sokisocialsauna.nl" class="location-link">hello@sokisocialsauna.nl</a>
+          </div>
+
+          <a href="https://maps.apple.com/?address=Europalaan+2B,+Utrecht" target="_blank" rel="noopener" class="btn btn--outline location-cta" data-i18n="location.directions">Get directions</a>
+        </div>
+
+        <!-- Right: map -->
+        <iframe
+          class="location-map"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=5.096%2C52.071%2C5.116%2C52.080&amp;layer=mapnik&amp;marker=52.0753%2C5.1067"
+          style="border:0;"
+          loading="lazy"
+          title="SOKI Social Sauna, Europalaan 2B, Utrecht">
+        </iframe>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== NEWSLETTER ===== -->
+  <section class="section section--terra">
+    <div class="container text-center">
+      <span class="eyebrow" data-i18n="home.nl.eyebrow">Stay in the loop</span>
+      <h2 style="color:var(--white); margin-bottom: 1rem;" data-i18n="home.nl.h2">Subscribe to our newsletter</h2>
+      <p style="margin-inline:auto; margin-bottom: 2rem; color: rgba(242,242,242,0.85);" data-i18n="home.nl.p">
+        Sign up to receive news, upcoming events and early access to new sessions.
+      </p>
+
+      <form class="newsletter-form centered" onsubmit="handleSignup(event)">
+        <div class="form-row" style="display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;">
+          <div class="form-group" style="flex:2; min-width:220px; max-width:340px;">
+            <label for="hero-email" data-i18n="email.label">Email address</label>
+            <input type="email" id="hero-email" name="email" placeholder="your@email.com" autocomplete="email" required data-i18n-placeholder="email.placeholder" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn--dark" style="margin-top:0.5rem;" data-i18n="sign.up">Sign up</button>
+        <p class="form-note" style="color:rgba(242,242,242,0.5);" data-i18n="nl.note">No spam. Unsubscribe any time.</p>
+      </form>
+    </div>
+  </section>
+
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <div class="logo-text">SOKI</div>
+          <div class="logo-tag">sauna van de stad</div>
+          <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
+        </div>
+
+        <div class="footer__col">
+          <h4 data-i18n="footer.navigate">Navigate</h4>
+          <ul>
+            <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+            <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+            <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+            <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+            <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+            <li><a href="/gift-card" data-i18n="nav.giftcard">Gift card</a></li>
+          </ul>
+        </div>
+
+        <div class="footer__col">
+          <h4 data-i18n="footer.findus">Find us</h4>
+          <ul>
+            <li><a href="#">Europalaan 2B</a></li>
+            <li><a href="#">3526 KS Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–21:00</a></li>
+            <li><a href="#">Fri: 16:00–23:00</a></li>
+            <li><a href="#">Sat: 10:00–23:00</a></li>
+            <li><a href="#">Sun: 10:00–20:00</a></li>
+            <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="#" style="color:inherit;">Terms &amp; conditions</a> · <a href="#" style="color:inherit;">Privacy policy</a></p>
+        <div class="footer__social">
+          <a href="#">Instagram</a>
+          <a href="#">Newsletter</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="translations.js"></script>
+  <script src="sanity-content.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

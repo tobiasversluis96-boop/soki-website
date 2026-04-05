@@ -250,6 +250,42 @@ app.get('/api/milestones', async (req, res) => {
   }
 });
 
+// ─── Waitlist (Brevo) ─────────────────────────────────────────────────────────
+app.post('/api/waitlist', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  try {
+    const response = await fetch('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: {
+        'api-key':      process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept':       'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        listIds:        [parseInt(process.env.BREVO_LIST_ID || '3')],
+        updateEnabled:  true,
+      }),
+    });
+    if (response.status === 201 || response.status === 204) {
+      return res.json({ ok: true });
+    }
+    const data = await response.json().catch(() => ({}));
+    // Brevo returns 400 with code "duplicate_parameter" if already subscribed — treat as success
+    if (data.code === 'duplicate_parameter') {
+      return res.json({ ok: true });
+    }
+    console.error('[Brevo]', response.status, data);
+    return res.status(500).json({ error: 'Could not save your email. Please try again.' });
+  } catch (err) {
+    console.error('[Brevo] fetch error:', err.message);
+    return res.status(500).json({ error: 'Could not save your email. Please try again.' });
+  }
+});
+
 // ─── Page routes ─────────────────────────────────────────────────────────────
 app.get('/login',           (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')))
 app.get('/payment-return', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-return.html')))
