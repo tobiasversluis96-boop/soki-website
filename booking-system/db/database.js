@@ -82,9 +82,9 @@ async function seedSessionTypes() {
     VALUES ($1, $2, $3, $4, $5, $6)
   `;
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
-  await pool.query(sql, ['Social Sauna',         'Extended session with sauna, ice baths and unlimited lounge time.',                          110, 2250,  15, '#4A1C0C']);
+  await pool.query(sql, ['Social Sauna',         'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
   await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           70,  2500,  12, '#D94D1A']);
-  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils, visualisation and salt scrub.',                      110, 2750,  10, '#6B2E18']);
+  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils, visualisation and salt scrub.',                      90,  2500,  10, '#6B2E18']);
 }
 
 async function seedTimeSlots() {
@@ -172,6 +172,9 @@ async function seedSubscriptionPlans() {
 
 async function initializeDB() {
   await pool.query(SCHEMA);
+  // Fix session type prices/durations if they were seeded with wrong values
+  await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Social Sauna'`);
+  await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
