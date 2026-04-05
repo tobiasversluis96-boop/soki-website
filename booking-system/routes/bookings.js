@@ -6,12 +6,13 @@
 const express = require('express');
 const { queries, getPool } = require('../db/database');
 const { requireAuth } = require('./auth');
+const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation } = require('../utils/email');
 
 const router = express.Router();
 
 // POST /api/bookings — create a pending booking
 router.post('/', requireAuth, async (req, res) => {
-  const { slot_id, group_size } = req.body;
+  const { slot_id, group_size, promo_code } = req.body;
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
   if (group_size < 1 || group_size > 20)
@@ -26,7 +27,49 @@ router.post('/', requireAuth, async (req, res) => {
   if (group_size > spotsLeft)
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
-  const totalCents = slot.price_cents * group_size;
+  // Validate promo / test code
+  const testCode = process.env.TEST_BOOKING_CODE;
+  const isFree   = testCode && promo_code && promo_code.trim().toUpperCase() === testCode.toUpperCase();
+
+  // Validate milestone reward code or gift card
+  let milestoneEntry = null;
+  let giftCard       = null;
+  let discountCents  = 0;
+  if (!isFree && promo_code) {
+    const bookingTotal = slot.price_cents * group_size;
+
+    // Check gift card first
+    giftCard = await queries.getGiftCardByCode(promo_code.trim());
+    if (giftCard) {
+      if (giftCard.status === 'pending')
+        return res.status(400).json({ error: 'Deze cadeaubon is nog niet geactiveerd.' });
+      if (giftCard.status === 'depleted')
+        return res.status(400).json({ error: 'Deze cadeaubon is volledig gebruikt.' });
+      if (giftCard.status === 'expired' || new Date(giftCard.expires_at) < new Date())
+        return res.status(400).json({ error: 'Deze cadeaubon is verlopen.' });
+      // Apply up to full booking total
+      discountCents = Math.min(giftCard.remaining_amount_cents, bookingTotal);
+    } else {
+      // Try milestone code
+      milestoneEntry = await queries.getMilestoneByCode(promo_code.trim());
+      if (!milestoneEntry) {
+        return res.status(400).json({ error: 'Ongeldige promotiecode.' });
+      }
+      const { MILESTONES } = require('../utils/milestones');
+      const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
+      if (milestoneDef) {
+        if (milestoneEntry.milestone === 5) {
+          if (group_size < 2)
+            return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
+          discountCents = slot.price_cents;
+        } else if (milestoneEntry.milestone === 25) {
+          discountCents = slot.price_cents * group_size;
+        }
+      }
+    }
+  }
+
+  const totalCents = isFree ? 0 : Math.max(0, slot.price_cents * group_size - discountCents);
   let booking;
   try {
     booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents);
@@ -36,9 +79,30 @@ router.post('/', requireAuth, async (req, res) => {
     throw err;
   }
 
+  // Fully free: confirm immediately without Stripe
+  if (isFree || totalCents === 0) {
+    const pool = getPool();
+    await pool.query(
+      "UPDATE bookings SET status = 'confirmed', stripe_payment_status = 'free', confirmation_sent = TRUE WHERE id = $1",
+      [booking.id]
+    );
+    if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
+    try {
+      const fullBooking = await queries.getBookingById(booking.id);
+      await sendBookingConfirmation(fullBooking);
+    } catch (e) { console.error('Promo email error:', e.message); }
+    return res.status(201).json({ booking_id: booking.id, total_cents: 0, free: true, slot, group_size });
+  }
+
+  // Partial discount: redeem code/gift card and proceed to Stripe
+  if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
+  if (giftCard) await queries.redeemGiftCard(giftCard.id, discountCents);
+
   res.status(201).json({
-    booking_id:  booking.id,
-    total_cents: totalCents,
+    booking_id:     booking.id,
+    total_cents:    totalCents,
+    discount_cents: discountCents,
+    gift_card_remaining: giftCard ? Math.max(0, giftCard.remaining_amount_cents - discountCents) : undefined,
     slot,
     group_size,
   });
@@ -57,6 +121,19 @@ router.get('/:id', requireAuth, async (req, res) => {
   if (booking.user_id !== req.user.userId)
     return res.status(403).json({ error: 'Access denied' });
   res.json(booking);
+});
+
+// GET /api/bookings/:id/qr — get QR check-in URL for confirmed booking
+router.get('/:id/qr', requireAuth, async (req, res) => {
+  const booking = await queries.getBookingById(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
+  if (booking.status !== 'confirmed') return res.status(400).json({ error: 'Booking not confirmed' });
+  const crypto = require('crypto');
+  const sig = crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+    .update(String(booking.id)).digest('hex').slice(0, 16);
+  const url = `${process.env.BASE_URL || 'http://localhost:3001'}/checkin?bid=${booking.id}&sig=${sig}`;
+  res.json({ url, booking_id: booking.id });
 });
 
 // PATCH /api/bookings/:id/cancel — user cancels their own booking
@@ -86,6 +163,44 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
+
+  // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
+  try {
+    const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
+    if (paidWaiter) {
+      // Create a confirmed booking for them (payment already collected)
+      const newBooking = await queries.createBooking(
+        paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
+      );
+      const pool = require('../db/database').getPool();
+      await pool.query(
+        "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
+        [newBooking.id, paidWaiter.stripe_payment_intent_id]
+      );
+      await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
+      const fullBooking = await queries.getBookingById(newBooking.id);
+      await sendAutoBookedEmail(fullBooking);
+      console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+    } else {
+      // No paid waiters — notify first unpaid waitlist user
+      const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
+      if (waitUser) {
+        await sendWaitlistNotification({
+          customer_name:  waitUser.customer_name,
+          customer_email: waitUser.customer_email,
+          session_name:   booking.session_name,
+          date:           booking.date,
+          start_time:     booking.start_time,
+          end_time:       booking.end_time,
+          slot_id:        booking.time_slot_id,
+        });
+        await queries.markWaitlistNotified(waitUser.id);
+      }
+    }
+  } catch (wErr) {
+    console.error('Waitlist auto-book error (non-fatal):', wErr.message);
+  }
+
   res.json({ ok: true, refunded: booking.stripe_payment_status === 'succeeded' });
 });
 

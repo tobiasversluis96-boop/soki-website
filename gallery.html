@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gallery — Soki Social Sauna</title>
-  <meta name="description" content="A glimpse into life at Soki — steam, community, cold water and warmth." />
+  <title>Gallery | SOKI Social Sauna</title>
+  <meta name="description" content="A glimpse into life at SOKI: steam, community, cold water and warmth." />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,7 +13,7 @@
   <nav class="nav" id="nav">
     <div class="container nav__inner">
       <a href="index.html" class="nav__logo">
-        <span class="nav__logo-name">Soki</span>
+        <span class="nav__logo-name">SOKI</span>
         <span class="nav__logo-tagline">sauna van de stad</span>
       </a>
       <ul class="nav__links">
@@ -22,11 +22,12 @@
         <li><a href="about.html" data-i18n="nav.about">About</a></li>
         <li><a href="gallery.html" class="active">Gallery</a></li>
         <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
       </ul>
       <div class="nav__cta">
         <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
         <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
-        <a href="/booking" class="btn btn--primary">Reserveer</a>
+        <a href="/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
       </div>
       <button class="nav__toggle" id="navToggle" aria-label="Menu">
         <span></span><span></span><span></span>
@@ -40,8 +41,9 @@
     <a href="about.html" data-i18n="nav.about">About</a>
     <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
     <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="faq.html" data-i18n="nav.faq">FAQ</a>
     <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
-    <a href="/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;">Reserveer</a>
+    <a href="/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
     <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
   </div>
 
@@ -50,7 +52,6 @@
   <section class="page-hero">
     <div class="container">
       <h1 data-i18n="gallery.h1">Gallery</h1>
-      <p class="lead" data-i18n="gallery.lead">Steam, ice, music and real encounters. A glimpse into what SOKI feels like.</p>
     </div>
   </section>
 
@@ -65,7 +66,7 @@
         <div class="gallery-item gallery-item--wide" data-caption="Inside the sauna">
           <img
             src="https://images.unsplash.com/photo-1545579133-99bb5ad189be?w=1200&auto=format&fit=crop&q=80"
-            alt="Inside the sauna — steam and warm wood"
+            alt="Inside the sauna, steam and warm wood"
             loading="lazy"
           />
           <div class="gallery-item__overlay">
@@ -99,7 +100,7 @@
         <div class="gallery-item" data-caption="Community session">
           <img
             src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=700&auto=format&fit=crop&q=80"
-            alt="Community evening at Soki"
+            alt="Community evening at SOKI"
             loading="lazy"
           />
           <div class="gallery-item__overlay">
@@ -134,7 +135,7 @@
         <div class="gallery-item gallery-item--wide" data-caption="The space at dusk">
           <img
             src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1200&auto=format&fit=crop&q=80"
-            alt="Soki space in the evening light"
+            alt="SOKI space in the evening light"
             loading="lazy"
           />
           <div class="gallery-item__overlay">
@@ -198,7 +199,7 @@
     <div class="container text-center">
       <span class="eyebrow" data-i18n="gallery.insta.eyebrow">Follow along</span>
       <h3 style="margin-bottom:0.75rem;" data-i18n="gallery.insta.h3">See more on Instagram</h3>
-      <p style="margin-inline:auto; margin-bottom:1.5rem;">Behind-the-scenes, DJ sets, session highlights and community moments — @sokisocialsauna</p>
+      <p style="margin-inline:auto; margin-bottom:1.5rem;">Behind-the-scenes, DJ sets, session highlights and community moments. Follow us: @sokisocialsauna</p>
       <a href="#" class="btn btn--dark">@sokisocialsauna</a>
     </div>
   </section>
@@ -209,7 +210,7 @@
     <div class="container">
       <div class="footer__grid">
         <div class="footer__brand">
-          <div class="logo-text">Soki</div>
+          <div class="logo-text">SOKI</div>
           <div class="logo-tag">sauna van de stad</div>
           <p>Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
         </div>
@@ -221,19 +222,24 @@
             <li><a href="about.html" data-i18n="nav.about">About</a></li>
             <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
             <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
           </ul>
         </div>
         <div class="footer__col">
           <h4 data-i18n="footer.findus">Find us</h4>
           <ul>
-            <li><a href="#">Amsterdam-Noord</a></li>
-            <li><a href="#">Open Wed – Sun</a></li>
-            <li><a href="mailto:hallo@soki.nl">hallo@soki.nl</a></li>
+            <li><a href="#">Europalaan 2B</a></li>
+            <li><a href="#">3526 KS Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–21:00</a></li>
+            <li><a href="#">Fri: 16:00–23:00</a></li>
+            <li><a href="#">Sat: 10:00–23:00</a></li>
+            <li><a href="#">Sun: 10:00–20:00</a></li>
+            <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom">
-        <p>© 2024 Soki Social Sauna · KVK: 93466307 · <a href="#" style="color:inherit;">Terms &amp; conditions</a> · <a href="#" style="color:inherit;">Privacy policy</a></p>
+        <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="#" style="color:inherit;">Terms &amp; conditions</a> · <a href="#" style="color:inherit;">Privacy policy</a></p>
         <div class="footer__social">
           <a href="#">Instagram</a>
           <a href="#">TikTok</a>

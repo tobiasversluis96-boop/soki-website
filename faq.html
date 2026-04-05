@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQ | SOKI Social Sauna Utrecht</title>
+  <meta name="description" content="Frequently asked questions about SOKI Social Sauna in Utrecht: booking, what to bring, etiquette, and more." />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .faq-hero {
+      padding: calc(var(--nav-height, 80px) + 4rem) 1.5rem 4rem;
+      background: var(--cream, #F9F4EF);
+      text-align: center;
+    }
+    .faq-hero h1 { margin-top: .5rem; }
+    .faq-hero p  { max-width: 540px; margin: 1rem auto 0; color: var(--text-muted, #8C7B6B); }
+
+    .faq-section { padding: 3rem 0; border-bottom: 1px solid var(--border-color, #E8D5BF); }
+    .faq-section:last-child { border-bottom: none; }
+    .faq-section-title {
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: .1em;
+      color: var(--terra, #D94D1A);
+      margin-bottom: 1.5rem;
+    }
+
+    .faq-item { border-bottom: 1px solid var(--border-color, #E8D5BF); }
+    .faq-item:last-child { border-bottom: none; }
+
+    .faq-question {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 1.25rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--brown, #4A1C0C);
+      text-align: left;
+    }
+    .faq-question:hover { color: var(--terra, #D94D1A); }
+
+    .faq-icon {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color, #E8D5BF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--text-muted, #8C7B6B);
+      transition: all .2s;
+    }
+    .faq-item.open .faq-icon {
+      background: var(--terra, #D94D1A);
+      border-color: var(--terra, #D94D1A);
+      color: #fff;
+      transform: rotate(45deg);
+    }
+
+    .faq-answer {
+      display: none;
+      padding-bottom: 1.25rem;
+      color: var(--text, #2C1A0E);
+      line-height: 1.75;
+      font-size: 0.95rem;
+    }
+    .faq-answer p  { margin: 0 0 .75rem; }
+    .faq-answer p:last-child { margin-bottom: 0; }
+    .faq-answer ul { margin: .5rem 0 .75rem 1.25rem; }
+    .faq-answer li { margin-bottom: .35rem; font-size: 0.95rem; line-height: 1.75; color: var(--text, #2C1A0E); }
+    .faq-answer a  { color: var(--terra, #D94D1A); }
+    .faq-item.open .faq-answer { display: block; }
+
+    .faq-cta {
+      background: var(--brown, #4A1C0C);
+      color: #fff;
+      border-radius: 20px;
+      padding: 3rem 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+    .faq-cta h3 { color: var(--peach, #F9F4EF); margin-bottom: .5rem; }
+    .faq-cta p  { color: rgba(249,244,239,.7); margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-name">SOKI</span>
+        <span class="nav__logo-tagline">sauna van de stad</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+        <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+        <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+        <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="faq.html" class="active" data-i18n="nav.faq">FAQ</a></li>
+      </ul>
+      <div class="nav__cta">
+        <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
+        <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+        <a href="/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+      </div>
+      <button class="nav__toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav__mobile" id="navMobile">
+    <a href="index.html" data-i18n="nav.home">Home</a>
+    <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
+    <a href="about.html" data-i18n="nav.about">About us</a>
+    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
+    <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="faq.html" class="active" data-i18n="nav.faq">FAQ</a>
+    <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+    <a href="/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;" data-i18n="book.now">Book now</a>
+    <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
+  </div>
+
+  <!-- ===== HERO ===== -->
+  <div class="faq-hero">
+    <span class="eyebrow" data-i18n="faq.eyebrow">FAQ</span>
+    <h1 data-i18n="faq.title">Frequently asked questions</h1>
+    <p data-i18n="faq.sub">Everything you need to know before your visit. Can't find the answer? Drop us an email.</p>
+  </div>
+
+  <!-- ===== FAQ CONTENT ===== -->
+  <div class="section" style="background:#fff;">
+    <div class="container" style="max-width:760px;">
+
+      <!-- About SOKI -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.about">About SOKI</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.unique">What makes SOKI unique?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.unique">SOKI is a new kind of sauna space that fuses wellness with culture, music and community. Rather than a silent spa, we combine relaxation with live music, DJ sets, talks and performances. Think: deep rest meets social energy.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.facilities">What facilities are available?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.facilities">We have a traditional Finnish sauna, ice bath tubs, relaxation areas, rain showers, changing facilities, and an outdoor terrace.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.location">Location & getting here</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.where">Where is SOKI located?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.where">We are located at <strong>Europalaan 2B, 3526 KS Utrecht</strong> (just outside Vechtclub XL). You can reach us by bike, public transport, or car. Free parking is available on site.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.hours">What are your opening hours?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <ul data-i18n="faq.a.hours">
+              <li>Wednesday – Thursday: 16:00 – 21:00</li>
+              <li>Friday: 16:00 – 23:00</li>
+              <li>Saturday: 10:00 – 23:00</li>
+              <li>Sunday: 10:00 – 20:00</li>
+              <li>Monday – Tuesday: Closed</li>
+            </ul>
+            <p data-i18n="faq.a.hours.note">Sessions run at set times. Check the <a href="/booking">booking page</a> for today's availability.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.booking">Booking & cancellation</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.advance">Do I need to book in advance?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.advance">Yes, advance booking is required. Capacity per session is limited, so we strongly recommend booking ahead. You can book directly on our <a href="/booking">booking page</a>.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.cancel">What is your cancellation policy?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.cancel">You can cancel free of charge up to <strong>24 hours before</strong> your session. Cancellations made less than 24 hours in advance are non-refundable. For confirmed bookings that are cancelled in time, a full refund is issued to your original payment method.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.waitlist">What if a session is fully booked?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.waitlist">You can join the waitlist for any full session. If a spot opens up, you'll be notified by email and given the opportunity to book.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.giftcard">Do you sell gift cards?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.giftcard">Yes! You can buy a SOKI gift card in any amount on our <a href="/gift-card">gift card page</a>. The code is emailed directly to the recipient and is valid for one year. It can be used multiple times until the balance runs out.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- What to bring -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.bring">What to bring</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.bring">What should I bring?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <ul data-i18n="faq.a.bring">
+              <li>Swimwear (mandatory)</li>
+              <li>Two towels (one for the sauna bench, one for drying off)</li>
+              <li>Flip-flops or slides</li>
+              <li>A water bottle</li>
+            </ul>
+            <p data-i18n="faq.a.bring.note">We provide complimentary water and maté tea during your session.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Groups -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.groups">Groups</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.groups">Can I book for a group?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.groups">Yes! You can book for up to 20 people per booking. For larger groups or private events, reach out to us at <a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a> and we'll see what we can arrange.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etiquette -->
+      <div class="faq-section">
+        <div class="faq-section-title" data-i18n="faq.cat.etiquette">Sauna etiquette</div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.etiquette">What are the house rules?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <ul data-i18n="faq.a.etiquette">
+              <li>Always sit or lie on a towel for hygiene</li>
+              <li>Limit sauna time to 15 minutes per turn</li>
+              <li>Maximum 3 sauna turns per session</li>
+              <li>No oils or fragrances on the sauna rocks</li>
+              <li>No alcohol before or during your visit</li>
+              <li>Smoking only at the front entrance</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" data-i18n="faq.q.safer">What is your safer spaces policy?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p data-i18n="faq.a.safer">SOKI is committed to being a safe and inclusive space for everyone. We expect all visitors to respect each other's diversity, practice enthusiastic consent, communicate mindfully, and attend substance-free. Our team takes any concerns raised seriously. Visitors who violate these standards may be asked to leave.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="faq-cta">
+        <h3 data-i18n="faq.cta.title">Still have a question?</h3>
+        <p data-i18n="faq.cta.sub">We're happy to help. Send us a message and we'll get back to you.</p>
+        <a href="mailto:hello@sokisocialsauna.nl" class="btn" style="background:var(--terra,#D94D1A);color:#fff;margin-right:.75rem;" data-i18n="faq.cta.email">Email us</a>
+        <a href="/booking" class="btn" style="background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.3);" data-i18n="book.now">Book now</a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <div class="logo-text">SOKI</div>
+          <div class="logo-tag">sauna van de stad</div>
+          <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht.</p>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.navigate">Navigate</h4>
+          <ul>
+            <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+            <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+            <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+            <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+            <li><a href="/gift-card" data-i18n="nav.giftcard">Gift card</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.findus">Find us</h4>
+          <ul>
+            <li><a href="#">Europalaan 2B, 3526 KS Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–21:00</a></li>
+            <li><a href="#">Fri: 16:00–23:00</a></li>
+            <li><a href="#">Sat: 10:00–23:00</a></li>
+            <li><a href="#">Sun: 10:00–20:00</a></li>
+            <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="/privacy" style="color:inherit;" data-i18n="footer.privacy">Privacy Policy</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="translations.js"></script>
+  <script src="main.js"></script>
+  <script>
+    // Accordion
+    document.querySelectorAll('.faq-question').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var item = btn.closest('.faq-item');
+        var isOpen = item.classList.contains('open');
+        // Close all
+        document.querySelectorAll('.faq-item.open').forEach(function (el) { el.classList.remove('open'); });
+        // Open clicked (unless it was already open)
+        if (!isOpen) item.classList.add('open');
+      });
+    });
+  </script>
+</body>
+</html>

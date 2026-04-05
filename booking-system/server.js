@@ -18,7 +18,9 @@ const paymentRoutes       = require('./routes/payments');
 const adminRoutes         = require('./routes/admin');
 const messageRoutes       = require('./routes/messages');
 const subscriptionRoutes  = require('./routes/subscriptions');
+const waitlistRoutes      = require('./routes/waitlist');
 const webhookRoutes       = require('./routes/webhooks');
+const giftCardRoutes      = require('./routes/gift-cards');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -27,7 +29,17 @@ const PORT = process.env.PORT || 3001;
 // Webhook route must come before express.json() — Stripe needs the raw body
 app.use('/api/webhooks', webhookRoutes);
 
-app.use(cors());
+// ─── Security headers ─────────────────────────────────────────────────────────
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+const allowedOrigin = process.env.BASE_URL || 'http://localhost:3001';
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 
 // Rate limiting on auth endpoints
@@ -36,7 +48,8 @@ app.use('/api/auth/login',         authLimiter);
 app.use('/api/auth/register',      authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
-app.use('/api/admin/login',        rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/admin/login',        rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/bookings', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
 
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -57,6 +70,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/waitlist',      waitlistRoutes);
+app.use('/api/gift-cards',   giftCardRoutes);
 
 // Public config (non-secret values for frontend)
 app.get('/api/config', (_req, res) => {
@@ -133,13 +148,120 @@ app.get('/api/slots/:id', async (req, res) => {
   res.json({ ...slot, capacity, spots_left: spotsLeft, is_full: spotsLeft <= 0 });
 });
 
+// ─── QR Check-in ──────────────────────────────────────────────────────────────
+const crypto = require('crypto');
+function checkinSig(bookingId) {
+  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+    .update(String(bookingId)).digest('hex').slice(0, 16);
+}
+
+app.get('/api/checkin/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  const { sig } = req.query;
+  if (!sig || sig !== checkinSig(bookingId))
+    return res.status(403).json({ error: 'Invalid check-in link' });
+
+  const booking = await queries.getBookingById(bookingId);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.status !== 'confirmed') return res.status(400).json({ error: 'Booking is not confirmed', status: booking.status });
+
+  const checkinUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/checkin?bid=${bookingId}&sig=${sig}`;
+  const QRCode = require('qrcode');
+  const qr_data_url = await QRCode.toDataURL(checkinUrl, {
+    width: 200, margin: 1,
+    color: { dark: '#4A1C0C', light: '#ffffff' },
+  });
+
+  res.json({
+    id:            booking.id,
+    customer_name: booking.customer_name,
+    customer_email: booking.customer_email,
+    session_name:  booking.session_name,
+    date:          booking.date,
+    start_time:    booking.start_time,
+    end_time:      booking.end_time,
+    group_size:    booking.group_size,
+    checked_in:    booking.checked_in,
+    qr_data_url,
+  });
+});
+
+app.post('/api/checkin/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  const { sig } = req.query;
+  if (!sig || sig !== checkinSig(bookingId))
+    return res.status(403).json({ error: 'Invalid check-in link' });
+
+  const booking = await queries.getBookingById(bookingId);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+  await queries.checkInBooking(bookingId, true);
+
+  // Check for milestone after check-in
+  try {
+    const { getMilestoneForVisit, generatePromoCode } = require('./utils/milestones');
+    const { sendMilestoneEmail } = require('./utils/email');
+
+    const visitCount = await queries.getUserVisitCount(booking.user_id);
+    const milestone  = getMilestoneForVisit(visitCount);
+
+    if (milestone) {
+      const promoCode = milestone.code_prefix ? generatePromoCode(milestone.code_prefix, booking.user_id) : null;
+      const claimed   = await queries.claimMilestone(booking.user_id, milestone.visits, promoCode);
+      if (claimed) {
+        milestone.promo_code = promoCode || undefined;
+        await sendMilestoneEmail({
+          customer_name:  booking.customer_name,
+          customer_email: booking.customer_email,
+          milestone,
+          lang: 'nl',
+        });
+      }
+    }
+  } catch (mErr) {
+    console.error('Milestone check error (non-fatal):', mErr.message);
+  }
+
+  res.json({ ok: true });
+});
+
+app.get('/api/milestones', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev_secret_change_me');
+    const { getUserMilestoneStats, getClaimedMilestones } = require('./db/database').queries;
+    const { MILESTONES, getNextMilestone } = require('./utils/milestones');
+
+    const stats    = await getUserMilestoneStats(decoded.userId);
+    const claimed  = await getClaimedMilestones(decoded.userId);
+    const next     = getNextMilestone(stats.total_visits);
+
+    res.json({
+      total_visits:   stats.total_visits,
+      total_bookings: stats.total_bookings,
+      milestones:     MILESTONES,
+      claimed,
+      next_milestone: next,
+    });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
 // ─── Page routes ─────────────────────────────────────────────────────────────
 app.get('/login',           (_req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')))
 app.get('/payment-return', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-return.html')))
 app.get('/reset-password', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'booking.html')));
+app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, '..', 'privacy.html')));
 app.get('/account', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'account.html')));
 app.get('/membership', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'membership.html')));
+app.get('/checkin', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'checkin.html')));
+app.get('/ticket',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'ticket.html')));
+app.get('/waiver',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'waiver.html')));
+app.get('/gift-card',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'gift-card.html')));
 app.get('/admin',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 

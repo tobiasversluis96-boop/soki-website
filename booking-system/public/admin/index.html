@@ -537,8 +537,12 @@
         <button class="nav-item" data-view="messages" id="nav-messages">
           <span class="nav-item__icon">✉</span> Berichten <span id="unread-badge" style="display:none;background:#D94D1A;color:#fff;border-radius:100px;padding:1px 7px;font-size:11px;margin-left:4px;"></span>
         </button>
+        <button class="nav-item" data-view="staff">
+          <span class="nav-item__icon">👥</span> Medewerkers
+        </button>
       </nav>
       <div class="sidebar__footer">
+        <div id="topbar-user-name" style="font-size:12px;color:rgba(242,194,153,.45);margin-bottom:8px;"></div>
         <button class="sidebar__logout" id="admin-logout">Uitloggen</button>
       </div>
     </aside>
@@ -556,74 +560,81 @@
 
         <!-- ── Dashboard view ── -->
         <div class="view active" id="view-dashboard">
-          <!-- Row 1: Stat cards -->
+          <!-- Stat cards -->
           <div class="stat-grid" id="stat-grid">
             <div class="loading">Laden…</div>
           </div>
 
-          <!-- Row 1b: Monthly revenue chart -->
-          <div class="table-card" style="margin-bottom:20px;" id="chart-monthly-revenue">
-            <div class="table-card__header">
-              <span class="table-card__title">Omzet per maand (&euro;)</span>
-            </div>
-            <div class="chart-wrap">
-              <div class="chart-inner">
-                <div class="chart-grid" id="monthly-chart-grid">
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
+          <!-- Revenue charts (hidden for staff without revenue permission) -->
+          <div id="revenue-charts">
+            <!-- Monthly revenue chart -->
+            <div class="table-card" style="margin-bottom:20px;margin-top:20px;" id="chart-monthly-revenue">
+              <div class="table-card__header">
+                <span class="table-card__title">Omzet per maand (&euro;)</span>
+              </div>
+              <div class="chart-wrap">
+                <div class="chart-inner">
+                  <div class="chart-grid" id="monthly-chart-grid">
+                    <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
+                    <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
+                  </div>
+                  <div class="chart-columns" id="monthly-chart-columns"></div>
                 </div>
-                <div class="chart-columns" id="monthly-chart-columns"></div>
+              </div>
+            </div>
+
+            <!-- Weekly revenue chart -->
+            <div class="table-card" style="margin-bottom:20px;" id="chart-revenue">
+              <div class="table-card__header">
+                <span class="table-card__title">Omzet per week (&euro;)</span>
+              </div>
+              <div class="chart-wrap">
+                <div class="chart-inner">
+                  <div class="chart-grid" id="chart-grid">
+                    <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
+                    <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
+                  </div>
+                  <div class="chart-columns" id="chart-columns"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Occupancy + Subscriptions -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="dash-two-col">
+              <div class="table-card">
+                <div class="table-card__header"><span class="table-card__title">Bezettingsgraad (30 dgn)</span></div>
+                <div style="padding:20px;" id="occupancy-bars"><div class="loading">Laden…</div></div>
+              </div>
+              <div class="table-card">
+                <div class="table-card__header"><span class="table-card__title">Abonnementen</span></div>
+                <div style="padding:20px;" id="subscription-stats"><div class="loading">Laden…</div></div>
+              </div>
+            </div>
+
+            <!-- Peak heatmap -->
+            <div class="table-card" style="margin-bottom:20px;">
+              <div class="table-card__header"><span class="table-card__title">Drukste tijden (90 dgn)</span></div>
+              <div style="padding:20px;" id="peak-heatmap"><div class="loading">Laden…</div></div>
+            </div>
+
+            <!-- Retention + Forward view -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="dash-two-col">
+              <div class="table-card">
+                <div class="table-card__header"><span class="table-card__title">Nieuw vs. terugkerend</span></div>
+                <div style="padding:20px;" id="retention-bars"><div class="loading">Laden…</div></div>
+              </div>
+              <div class="table-card">
+                <div class="table-card__header"><span class="table-card__title">Komende 14 dagen</span></div>
+                <div style="padding:20px;max-height:380px;overflow-y:auto;" id="forward-view"><div class="loading">Laden…</div></div>
               </div>
             </div>
           </div>
 
-          <!-- Row 2: Revenue trend (full width) -->
-          <div class="table-card" id="chart-revenue">
-            <div class="table-card__header">
-              <span class="table-card__title">Omzet per week (&euro;)</span>
-            </div>
-            <div class="chart-wrap">
-              <div class="chart-inner">
-                <div class="chart-grid" id="chart-grid">
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
-                  <div class="chart-grid-line"></div>
-                </div>
-                <div class="chart-columns" id="chart-columns"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Row 3: Occupancy + Subscriptions (side by side) -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="dash-two-col">
-            <div class="table-card">
-              <div class="table-card__header"><span class="table-card__title">Bezettingsgraad (30 dgn)</span></div>
-              <div style="padding:20px;" id="occupancy-bars"><div class="loading">Laden…</div></div>
-            </div>
-            <div class="table-card">
-              <div class="table-card__header"><span class="table-card__title">Abonnementen</span></div>
-              <div style="padding:20px;" id="subscription-stats"><div class="loading">Laden…</div></div>
-            </div>
-          </div>
-
-          <!-- Row 4: Peak heatmap (full width) -->
-          <div class="table-card" style="margin-bottom:20px;">
-            <div class="table-card__header"><span class="table-card__title">Drukste tijden (90 dgn)</span></div>
-            <div style="padding:20px;" id="peak-heatmap"><div class="loading">Laden…</div></div>
-          </div>
-
-          <!-- Row 5: Retention + Forward view (side by side) -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="dash-two-col">
-            <div class="table-card">
-              <div class="table-card__header"><span class="table-card__title">Nieuw vs. terugkerend</span></div>
-              <div style="padding:20px;" id="retention-bars"><div class="loading">Laden…</div></div>
-            </div>
+          <!-- Staff-only view (no revenue access) -->
+          <div id="staff-forward-view" style="display:none;margin-top:20px;">
             <div class="table-card">
               <div class="table-card__header"><span class="table-card__title">Komende 14 dagen</span></div>
-              <div style="padding:20px;max-height:380px;overflow-y:auto;" id="forward-view"><div class="loading">Laden…</div></div>
+              <div style="padding:20px;max-height:500px;overflow-y:auto;" id="staff-forward-list"><div class="loading">Laden…</div></div>
             </div>
           </div>
         </div>
@@ -832,6 +843,69 @@
           <div id="messages-inbox"></div>
         </div>
 
+        <!-- ── Staff view ── -->
+        <div class="view" id="view-staff">
+
+          <!-- Create staff form -->
+          <div class="table-card" style="margin-bottom:28px;">
+            <div class="table-card__header">
+              <span class="table-card__title">Medewerker aanmaken</span>
+            </div>
+            <div style="padding:24px;">
+              <form id="staff-create-form">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Naam</label>
+                    <input class="form-input" type="text" id="staff-name" required placeholder="Jan de Vries">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">E-mailadres</label>
+                    <input class="form-input" type="email" id="staff-email" required placeholder="jan@sokisocialsauna.nl">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Tijdelijk wachtwoord</label>
+                    <input class="form-input" type="password" id="staff-pw" required placeholder="Minimaal 8 tekens" minlength="8">
+                  </div>
+                  <button class="btn btn--primary btn--sm" type="submit" style="white-space:nowrap;">Aanmaken</button>
+                </div>
+                <div id="staff-create-err" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Staff list -->
+          <div class="section-header">
+            <h3>Medewerkers</h3>
+          </div>
+          <div id="staff-list"><div class="loading">Laden…</div></div>
+
+          <!-- Change own password (for staff users, hidden for admin) -->
+          <div id="change-own-pw-section" style="margin-top:32px;">
+            <div class="table-card">
+              <div class="table-card__header">
+                <span class="table-card__title">Eigen wachtwoord wijzigen</span>
+              </div>
+              <div style="padding:24px;">
+                <form id="change-own-pw-form">
+                  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Huidig wachtwoord</label>
+                      <input class="form-input" type="password" id="own-pw-old" required>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Nieuw wachtwoord</label>
+                      <input class="form-input" type="password" id="own-pw-new" required minlength="8">
+                    </div>
+                    <button class="btn btn--primary btn--sm" type="submit">Wijzigen</button>
+                  </div>
+                  <div id="own-pw-err" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
       </div><!-- /content-area -->
     </div><!-- /main-content -->
   </div><!-- /app-layout -->
@@ -904,7 +978,8 @@
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Boekingen</div>
       <div id="customer-modal-bookings"><div class="loading">Laden…</div></div>
     </div>
-    <div class="modal-footer" style="margin-top:16px">
+    <div class="modal-footer" style="margin-top:16px;justify-content:space-between">
+      <button class="btn btn--outline" id="customer-modal-delete" style="color:#C62828;border-color:#C62828;font-size:13px;">GDPR verwijderen</button>
       <button class="btn btn--outline" id="customer-modal-close">Sluiten</button>
     </div>
   </div>

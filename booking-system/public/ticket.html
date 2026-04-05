@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mijn ticket — Soki Social Sauna</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: var(--cream, #F9F4EF); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+    .ticket-card { background: #fff; border-radius: 24px; padding: 2.5rem; max-width: 420px; width: 100%; box-shadow: 0 4px 32px rgba(74,28,12,0.1); text-align: center; }
+    .ticket-logo { font-family: 'Barlow Condensed', Arial, sans-serif; font-size: 2rem; font-weight: 700; letter-spacing: .12em; color: var(--brown, #4A1C0C); margin-bottom: 0.25rem; }
+    .ticket-tagline { font-size: 0.75rem; color: var(--text-muted, #8C7B6B); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2rem; }
+    .ticket-name { font-size: 1.4rem; font-weight: 700; color: var(--brown, #4A1C0C); margin-bottom: 0.25rem; }
+    .ticket-session { font-size: 1rem; color: var(--terra, #D94D1A); font-weight: 600; margin-bottom: 1.5rem; }
+    .ticket-detail { background: var(--cream, #F9F4EF); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.75rem; text-align: left; }
+    .ticket-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.875rem; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .ticket-row:last-child { border-bottom: none; }
+    .ticket-row span:first-child { color: var(--text-muted, #8C7B6B); }
+    .ticket-row span:last-child  { font-weight: 600; color: var(--brown, #4A1C0C); }
+    #qr-canvas { margin: 0 auto 1rem; display: block; }
+    .ticket-hint { font-size: 0.8rem; color: var(--text-muted, #8C7B6B); line-height: 1.5; }
+    .ticket-divider { border: none; border-top: 2px dashed var(--border-color, #E8D5BF); margin: 1.75rem 0; }
+    .loading { color: var(--text-muted, #8C7B6B); padding: 2rem 0; }
+    .error { color: #C62828; padding: 2rem 0; }
+  </style>
+</head>
+<body>
+<div class="ticket-card" id="card">
+  <div class="loading">Laden…</div>
+</div>
+
+<script>
+(function() {
+  var params  = new URLSearchParams(location.search);
+  var bid     = params.get('bid');
+  var sig     = params.get('sig');
+  var card    = document.getElementById('card');
+
+  if (!bid || !sig) {
+    card.innerHTML = '<div class="error">Ongeldig ticket-link.</div>';
+    return;
+  }
+
+  fetch('/api/checkin/' + bid + '?sig=' + sig)
+    .then(function(r) { return r.json(); })
+    .then(function(b) {
+      if (b.error) {
+        card.innerHTML = '<div class="error">' + b.error + '</div>';
+        return;
+      }
+
+      var checkinUrl = location.origin + '/checkin?bid=' + bid + '&sig=' + sig;
+
+      var dateFormatted = b.date;
+      try {
+        var parts = b.date.split('-').map(Number);
+        dateFormatted = new Date(parts[0], parts[1]-1, parts[2])
+          .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      } catch(e) {}
+
+      card.innerHTML =
+        '<div class="ticket-logo">Soki</div>' +
+        '<div class="ticket-tagline">sauna van de stad</div>' +
+        '<div class="ticket-name">' + escHtml(b.customer_name) + '</div>' +
+        '<div class="ticket-session">' + escHtml(b.session_name) + '</div>' +
+        '<div class="ticket-detail">' +
+          '<div class="ticket-row"><span>Datum</span><span>' + dateFormatted + '</span></div>' +
+          '<div class="ticket-row"><span>Tijd</span><span>' + b.start_time + ' – ' + b.end_time + '</span></div>' +
+          '<div class="ticket-row"><span>Groep</span><span>' + b.group_size + ' persoon' + (b.group_size > 1 ? 'en' : '') + '</span></div>' +
+          '<div class="ticket-row"><span>Boeking</span><span>#' + b.id + '</span></div>' +
+        '</div>' +
+        '<hr class="ticket-divider">' +
+        (b.qr_data_url ? '<img src="' + b.qr_data_url + '" width="200" height="200" style="display:block;margin:0 auto 1rem;" alt="Check-in QR code">' : '') +
+        '<p class="ticket-hint">Laat deze QR-code scannen aan de deur.<br>Je hoeft niets te doen — gewoon tonen!</p>';
+    })
+    .catch(function(err) {
+      card.innerHTML = '<div class="error">Verbindingsfout. Probeer opnieuw.<br><small>' + (err && err.message ? err.message : '') + '</small></div>';
+    });
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
+</script>
+</body>
+</html>

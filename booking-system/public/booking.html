@@ -24,6 +24,7 @@
       <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
       <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
       <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+      <li><a href="/faq.html" data-i18n="nav.faq">FAQ</a></li>
     </ul>
     <div class="nav__cta">
       <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
@@ -42,6 +43,7 @@
   <a href="/about.html" data-i18n="nav.about">About us</a>
   <a href="/gallery.html" data-i18n="nav.gallery">Gallery</a>
   <a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+  <a href="/faq.html" data-i18n="nav.faq">FAQ</a>
   <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
   <a href="/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
 </div>
@@ -58,6 +60,7 @@
       <span class="booking-progress__step" data-step="2" data-i18n="booking.step.date">Date</span>
       <span class="booking-progress__step" data-step="3" data-i18n="booking.step.group">Group</span>
       <span class="booking-progress__step" data-step="4" data-i18n="booking.step.account">Account</span>
+      <span class="booking-progress__step" data-step="4.5" data-i18n="booking.step.waiver">Waiver</span>
       <span class="booking-progress__step" data-step="5" data-i18n="booking.step.payment">Payment</span>
       <span class="booking-progress__step" data-step="6" data-i18n="booking.step.confirm">Confirmation</span>
     </div>
@@ -208,6 +211,12 @@
           <label class="booking-label" for="reg-password" data-i18n="booking.s4.label.pass">Password</label>
           <input class="booking-input" type="password" id="reg-password" required placeholder="Min. 8 characters" autocomplete="new-password" data-i18n-placeholder="booking.s4.ph.passreg">
         </div>
+        <div class="booking-field" style="flex-direction:row;align-items:flex-start;gap:0.75rem;margin-top:0.5rem;">
+          <input type="checkbox" id="gdpr-consent" name="gdpr-consent" style="margin-top:3px;flex-shrink:0;accent-color:var(--terra);">
+          <label for="gdpr-consent" style="font-size:0.85rem;line-height:1.5;color:var(--text-muted);cursor:pointer;" data-i18n="booking.gdpr.label">
+            I agree to the <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;" data-i18n="booking.gdpr.policy">Privacy Policy</a> and consent to my data being stored to process my booking.
+          </label>
+        </div>
         <div class="field-error" id="reg-error"></div>
         <div class="step-nav">
           <button type="button" class="btn btn--outline" id="back-3c" data-i18n="booking.btn.back">← Back</button>
@@ -217,6 +226,52 @@
     </div>
   </div>
 
+
+  <!-- ── Step 4b: Waiver ────────────────────────────────────────────────────── -->
+  <div class="booking-step" id="step-4b" style="display:none">
+    <h1 class="booking-step-title" data-i18n="waiver.title">Health &amp; House Rules</h1>
+
+    <div class="waiver-section">
+      <h3 data-i18n="waiver.health.title">Health Declaration</h3>
+      <p data-i18n="waiver.health.intro">By booking you declare that:</p>
+      <ul>
+        <li data-i18n="waiver.health.1">You have no fever, cough, or cold symptoms</li>
+        <li data-i18n="waiver.health.2">You have no skin conditions or contagious diseases</li>
+        <li data-i18n="waiver.health.3">You are not pregnant (sauna is not advised)</li>
+        <li data-i18n="waiver.health.4">You do not have cardiovascular complaints</li>
+        <li data-i18n="waiver.health.5">When in doubt, you have consulted a doctor</li>
+      </ul>
+    </div>
+
+    <div class="waiver-section">
+      <h3 data-i18n="waiver.rules.title">House Rules</h3>
+      <ul>
+        <li data-i18n="waiver.rules.1">Shower before entering the sauna</li>
+        <li data-i18n="waiver.rules.2">Always sit or lie on a towel</li>
+        <li data-i18n="waiver.rules.3">Keep noise levels low and respect others' silence</li>
+        <li data-i18n="waiver.rules.4">No alcohol or drugs on the premises</li>
+        <li data-i18n="waiver.rules.5">Follow instructions from staff at all times</li>
+      </ul>
+    </div>
+
+    <div class="waiver-section">
+      <h3 data-i18n="waiver.liability.title">Liability</h3>
+      <p data-i18n="waiver.liability.text">Soki Social Sauna is not liable for personal injury, loss, or damage to property. Participation is entirely at your own risk.</p>
+    </div>
+
+    <div class="waiver-agree">
+      <label>
+        <input type="checkbox" id="waiver-agree">
+        <span data-i18n="waiver.agree">I have read the above and agree to the house rules and health declaration</span>
+      </label>
+      <div id="waiver-error" class="field-error"></div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn btn--outline" id="back-4b" data-i18n="booking.btn.back">← Back</button>
+      <button class="btn btn--primary" id="waiver-submit" data-i18n="waiver.continue">Continue to payment →</button>
+    </div>
+  </div>
 
   <!-- ── Step 5: Payment ───────────────────────────────────────────────────── -->
   <div class="booking-step" id="step-5" style="display:none">
@@ -228,6 +283,15 @@
     <div id="payment-request-btn-container" style="display:none">
       <div id="payment-request-btn"></div>
       <div class="pay-divider">of betaal met kaart</div>
+    </div>
+
+    <div id="promo-section" style="margin-bottom:1rem;">
+      <button type="button" id="promo-toggle" data-i18n="promo.toggle" style="background:none;border:none;padding:0;font-size:0.8rem;color:var(--text-muted,#8C7B6B);cursor:pointer;text-decoration:underline;">Have a promo code?</button>
+      <div id="promo-field" style="display:none;margin-top:0.6rem;display:flex;gap:8px;align-items:center;">
+        <input id="promo-input" type="text" data-i18n-placeholder="promo.placeholder" placeholder="Code" style="flex:1;padding:10px 14px;border:1.5px solid var(--border-color,#E8D5BF);border-radius:10px;font-size:0.9rem;outline:none;" />
+        <button type="button" id="promo-apply" class="btn btn--outline" data-i18n="promo.apply" style="padding:10px 18px;white-space:nowrap;">Apply</button>
+      </div>
+      <div id="promo-msg" style="font-size:0.82rem;margin-top:6px;"></div>
     </div>
 
     <div id="stripe-element"></div>
@@ -255,6 +319,7 @@
     </div>
 
     <div id="confirm-summary" class="booking-summary-box" style="margin-bottom:1.5rem;"></div>
+    <div id="confirm-qr-note" style="text-align:center;margin-bottom:1.5rem;"></div>
 
     <div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;">
       <a id="gcal-btn" href="#" target="_blank" class="btn btn--gcal">
@@ -286,6 +351,7 @@
           <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
           <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
           <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+      <li><a href="/faq.html" data-i18n="nav.faq">FAQ</a></li>
         </ul>
       </div>
       <div class="footer__col">
@@ -293,12 +359,12 @@
         <ul>
           <li><a href="#">Gietijzerstraat 3</a></li>
           <li><a href="#">3534 AV, Utrecht</a></li>
-          <li><a href="mailto:info@sokisocialsauna.nl">info@sokisocialsauna.nl</a></li>
+          <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
         </ul>
       </div>
     </div>
     <div class="footer__bottom">
-      <p>© 2024 Soki Social Sauna · KVK: 93466307</p>
+      <p>© 2026 Soki Social Sauna · KVK: 93466307 · <a href="/privacy" style="color:inherit;text-decoration:underline;" data-i18n="footer.privacy">Privacy Policy</a></p>
     </div>
   </div>
 </footer>

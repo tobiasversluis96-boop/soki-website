@@ -8,6 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
+const { sendWaitlistNotification, sendAutoBookedEmail } = require('../utils/email');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -28,6 +29,30 @@ function requireAdmin(req, res, next) {
   }
 }
 
+// ─── Staff auth middleware ─────────────────────────────────────────────────────
+
+function requireStaff(perm) {
+  return function(req, res, next) {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Authentication required' });
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      if (payload.type === 'admin') { req.admin = payload; return next(); }
+      if (payload.type === 'staff') {
+        if (!payload.is_active) return res.status(403).json({ error: 'Account deactivated' });
+        if (perm && !payload.permissions.includes(perm))
+          return res.status(403).json({ error: 'Permission denied' });
+        req.staff = payload;
+        return next();
+      }
+      throw new Error('Invalid token type');
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+  };
+}
+
 // ─── Admin login ──────────────────────────────────────────────────────────────
 
 router.post('/login', async (req, res) => {
@@ -36,25 +61,42 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
 
   const admin = await queries.getAdminByEmail(email);
-  if (!admin) return res.status(401).json({ error: 'Invalid credentials' });
+  if (admin) {
+    const valid = await bcrypt.compare(password, admin.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const valid = await bcrypt.compare(password, admin.password_hash);
+    const token = jwt.sign({ adminId: admin.id, type: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
+    return res.json({ token, type: 'admin' });
+  }
+
+  const staff = await queries.getStaffByEmail(email);
+  if (!staff) return res.status(401).json({ error: 'Invalid credentials' });
+
+  const valid = await bcrypt.compare(password, staff.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const token = jwt.sign({ adminId: admin.id, type: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
-  res.json({ token });
+  if (!staff.is_active) return res.status(403).json({ error: 'Account deactivated' });
+
+  const permKeys = ['revenue','bookings','slots','generate','schedule','customers','messages'];
+  const permissions = permKeys.filter(k => staff['perm_' + k]);
+  const token = jwt.sign(
+    { staffId: staff.id, type: 'staff', name: staff.name, email: staff.email, is_active: staff.is_active, permissions },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+  res.json({ token, type: 'staff', permissions });
 });
 
 // ─── Bookings ────────────────────────────────────────────────────────────────
 
-router.get('/bookings', requireAdmin, async (req, res) => {
+router.get('/bookings', requireStaff('bookings'), async (req, res) => {
   const bookings = await queries.getAllBookings(req.query);
   res.json(bookings);
 });
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
-router.get('/bookings/export.csv', requireAdmin, async (req, res) => {
+router.get('/bookings/export.csv', requireStaff('bookings'), async (req, res) => {
   const bookings = await queries.getAllBookings(req.query);
 
   const header = 'id,customer_name,customer_email,session_name,date,start_time,end_time,group_size,total_euros,status,created_at\n';
@@ -98,12 +140,48 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
+
+  // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
+  try {
+    const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
+    if (paidWaiter) {
+      const newBooking = await queries.createBooking(
+        paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
+      );
+      const pool = require('../db/database').getPool();
+      await pool.query(
+        "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
+        [newBooking.id, paidWaiter.stripe_payment_intent_id]
+      );
+      await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
+      const fullBooking = await queries.getBookingById(newBooking.id);
+      await sendAutoBookedEmail(fullBooking);
+      console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+    } else {
+      const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
+      if (waitUser) {
+        await sendWaitlistNotification({
+          customer_name:  waitUser.customer_name,
+          customer_email: waitUser.customer_email,
+          session_name:   booking.session_name,
+          date:           booking.date,
+          start_time:     booking.start_time,
+          end_time:       booking.end_time,
+          slot_id:        booking.time_slot_id,
+        });
+        await queries.markWaitlistNotified(waitUser.id);
+      }
+    }
+  } catch (wErr) {
+    console.error('Waitlist auto-book error (non-fatal):', wErr.message);
+  }
+
   res.json({ ok: true, refunded });
 });
 
 // ─── Slots ───────────────────────────────────────────────────────────────────
 
-router.get('/slots', requireAdmin, async (req, res) => {
+router.get('/slots', requireStaff('slots'), async (req, res) => {
   const slots = await queries.getAllSlots(req.query);
   res.json(slots);
 });
@@ -158,20 +236,20 @@ router.get('/session-types', requireAdmin, async (req, res) => {
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-router.get('/analytics', requireAdmin, async (req, res) => {
+router.get('/analytics', requireStaff('revenue'), async (req, res) => {
   const data = await queries.getAnalytics();
   res.json(data);
 });
 
 // ─── Schedule ────────────────────────────────────────────────────────────
 
-router.get('/schedule', requireAdmin, async (req, res) => {
+router.get('/schedule', requireStaff('schedule'), async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   const rows = await queries.getScheduleByDate(date);
   res.json(rows);
 });
 
-router.patch('/bookings/:id/checkin', requireAdmin, async (req, res) => {
+router.patch('/bookings/:id/checkin', requireStaff('schedule'), async (req, res) => {
   const { checked_in } = req.body;
   await queries.checkInBooking(req.params.id, !!checked_in);
   res.json({ ok: true });
@@ -179,12 +257,12 @@ router.patch('/bookings/:id/checkin', requireAdmin, async (req, res) => {
 
 // ─── Customers ───────────────────────────────────────────────────────────
 
-router.get('/customers', requireAdmin, async (req, res) => {
+router.get('/customers', requireStaff('customers'), async (req, res) => {
   const users = await queries.getAllUsers();
   res.json(users);
 });
 
-router.get('/customers/:id', requireAdmin, async (req, res) => {
+router.get('/customers/:id', requireStaff('customers'), async (req, res) => {
   const bookings = await queries.getUserBookings(req.params.id);
   res.json(bookings);
 });
@@ -198,7 +276,7 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 // GET /api/admin/messages
-router.get('/messages', requireAdmin, async (req, res) => {
+router.get('/messages', requireStaff('messages'), async (req, res) => {
   const msgs = await queries.getAllMessages();
   res.json(msgs);
 });
@@ -210,22 +288,39 @@ router.get('/messages/unread-count', requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/admin/messages/:id/read
-router.patch('/messages/:id/read', requireAdmin, async (req, res) => {
+router.patch('/messages/:id/read', requireStaff('messages'), async (req, res) => {
   await queries.markMessageRead(req.params.id);
   res.json({ ok: true });
 });
 
 // POST /api/admin/messages/:id/reply
-router.post('/messages/:id/reply', requireAdmin, async (req, res) => {
+router.post('/messages/:id/reply', requireStaff('messages'), async (req, res) => {
   const { body } = req.body;
   if (!body) return res.status(400).json({ error: 'body is required' });
+
+  const message = await queries.getMessageById(req.params.id);
+  if (!message) return res.status(404).json({ error: 'Message not found' });
+
   const reply = await queries.replyToMessage(req.params.id, body.trim(), true);
+
+  // Send reply email to customer (non-fatal)
+  try {
+    const { sendMessageReply } = require('../utils/email');
+    await sendMessageReply({
+      customer_name:    message.user_name,
+      customer_email:   message.user_email,
+      original_subject: message.subject,
+      original_body:    message.body,
+      reply_body:       body.trim(),
+    });
+  } catch (e) { console.error('Reply email failed:', e.message); }
+
   res.status(201).json(reply);
 });
 
 // ─── Enhanced Analytics ──────────────────────────────────────────────────────
 
-router.get('/analytics/enhanced', requireAdmin, async (req, res) => {
+router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
   try {
   const { getPool } = require('../db/database');
   const pool = getPool();
@@ -405,6 +500,76 @@ router.get('/analytics/enhanced', requireAdmin, async (req, res) => {
     console.error('Enhanced analytics error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── GDPR ─────────────────────────────────────────────────────────────────────
+
+// DELETE /api/admin/customers/:id — anonymise user PII (GDPR erasure)
+router.delete('/customers/:id', requireAdmin, async (req, res) => {
+  await queries.deleteUser(req.params.id);
+  res.json({ ok: true });
+});
+
+// ─── Waitlist ─────────────────────────────────────────────────────────────────
+
+router.get('/waitlist/:slotId', requireStaff('schedule'), async (req, res) => {
+  const list = await queries.getWaitlistForSlot(req.params.slotId);
+  res.json(list);
+});
+
+// ─── Staff management (admin only) ───────────────────────────────────────────
+
+router.get('/staff', requireAdmin, async (req, res) => {
+  const staff = await queries.getAllStaff();
+  res.json(staff);
+});
+
+router.post('/staff', requireAdmin, async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password)
+    return res.status(400).json({ error: 'name, email, and password are required' });
+
+  const existing = await queries.getStaffByEmail(email);
+  if (existing) return res.status(409).json({ error: 'Email already in use' });
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const staff = await queries.createStaff(name, email, passwordHash);
+  res.status(201).json(staff);
+});
+
+router.patch('/staff/:id', requireAdmin, async (req, res) => {
+  const { is_active, perm_revenue, perm_bookings, perm_slots, perm_generate, perm_schedule, perm_customers, perm_messages } = req.body;
+  await queries.updateStaffPermissions(req.params.id, {
+    is_active, perm_revenue, perm_bookings, perm_slots, perm_generate, perm_schedule, perm_customers, perm_messages,
+  });
+  res.json({ ok: true });
+});
+
+router.post('/staff/:id/reset-password', requireAdmin, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'password is required' });
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await queries.updateStaffPassword(req.params.id, passwordHash);
+  res.json({ ok: true });
+});
+
+router.post('/staff/change-own-password', requireStaff(null), async (req, res) => {
+  if (!req.staff) return res.status(403).json({ error: 'Only staff members can change their own password' });
+
+  const { old_password, new_password } = req.body;
+  if (!old_password || !new_password)
+    return res.status(400).json({ error: 'old_password and new_password are required' });
+
+  const staff = await queries.getStaffById(req.staff.staffId);
+  if (!staff) return res.status(404).json({ error: 'Staff not found' });
+
+  const valid = await bcrypt.compare(old_password, staff.password_hash);
+  if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+  const passwordHash = await bcrypt.hash(new_password, 12);
+  await queries.updateStaffPassword(staff.id, passwordHash);
+  res.json({ ok: true });
 });
 
 module.exports = router;

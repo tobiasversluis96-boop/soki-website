@@ -80,6 +80,7 @@ router.post('/credit-cost', requireAuth, async (req, res) => {
   const cost = CREDIT_COST[session_type_id] || 2;
   const sub  = await queries.getActiveSubscription(req.user.userId);
   res.json({
+    has_subscription: !!sub,
     credits_cost: cost,
     credits_remaining: sub ? sub.credits_remaining : 0,
     is_unlimited: sub ? sub.credits_per_month === null : false,

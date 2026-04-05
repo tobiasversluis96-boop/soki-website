@@ -5,7 +5,7 @@
    or not yet configured.
    ============================================================ */
 
-var SANITY_PROJECT_ID = '';
+var SANITY_PROJECT_ID = 'g6ufx5h9';
 var SANITY_DATASET    = 'production';
 var SANITY_API_VER    = '2024-01-01';
 

@@ -131,5 +131,24 @@ router.post('/reset-password', async (req, res) => {
   res.json({ ok: true });
 });
 
+// DELETE /api/auth/me — GDPR: delete own account (anonymises PII)
+router.delete('/me', requireAuth, async (req, res) => {
+  await queries.deleteUser(req.user.userId);
+  res.json({ ok: true });
+});
+
+// GET /api/auth/me/export — GDPR: export own data
+router.get('/me/export', requireAuth, async (req, res) => {
+  const data = await queries.getUserDataExport(req.user.userId);
+  res.setHeader('Content-Disposition', 'attachment; filename="my-soki-data.json"');
+  res.json(data);
+});
+
+// PATCH /api/auth/me/waiver — sign health waiver
+router.patch('/me/waiver', requireAuth, async (req, res) => {
+  await queries.signWaiver(req.user.userId);
+  res.json({ ok: true });
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;

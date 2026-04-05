@@ -6,8 +6,18 @@
 (function () {
   'use strict';
 
-  let adminToken = sessionStorage.getItem('soki_admin_token');
-  let sessionTypes = [];
+  let adminToken       = sessionStorage.getItem('soki_admin_token');
+  let sessionTypes     = [];
+  let isAdminUser      = sessionStorage.getItem('soki_admin_type') !== 'staff';
+  let staffPermissions = JSON.parse(sessionStorage.getItem('soki_staff_perms') || '[]');
+
+  function hasPermission(perm) {
+    return isAdminUser || staffPermissions.includes(perm);
+  }
+
+  function parseJwt(token) {
+    try { return JSON.parse(atob(token.split('.')[1])); } catch { return {}; }
+  }
 
   // ─── API ──────────────────────────────────────────────────────────────────
   function api(path, opts = {}) {
@@ -61,25 +71,60 @@
 
     btn.disabled = false;
     if (res.error) { err.textContent = res.error; return; }
-    adminToken = res.token;
+    adminToken       = res.token;
+    isAdminUser      = res.type !== 'staff';
+    staffPermissions = res.permissions || [];
     sessionStorage.setItem('soki_admin_token', res.token);
+    sessionStorage.setItem('soki_admin_type',  res.type || 'admin');
+    sessionStorage.setItem('soki_staff_perms', JSON.stringify(staffPermissions));
     showApp();
   });
 
   function logout() {
     adminToken = null;
     sessionStorage.removeItem('soki_admin_token');
+    sessionStorage.removeItem('soki_admin_type');
+    sessionStorage.removeItem('soki_staff_perms');
     document.getElementById('app').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
   }
 
   document.getElementById('admin-logout').addEventListener('click', logout);
 
+  // Permission → nav view mapping
+  const PERM_NAV = { dashboard: 'revenue', revenue: 'revenue', bookings: 'bookings', slots: 'slots', schedule: 'schedule', customers: 'customers', generate: 'generate', messages: 'messages' };
+
+  function applyPermissions() {
+    document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+      const view = btn.dataset.view;
+      if (view === 'staff') { btn.style.display = isAdminUser ? '' : 'none'; return; }
+      if (view === 'generate') { btn.style.display = isAdminUser ? '' : 'none'; return; }
+      const perm = PERM_NAV[view];
+      btn.style.display = (!perm || hasPermission(perm)) ? '' : 'none';
+    });
+    // Show user name in topbar for staff
+    const payload = parseJwt(adminToken);
+    const nameEl = document.getElementById('topbar-user-name');
+    if (nameEl) nameEl.textContent = isAdminUser ? 'Admin' : (payload.name || 'Staff');
+  }
+
+  function firstAllowedView() {
+    if (isAdminUser)               return 'dashboard';
+    if (hasPermission('schedule')) return 'schedule';
+    if (hasPermission('bookings')) return 'bookings';
+    if (hasPermission('customers'))return 'customers';
+    if (hasPermission('messages')) return 'messages';
+    if (hasPermission('slots'))    return 'slots';
+    if (hasPermission('revenue'))  return 'dashboard';
+    return 'schedule';
+  }
+
   function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadSessionTypes();
-    showView('dashboard');
+    applyPermissions();
+    showView(firstAllowedView());
   }
 
   // ─── Views ────────────────────────────────────────────────────────────────
@@ -91,22 +136,59 @@
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     document.getElementById('view-' + name).classList.add('active');
-    document.querySelector('.nav-item[data-view="' + name + '"]').classList.add('active');
+    const navBtn = document.querySelector('.nav-item[data-view="' + name + '"]');
+    if (navBtn) navBtn.classList.add('active');
 
-    const titles = { dashboard: 'Dashboard', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten' };
+    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', staff: 'Medewerkers' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
 
     if (name === 'dashboard') loadDashboard();
+    if (name === 'revenue')   loadDashboard();
     if (name === 'bookings')  loadBookings();
     if (name === 'slots')     loadSlots();
     if (name === 'schedule')  loadSchedule();
     if (name === 'customers') loadCustomers();
     if (name === 'generate')  loadGenerate();
     if (name === 'messages')  loadMessages();
+    if (name === 'staff') {
+      // Admin sees full staff management; staff only sees own password change
+      const createSection = document.querySelector('#view-staff .table-card');
+      const staffListSection = document.getElementById('staff-list');
+      const staffListHeader  = document.querySelector('#view-staff .section-header');
+      if (createSection) createSection.style.display = isAdminUser ? '' : 'none';
+      if (staffListSection) staffListSection.style.display = isAdminUser ? '' : 'none';
+      if (staffListHeader)  staffListHeader.style.display  = isAdminUser ? '' : 'none';
+      if (isAdminUser) loadStaff();
+    }
   }
 
   // ─── Dashboard ────────────────────────────────────────────────────────────
   async function loadDashboard() {
+    const canSeeRevenue = isAdminUser || hasPermission('revenue');
+
+    // Staff without revenue: show only forward view
+    if (!canSeeRevenue) {
+      document.getElementById('revenue-charts').style.display = 'none';
+      document.getElementById('stat-grid').style.display = 'none';
+      document.getElementById('staff-forward-view').style.display = 'block';
+      const fwd = await api('/analytics/enhanced');
+      const el  = document.getElementById('staff-forward-list');
+      if (fwd.error || !fwd.forwardView) { el.innerHTML = '–'; return; }
+      el.innerHTML = fwd.forwardView.length === 0 ? '<p style="color:var(--text-muted)">Geen sessies gepland.</p>' :
+        fwd.forwardView.map(s => {
+          const pct = s.capacity ? Math.round(s.booked / s.capacity * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.05);">
+            <div style="width:8px;height:8px;border-radius:50%;background:${s.color||'#D94D1A'};flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:14px;">${s.session_name} <span style="font-weight:400;color:var(--text-muted)">${s.start_time}–${s.end_time}</span></div>
+              <div style="font-size:12px;color:var(--text-muted)">${s.date}</div>
+            </div>
+            <div style="text-align:right;font-size:13px;font-weight:600;">${s.booked}/${s.capacity} <span style="font-weight:400;color:${pct>=90?'#C62828':'var(--text-muted)'}">(${pct}%)</span></div>
+          </div>`;
+        }).join('');
+      return;
+    }
+
     let data, enhanced;
     try {
       [data, enhanced] = await Promise.all([
@@ -130,8 +212,8 @@
     document.getElementById('stat-grid').innerHTML = [
       { label: 'Totaal boekingen',  value: data.totalBookings,         sub: 'actief' },
       { label: 'Bevestigd',         value: data.confirmedBookings,      sub: 'betaald' },
-      { label: 'Omzet (totaal)',    value: formatEur(data.totalRevenue), sub: 'bevestigde boekingen' },
-      { label: 'MRR abonnementen', value: formatEur(enhanced.mrr),     sub: totalMembers + ' actieve leden' },
+      { label: 'Omzet (deze maand)', value: formatEur(data.totalRevenue), sub: 'bevestigde boekingen' },
+      { label: 'Abonnementen',      value: formatEur(enhanced.mrr),     sub: totalMembers + ' actieve leden' },
     ].map(s => `
       <div class="stat-card">
         <div class="stat-card__label">${s.label}</div>
@@ -417,7 +499,21 @@
       return;
     }
 
-    tbody.innerHTML = slots.map(s => `
+    // Fetch waitlist counts in parallel
+    const waitlistCounts = {};
+    await Promise.all(slots.map(async s => {
+      try {
+        const list = await api('/waitlist/' + s.id);
+        waitlistCounts[s.id] = Array.isArray(list) ? list.length : 0;
+      } catch { waitlistCounts[s.id] = 0; }
+    }));
+
+    tbody.innerHTML = slots.map(s => {
+      const wCount = waitlistCounts[s.id] || 0;
+      const wBadge = wCount > 0
+        ? `<span title="Op wachtlijst" style="display:inline-flex;align-items:center;gap:3px;background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">⏳ ${wCount}</span>`
+        : '';
+      return `
       <tr>
         <td>${s.id}</td>
         <td>${s.session_name}</td>
@@ -425,15 +521,15 @@
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
         <td>${s.max_capacity || s.type_capacity}</td>
-        <td>${s.booked}</td>
+        <td>${s.booked}${wBadge}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn--outline btn--sm" onclick="editSlot(${s.id})">Bewerken</button>
           ${s.is_cancelled
             ? '<span style="font-size:12px;color:var(--muted)">Geannuleerd</span>'
             : `<button class="btn btn--danger btn--sm" onclick="cancelSlot(${s.id})">Annuleren</button>`}
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   }
 
   document.getElementById('slot-filter-apply').addEventListener('click', loadSlots);
@@ -695,9 +791,22 @@
     if (!c) return;
 
     document.getElementById('customer-modal-name').textContent = c.name;
-    document.getElementById('customer-modal-meta').textContent = c.email + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '');
+    const waiverBadge = c.waiver_signed_at
+      ? `<span style="background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">✓ Waiver</span>`
+      : `<span style="background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">⚠ Geen waiver</span>`;
+    document.getElementById('customer-modal-meta').innerHTML = c.email + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '') + waiverBadge;
     document.getElementById('customer-modal-bookings').innerHTML = '<div class="loading">Laden…</div>';
     document.getElementById('customer-modal').classList.add('open');
+
+    // Wire GDPR delete button
+    document.getElementById('customer-modal-delete').onclick = async function () {
+      if (!confirm('GDPR: verwijder alle persoonsgegevens van ' + c.name + '? Boekingsgeschiedenis blijft bewaard voor financiële administratie.')) return;
+      try {
+        await api('/customers/' + c.id, { method: 'DELETE' });
+        document.getElementById('customer-modal').classList.remove('open');
+        loadCustomers();
+      } catch { alert('Verwijderen mislukt.'); }
+    };
 
     // Wire notes button
     document.getElementById('customer-modal-notes-btn').onclick = function () {
@@ -1007,10 +1116,133 @@
     }
   };
 
+  // ─── Staff management ─────────────────────────────────────────────────────
+
+  const PERM_LABELS = {
+    perm_revenue:   'Dashboard / Omzet',
+    perm_bookings:  'Boekingen',
+    perm_slots:     'Tijdslots beheren',
+    perm_schedule:  'Rooster & inchecken',
+    perm_customers: 'Klanten',
+    perm_messages:  'Berichten',
+    perm_generate:  'Slots genereren',
+  };
+
+  async function loadStaff() {
+    const container = document.getElementById('staff-list');
+    container.innerHTML = '<div class="loading">Laden…</div>';
+    const staff = await api('/staff');
+    if (!staff.length) {
+      container.innerHTML = '<p style="color:var(--muted);padding:24px;">Nog geen medewerkers aangemaakt.</p>';
+      return;
+    }
+    container.innerHTML = staff.map(s => {
+      const perms = Object.keys(PERM_LABELS).filter(k => s[k]).map(k => PERM_LABELS[k]).join(', ') || 'Geen toegang';
+      return `
+        <div class="table-card" style="margin-bottom:16px;">
+          <div class="table-card__header" style="cursor:pointer" onclick="toggleStaffRow(${s.id})">
+            <div>
+              <strong>${escapeHtml(s.name)}</strong>
+              <span style="color:var(--muted);font-size:13px;margin-left:8px;">${escapeHtml(s.email)}</span>
+              ${s.is_active ? '' : '<span style="margin-left:8px;font-size:11px;background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:100px;font-weight:700;">Inactief</span>'}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:13px;color:var(--muted);">${perms}</span>
+              <span style="color:var(--muted);">▼</span>
+            </div>
+          </div>
+          <div id="staff-row-${s.id}" style="display:none;padding:24px;border-top:1px solid var(--border);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+              ${Object.entries(PERM_LABELS).map(([k, label]) => `
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+                  <input type="checkbox" data-staff="${s.id}" data-perm="${k}" ${s[k] ? 'checked' : ''} onchange="saveStaffPerms(${s.id})">
+                  ${label}
+                </label>
+              `).join('')}
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+                <input type="checkbox" data-staff="${s.id}" data-perm="is_active" ${s.is_active ? 'checked' : ''} onchange="saveStaffPerms(${s.id})">
+                Account actief
+              </label>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn--outline btn--sm" onclick="resetStaffPassword(${s.id}, '${escapeHtml(s.name)}')">Wachtwoord resetten</button>
+            </div>
+            <div id="staff-msg-${s.id}" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.toggleStaffRow = function(id) {
+    const row = document.getElementById('staff-row-' + id);
+    row.style.display = row.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.saveStaffPerms = async function(id) {
+    const fields = { is_active: false };
+    Object.keys(PERM_LABELS).forEach(k => { fields[k] = false; });
+    document.querySelectorAll(`input[data-staff="${id}"]`).forEach(cb => {
+      fields[cb.dataset.perm] = cb.checked;
+    });
+    const msgEl = document.getElementById('staff-msg-' + id);
+    try {
+      const res = await api('/staff/' + id, { method: 'PATCH', body: JSON.stringify(fields) });
+      if (res.error) { msgEl.style.color = '#C62828'; msgEl.textContent = res.error; }
+      else { msgEl.style.color = '#2E7D32'; msgEl.textContent = '✓ Opgeslagen'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
+    } catch { msgEl.style.color = '#C62828'; msgEl.textContent = 'Fout bij opslaan'; }
+  };
+
+  window.resetStaffPassword = async function(id, name) {
+    const pw = prompt(`Nieuw wachtwoord voor ${name}:`);
+    if (!pw || pw.length < 8) { if (pw !== null) alert('Wachtwoord moet minimaal 8 tekens zijn.'); return; }
+    const msgEl = document.getElementById('staff-msg-' + id);
+    const res = await api('/staff/' + id + '/reset-password', { method: 'POST', body: JSON.stringify({ password: pw }) });
+    if (res.error) { msgEl.style.color = '#C62828'; msgEl.textContent = res.error; }
+    else { msgEl.style.color = '#2E7D32'; msgEl.textContent = '✓ Wachtwoord bijgewerkt'; setTimeout(() => { msgEl.textContent = ''; }, 3000); }
+  };
+
+  document.getElementById('staff-create-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn    = e.target.querySelector('button[type=submit]');
+    const errEl  = document.getElementById('staff-create-err');
+    const name   = document.getElementById('staff-name').value.trim();
+    const email  = document.getElementById('staff-email').value.trim();
+    const pw     = document.getElementById('staff-pw').value;
+    errEl.textContent = '';
+    if (!name || !email || !pw) { errEl.textContent = 'Vul alle velden in.'; return; }
+    if (pw.length < 8) { errEl.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.'; return; }
+    btn.disabled = true;
+    const res = await api('/staff', { method: 'POST', body: JSON.stringify({ name, email, password: pw }) });
+    btn.disabled = false;
+    if (res.error) { errEl.textContent = res.error; return; }
+    e.target.reset();
+    errEl.style.color = '#2E7D32';
+    errEl.textContent = '✓ Medewerker aangemaakt';
+    loadStaff();
+    setTimeout(() => { errEl.textContent = ''; errEl.style.color = ''; }, 3000);
+  });
+
+  // Change own password (for staff users)
+  const changeOwnPwForm = document.getElementById('change-own-pw-form');
+  if (changeOwnPwForm) {
+    changeOwnPwForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const oldPw  = document.getElementById('own-pw-old').value;
+      const newPw  = document.getElementById('own-pw-new').value;
+      const errEl  = document.getElementById('own-pw-err');
+      errEl.textContent = '';
+      if (newPw.length < 8) { errEl.textContent = 'Nieuw wachtwoord moet minimaal 8 tekens zijn.'; return; }
+      const res = await api('/staff/change-own-password', { method: 'POST', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) });
+      if (res.error) { errEl.style.color = '#C62828'; errEl.textContent = res.error; }
+      else { errEl.style.color = '#2E7D32'; errEl.textContent = '✓ Wachtwoord gewijzigd'; e.target.reset(); }
+    });
+  }
+
   // ─── Init ─────────────────────────────────────────────────────────────────
   if (adminToken) {
     showApp();
-    refreshUnreadBadge();
+    if (isAdminUser) refreshUnreadBadge();
   }
 
 })();

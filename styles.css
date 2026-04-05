@@ -423,6 +423,84 @@ p {
    FOOTER
    ============================================ */
 
+/* ===== LOCATION SECTION ===== */
+.location-section {
+  background: var(--cream, #F9F4EF);
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.location-info h2 {
+  margin-top: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.location-address {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text, #2C1A0E);
+  margin-bottom: 1.5rem;
+}
+
+.location-block {
+  margin-bottom: 1.25rem;
+}
+
+.location-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted, #8C7B6B);
+  margin-bottom: 0.25rem;
+}
+
+.location-block div,
+.location-block a {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text, #2C1A0E);
+}
+
+.location-link {
+  text-decoration: none;
+  color: var(--terra, #D94D1A) !important;
+}
+
+.location-link:hover {
+  text-decoration: underline;
+}
+
+.location-cta {
+  margin-top: 1.5rem;
+  display: inline-block;
+}
+
+.location-map {
+  height: 420px;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  display: block;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+  .location-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .location-map {
+    height: 300px;
+  }
+}
+
+/* ===== FOOTER ===== */
 .footer {
   background-color: var(--brown);
   color: var(--peach);
@@ -1871,14 +1949,14 @@ p {
    ============================================ */
 
 .lang-toggle {
-  background: transparent;
-  border: 1.5px solid rgba(74,28,12,0.2);
+  background: rgba(0,0,0,0.45);
+  border: 1.5px solid rgba(255,255,255,0.6);
   border-radius: 100px;
   font-family: var(--font-sub);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.12em;
-  color: var(--text-muted);
+  color: #fff;
   cursor: pointer;
   padding: 5px 12px;
   transition: border-color var(--ease), color var(--ease), background var(--ease);
@@ -1886,15 +1964,8 @@ p {
 }
 
 .lang-toggle:hover {
-  border-color: var(--terra);
-  color: var(--terra);
-}
-
-/* On dark hero backgrounds */
-.hero .lang-toggle,
-.nav:not(.scrolled) .lang-toggle {
-  border-color: rgba(242,242,242,0.3);
-  color: rgba(242,242,242,0.7);
+  border-color: #fff;
+  background: rgba(0,0,0,0.65);
 }
 
 /* In mobile nav drawer */

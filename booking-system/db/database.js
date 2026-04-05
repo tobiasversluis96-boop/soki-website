@@ -192,6 +192,22 @@ async function initializeDB() {
     from_admin  BOOLEAN     NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS waiver_signed_at TIMESTAMPTZ');
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (
+    id           SERIAL      PRIMARY KEY,
+    user_id      INTEGER     NOT NULL REFERENCES users(id),
+    time_slot_id INTEGER     NOT NULL REFERENCES time_slots(id),
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    notified_at  TIMESTAMPTZ,
+    UNIQUE(user_id, time_slot_id)
+  )`);
+  await pool.query('ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS group_size INTEGER NOT NULL DEFAULT 1');
+  await pool.query('ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS total_cents INTEGER NOT NULL DEFAULT 0');
+  await pool.query('ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT');
+  await pool.query("ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS stripe_payment_status TEXT DEFAULT 'pending'");
+  await pool.query('ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS claimed_booking_id INTEGER REFERENCES bookings(id)');
+
   await pool.query(`CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id         SERIAL PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -222,6 +238,50 @@ async function initializeDB() {
     created_at              TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_used INTEGER DEFAULT 0');
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS staff_users (
+    id            SERIAL      PRIMARY KEY,
+    name          TEXT        NOT NULL,
+    email         TEXT        UNIQUE NOT NULL,
+    password_hash TEXT        NOT NULL,
+    is_active     BOOLEAN     DEFAULT TRUE,
+    perm_revenue   BOOLEAN    DEFAULT FALSE,
+    perm_bookings  BOOLEAN    DEFAULT FALSE,
+    perm_slots     BOOLEAN    DEFAULT FALSE,
+    perm_generate  BOOLEAN    DEFAULT FALSE,
+    perm_schedule  BOOLEAN    DEFAULT TRUE,
+    perm_customers BOOLEAN    DEFAULT FALSE,
+    perm_messages  BOOLEAN    DEFAULT FALSE,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS user_milestones (
+    id           SERIAL PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    milestone    INTEGER NOT NULL,
+    achieved_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    promo_code   TEXT,
+    redeemed_at  TIMESTAMPTZ,
+    UNIQUE(user_id, milestone)
+  )`);
+  await pool.query(`ALTER TABLE user_milestones ADD COLUMN IF NOT EXISTS redeemed_at TIMESTAMPTZ`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS gift_cards (
+    id                       SERIAL      PRIMARY KEY,
+    code                     TEXT        UNIQUE NOT NULL,
+    initial_amount_cents     INTEGER     NOT NULL,
+    remaining_amount_cents   INTEGER     NOT NULL,
+    purchaser_name           TEXT        NOT NULL,
+    purchaser_email          TEXT        NOT NULL,
+    recipient_name           TEXT        NOT NULL,
+    recipient_email          TEXT        NOT NULL,
+    message                  TEXT,
+    stripe_payment_intent_id TEXT,
+    status                   TEXT        NOT NULL DEFAULT 'pending',
+    created_at               TIMESTAMPTZ DEFAULT NOW(),
+    expires_at               TIMESTAMPTZ NOT NULL
+  )`);
+
   await seedSessionTypes();
   await seedTimeSlots();
   await seedAdmin();
@@ -294,7 +354,7 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at FROM users WHERE id = $1', [id]);
     return rows[0] || null;
   },
 
@@ -328,7 +388,7 @@ const queries = {
 
   getAllUsers: async () => {
     const { rows } = await pool.query(`
-      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes,
+      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.waiver_signed_at,
              COUNT(b.id)::int AS booking_count
       FROM users u
       LEFT JOIN bookings b ON b.user_id = u.id AND b.status != 'cancelled'
@@ -634,6 +694,14 @@ const queries = {
     return rows;
   },
 
+  getMessageById: async (messageId) => {
+    const { rows } = await pool.query(
+      'SELECT m.*, u.name AS user_name, u.email AS user_email FROM messages m JOIN users u ON u.id = m.user_id WHERE m.id = $1',
+      [messageId]
+    );
+    return rows[0] || null;
+  },
+
   replyToMessage: async (messageId, body, fromAdmin = true) => {
     const { rows } = await pool.query(
       'INSERT INTO message_replies (message_id, body, from_admin) VALUES ($1, $2, $3) RETURNING *',
@@ -728,6 +796,167 @@ const queries = {
     return rows;
   },
 
+  // Waiver
+  signWaiver: async (userId) => {
+    await pool.query('UPDATE users SET waiver_signed_at = NOW() WHERE id = $1', [userId]);
+  },
+
+  // Waitlist
+  joinWaitlist: async (userId, slotId, groupSize, totalCents, paymentIntentId) => {
+    const { rows } = await pool.query(
+      `INSERT INTO waitlist (user_id, time_slot_id, group_size, total_cents, stripe_payment_intent_id, stripe_payment_status)
+       VALUES ($1, $2, $3, $4, $5, 'pending')
+       ON CONFLICT (user_id, time_slot_id) DO NOTHING RETURNING *`,
+      [userId, slotId, groupSize, totalCents, paymentIntentId]
+    );
+    return rows[0] || null;
+  },
+
+  markWaitlistPaid: async (paymentIntentId) => {
+    await pool.query(
+      "UPDATE waitlist SET stripe_payment_status = 'paid' WHERE stripe_payment_intent_id = $1",
+      [paymentIntentId]
+    );
+  },
+
+  getWaitlistEntryByPaymentIntent: async (paymentIntentId) => {
+    const { rows } = await pool.query(
+      `SELECT w.*, u.name AS customer_name, u.email AS customer_email,
+              ts.date, ts.start_time, ts.end_time, st.name AS session_name, st.price_cents
+       FROM waitlist w
+       JOIN users u ON u.id = w.user_id
+       JOIN time_slots ts ON ts.id = w.time_slot_id
+       JOIN session_types st ON st.id = ts.session_type_id
+       WHERE w.stripe_payment_intent_id = $1`,
+      [paymentIntentId]
+    );
+    return rows[0] || null;
+  },
+
+  getFirstPaidWaitlistUser: async (slotId) => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.user_id, w.group_size, w.total_cents, w.stripe_payment_intent_id,
+             u.name AS customer_name, u.email AS customer_email
+      FROM waitlist w
+      JOIN users u ON u.id = w.user_id
+      WHERE w.time_slot_id = $1
+        AND w.stripe_payment_status = 'paid'
+        AND w.claimed_booking_id IS NULL
+        AND w.notified_at IS NULL
+      ORDER BY w.created_at ASC
+      LIMIT 1
+    `, [slotId]);
+    return rows[0] || null;
+  },
+
+  claimWaitlistEntry: async (waitlistId, bookingId) => {
+    await pool.query(
+      'UPDATE waitlist SET claimed_booking_id = $2, notified_at = NOW() WHERE id = $1',
+      [waitlistId, bookingId]
+    );
+  },
+
+  leaveWaitlist: async (userId, slotId) => {
+    const { rows } = await pool.query(
+      'DELETE FROM waitlist WHERE user_id = $1 AND time_slot_id = $2 RETURNING *',
+      [userId, slotId]
+    );
+    return rows[0] || null;
+  },
+
+  getWaitlistEntry: async (userId, slotId) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM waitlist WHERE user_id = $1 AND time_slot_id = $2',
+      [userId, slotId]
+    );
+    return rows[0] || null;
+  },
+
+  getWaitlistPosition: async (userId, slotId) => {
+    const entry = await pool.query(
+      'SELECT created_at FROM waitlist WHERE user_id = $1 AND time_slot_id = $2',
+      [userId, slotId]
+    );
+    if (!entry.rows[0]) return { position: null, total: 0 };
+    const pos = await pool.query(
+      'SELECT COUNT(*)::int AS position FROM waitlist WHERE time_slot_id = $1 AND created_at <= $2',
+      [slotId, entry.rows[0].created_at]
+    );
+    const tot = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM waitlist WHERE time_slot_id = $1',
+      [slotId]
+    );
+    return { position: pos.rows[0].position, total: tot.rows[0].total };
+  },
+
+  getWaitlistForSlot: async (slotId) => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.user_id, w.created_at, w.notified_at, w.group_size, w.total_cents, w.stripe_payment_status, w.claimed_booking_id,
+             u.name AS customer_name, u.email AS customer_email
+      FROM waitlist w
+      JOIN users u ON u.id = w.user_id
+      WHERE w.time_slot_id = $1
+      ORDER BY w.created_at ASC
+    `, [slotId]);
+    return rows;
+  },
+
+  getFirstUnnotifiedWaitlistUser: async (slotId) => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.user_id, u.name AS customer_name, u.email AS customer_email
+      FROM waitlist w
+      JOIN users u ON u.id = w.user_id
+      WHERE w.time_slot_id = $1 AND w.notified_at IS NULL AND w.stripe_payment_status != 'paid'
+      ORDER BY w.created_at ASC
+      LIMIT 1
+    `, [slotId]);
+    return rows[0] || null;
+  },
+
+  markWaitlistNotified: async (waitlistId) => {
+    await pool.query('UPDATE waitlist SET notified_at = NOW() WHERE id = $1', [waitlistId]);
+  },
+
+  getUserWaitlist: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.time_slot_id, w.created_at, w.group_size, w.total_cents, w.stripe_payment_status, w.claimed_booking_id,
+             ts.date, ts.start_time, ts.end_time,
+             st.name AS session_name, st.color,
+             (SELECT COUNT(*)::int FROM waitlist w2 WHERE w2.time_slot_id = w.time_slot_id AND w2.created_at <= w.created_at) AS queue_position
+      FROM waitlist w
+      JOIN time_slots ts ON ts.id = w.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE w.user_id = $1 AND ts.date >= CURRENT_DATE::text AND ts.is_cancelled = FALSE
+      ORDER BY ts.date ASC, ts.start_time ASC
+    `, [userId]);
+    return rows;
+  },
+
+  deleteUser: async (userId) => {
+    // GDPR: anonymise PII, preserve booking records for financial compliance
+    await pool.query(
+      "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL WHERE id = $1",
+      [userId]
+    );
+  },
+
+  getUserDataExport: async (userId) => {
+    const [user, bookings, sub] = await Promise.all([
+      pool.query('SELECT id, name, email, created_at FROM users WHERE id = $1', [userId]),
+      pool.query(`
+        SELECT b.id, b.group_size, b.total_cents, b.status, b.created_at,
+               ts.date, ts.start_time, ts.end_time, st.name AS session_name
+        FROM bookings b
+        JOIN time_slots ts ON ts.id = b.time_slot_id
+        JOIN session_types st ON st.id = ts.session_type_id
+        WHERE b.user_id = $1
+        ORDER BY b.created_at DESC
+      `, [userId]),
+      pool.query('SELECT status, current_period_end FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [userId]),
+    ]);
+    return { user: user.rows[0], bookings: bookings.rows, subscription: sub.rows[0] || null };
+  },
+
   getAnalytics: async () => {
     const [total, confirmed, revenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
@@ -760,6 +989,149 @@ const queries = {
       avgGroupSize:      avgGroup.rows[0].n,
       cancellationRate:  cancelRate.rows[0],
     };
+  },
+
+  // Staff
+  getAllStaff: async () => {
+    const { rows } = await pool.query('SELECT id, name, email, is_active, perm_revenue, perm_bookings, perm_slots, perm_generate, perm_schedule, perm_customers, perm_messages, created_at FROM staff_users ORDER BY name');
+    return rows;
+  },
+
+  getStaffByEmail: async (email) => {
+    const { rows } = await pool.query('SELECT * FROM staff_users WHERE email = $1', [email]);
+    return rows[0] || null;
+  },
+
+  getStaffById: async (id) => {
+    const { rows } = await pool.query('SELECT * FROM staff_users WHERE id = $1', [id]);
+    return rows[0] || null;
+  },
+
+  createStaff: async (name, email, passwordHash) => {
+    const { rows } = await pool.query(
+      'INSERT INTO staff_users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+      [name, email, passwordHash]
+    );
+    return rows[0];
+  },
+
+  updateStaffPermissions: async (id, fields) => {
+    await pool.query(`
+      UPDATE staff_users SET
+        is_active      = $2,
+        perm_revenue   = $3,
+        perm_bookings  = $4,
+        perm_slots     = $5,
+        perm_generate  = $6,
+        perm_schedule  = $7,
+        perm_customers = $8,
+        perm_messages  = $9
+      WHERE id = $1
+    `, [id, fields.is_active, fields.perm_revenue, fields.perm_bookings, fields.perm_slots, fields.perm_generate, fields.perm_schedule, fields.perm_customers, fields.perm_messages]);
+  },
+
+  updateStaffPassword: async (id, passwordHash) => {
+    await pool.query('UPDATE staff_users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+  },
+
+  // Milestones
+  getUserVisitCount: async (userId) => {
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS count FROM bookings WHERE user_id = $1 AND status = 'confirmed' AND checked_in = TRUE",
+      [userId]
+    );
+    return rows[0].count;
+  },
+
+  getClaimedMilestones: async (userId) => {
+    const { rows } = await pool.query(
+      'SELECT milestone, achieved_at, promo_code FROM user_milestones WHERE user_id = $1 ORDER BY milestone',
+      [userId]
+    );
+    return rows;
+  },
+
+  getMilestoneByCode: async (code) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM user_milestones WHERE promo_code = $1 AND redeemed_at IS NULL',
+      [code]
+    );
+    return rows[0] || null;
+  },
+
+  redeemMilestoneCode: async (id) => {
+    await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [id]);
+  },
+
+  claimMilestone: async (userId, milestone, promoCode) => {
+    const { rows } = await pool.query(
+      'INSERT INTO user_milestones (user_id, milestone, promo_code) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING *',
+      [userId, milestone, promoCode]
+    );
+    return rows[0] || null;
+  },
+
+  getUserMilestoneStats: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'confirmed' AND checked_in = TRUE)::int AS total_visits,
+        COUNT(*) FILTER (WHERE status = 'confirmed')::int AS total_bookings
+      FROM bookings WHERE user_id = $1
+    `, [userId]);
+    return rows[0];
+  },
+
+  // ── Gift cards ──────────────────────────────────────────────────────────────
+  createGiftCard: async ({ code, initial_amount_cents, purchaser_name, purchaser_email, recipient_name, recipient_email, message, status }) => {
+    const expires_at = new Date();
+    expires_at.setFullYear(expires_at.getFullYear() + 1);
+    const { rows } = await pool.query(
+      `INSERT INTO gift_cards
+         (code, initial_amount_cents, remaining_amount_cents, purchaser_name, purchaser_email,
+          recipient_name, recipient_email, message, status, expires_at)
+       VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [code, initial_amount_cents, purchaser_name, purchaser_email, recipient_name, recipient_email, message || null, status || 'pending', expires_at]
+    );
+    return rows[0];
+  },
+
+  getGiftCardByCode: async (code) => {
+    const { rows } = await pool.query(
+      `SELECT * FROM gift_cards WHERE UPPER(code) = UPPER($1)`, [code]
+    );
+    return rows[0] || null;
+  },
+
+  getGiftCardById: async (id) => {
+    const { rows } = await pool.query('SELECT * FROM gift_cards WHERE id = $1', [id]);
+    return rows[0] || null;
+  },
+
+  activateGiftCard: async (id, stripe_payment_intent_id) => {
+    const { rows } = await pool.query(
+      `UPDATE gift_cards SET status = 'active', stripe_payment_intent_id = $2 WHERE id = $1 RETURNING *`,
+      [id, stripe_payment_intent_id]
+    );
+    return rows[0] || null;
+  },
+
+  redeemGiftCard: async (id, amount_cents) => {
+    const { rows } = await pool.query(
+      `UPDATE gift_cards
+       SET remaining_amount_cents = remaining_amount_cents - $2,
+           status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
+       WHERE id = $1 AND remaining_amount_cents >= $2
+       RETURNING *`,
+      [id, amount_cents]
+    );
+    return rows[0] || null;
+  },
+
+  getAllGiftCards: async () => {
+    const { rows } = await pool.query(
+      `SELECT * FROM gift_cards ORDER BY created_at DESC`
+    );
+    return rows;
   },
 };
 

@@ -86,10 +86,18 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       // Note: 'payment_intent.succeeded' must be enabled in Stripe Dashboard webhook settings
       case 'payment_intent.succeeded': {
         const intent = event.data.object;
-        // Find booking by payment intent id and confirm it if not already confirmed
+
+        // Check if this is a waitlist payment
+        if (intent.metadata?.type === 'waitlist') {
+          await queries.markWaitlistPaid(intent.id);
+          console.log(`✓ Waitlist payment confirmed for intent ${intent.id}`);
+          break;
+        }
+
+        // Otherwise confirm regular booking
         const booking = await queries.getBookingByPaymentIntent(intent.id);
         if (!booking) break;
-        if (booking.status === 'confirmed') break; // already done, idempotent
+        if (booking.status === 'confirmed') break; // idempotent
         await queries.updateBookingPayment(booking.id, intent.id, 'succeeded');
         console.log(`✓ Booking #${booking.id} confirmed via webhook`);
         break;

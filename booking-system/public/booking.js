@@ -32,6 +32,7 @@
     stripeElements: null,
     clientSecret:   null,
     paymentIntentId: null,
+    promoCode:      null,
   };
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -96,6 +97,16 @@
         '<span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
     });
     return html;
+  }
+
+  function proceedAfterAuth() {
+    if (state.user && !state.user.waiver_signed_at) {
+      document.querySelectorAll('.booking-step').forEach(function (el) { el.style.display = 'none'; });
+      document.getElementById('step-4b').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    initPayment();
   }
 
   // ─── Step 1: Session types ─────────────────────────────────────────────────
@@ -324,17 +335,23 @@
 
     var daySlots = calAllSlots.filter(function (s) {
       if (s.date !== dateStr) return false;
-      if (s.is_full) return false;
       if (s.date === todayStr && s.start_time <= nowTime) return false;
       return true;
     });
+
+    var available = daySlots.filter(function (s) { return !s.is_full; });
+    var fullSlots = daySlots.filter(function (s) { return s.is_full; });
 
     if (!daySlots.length) {
       listEl.innerHTML = '<div class="slot-list-empty">' + t('booking.slots.empty') + '</div>';
       return;
     }
+    if (!available.length && !fullSlots.length) {
+      listEl.innerHTML = '<div class="slot-list-empty">' + t('booking.slots.empty') + '</div>';
+      return;
+    }
 
-    listEl.innerHTML = daySlots.map(function (s) {
+    listEl.innerHTML = available.map(function (s) {
       var spotsLeft  = s.spots_left;
       var spotsClass = spotsLeft > 3 ? 'spots--green' : spotsLeft > 1 ? 'spots--orange' : 'spots--red';
       var spotsLabel = spotsLeft === 1 ? t('booking.spots.last') : spotsLeft + ' ' + t('booking.spots.left');
@@ -345,15 +362,39 @@
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
       '</div>';
+    }).join('') + fullSlots.map(function (s) {
+      return '<div class="slot-item slot-item--full" data-slot-id="' + s.id + '" style="opacity:0.7;cursor:default;">' +
+        '<div>' +
+          '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+          '<div class="slot-item__info spots--red">' + t('booking.slot.full') + '</div>' +
+        '</div>' +
+        '<div>' +
+          '<button class="btn btn--outline btn--sm waitlist-join-btn" data-slot-id="' + s.id + '" style="font-size:12px;padding:6px 14px;">' + t('booking.slot.waitlist') + '</button>' +
+        '</div>' +
+      '</div>';
     }).join('');
 
-    listEl.querySelectorAll('.slot-item').forEach(function (el) {
+    listEl.querySelectorAll('.slot-item:not(.slot-item--full)').forEach(function (el) {
       el.addEventListener('click', function () {
         listEl.querySelectorAll('.slot-item').forEach(function (c) { c.classList.remove('selected'); });
         el.classList.add('selected');
         var slotId = +el.dataset.slotId;
         state.slot = daySlots.find(function (s) { return s.id === slotId; });
         selectSlot();
+      });
+    });
+
+    listEl.querySelectorAll('.waitlist-join-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var token = localStorage.getItem('soki_token');
+        if (!token) {
+          alert(t('booking.waitlist.login'));
+          return;
+        }
+        var slotId = +btn.dataset.slotId;
+        var slot   = daySlots.find(function (s) { return s.id === slotId; });
+        openWaitlistModal(slotId, slot, btn);
       });
     });
 
@@ -372,6 +413,122 @@
     if (calMonth > 12) { calMonth = 1; calYear++; }
     fetchCalMonth(calYear, calMonth);
   });
+
+  // ─── Waitlist payment modal ───────────────────────────────────────────────
+  function openWaitlistModal(slotId, slot, triggerBtn) {
+    var existing = document.getElementById('waitlist-modal');
+    if (existing) existing.remove();
+
+    var pricePerPerson = slot ? slot.price_cents : 0;
+    var modal = document.createElement('div');
+    modal.id = 'waitlist-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px;';
+    modal.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:32px;max-width:440px;width:100%;">' +
+        '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:22px;color:#4A1C0C;margin:0 0 8px;">Wachtlijst</h3>' +
+        '<p style="color:#666;font-size:14px;margin:0 0 20px;">Betaal nu. Als er een plek vrijkomt wordt je automatisch ingeboekt. Als er geen plek vrijkomt, storten we je bedrag terug.</p>' +
+        (slot ? '<p style="font-weight:600;color:#4A1C0C;margin:0 0 20px;">' + slot.start_time + ' – ' + slot.end_time + ' · ' + eur(pricePerPerson) + ' p.p.</p>' : '') +
+        '<div style="margin-bottom:16px;">' +
+          '<label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8C7B6B;margin-bottom:6px;">Groepsgrootte</label>' +
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<button id="wl-minus" style="width:36px;height:36px;border-radius:50%;border:2px solid #E8D5BF;background:#fff;font-size:20px;cursor:pointer;line-height:1;">−</button>' +
+            '<span id="wl-count" style="font-size:20px;font-weight:700;min-width:24px;text-align:center;">1</span>' +
+            '<button id="wl-plus"  style="width:36px;height:36px;border-radius:50%;border:2px solid #E8D5BF;background:#fff;font-size:20px;cursor:pointer;line-height:1;">+</button>' +
+            '<span id="wl-total" style="margin-left:8px;font-size:16px;font-weight:600;color:#D94D1A;">' + eur(pricePerPerson) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div id="wl-stripe-container" style="margin-bottom:16px;"></div>' +
+        '<div id="wl-error" style="color:#C62828;font-size:13px;margin-bottom:12px;display:none;"></div>' +
+        '<div style="display:flex;gap:10px;">' +
+          '<button id="wl-cancel-btn" class="btn btn--outline" style="flex:1;">Annuleren</button>' +
+          '<button id="wl-pay-btn" class="btn btn--primary" style="flex:2;">' + t('booking.waitlist.pay') + '</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+
+    var wlGroupSize = 1;
+    var wlStripe = null;
+    var wlElements = null;
+    var wlClientSecret = null;
+
+    function updateWlTotal() {
+      document.getElementById('wl-total').textContent = eur(pricePerPerson * wlGroupSize);
+      document.getElementById('wl-count').textContent = wlGroupSize;
+    }
+
+    document.getElementById('wl-minus').addEventListener('click', function () {
+      if (wlGroupSize > 1) { wlGroupSize--; updateWlTotal(); }
+    });
+    document.getElementById('wl-plus').addEventListener('click', function () {
+      if (wlGroupSize < 20) { wlGroupSize++; updateWlTotal(); }
+    });
+
+    // Create PaymentIntent and mount Stripe Elements
+    var token = localStorage.getItem('soki_token');
+    fetch('/api/waitlist/' + slotId, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ group_size: wlGroupSize }),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res.error) {
+        document.getElementById('wl-error').textContent = res.error;
+        document.getElementById('wl-error').style.display = 'block';
+        document.getElementById('wl-pay-btn').disabled = true;
+        return;
+      }
+      wlClientSecret = res.client_secret;
+      if (!wlStripe) wlStripe = Stripe(res.publishable_key);
+
+      wlElements = wlStripe.elements({
+        clientSecret: res.client_secret,
+        appearance: {
+          theme: 'stripe',
+          variables: { colorPrimary: '#D94D1A', colorText: '#4A1C0C', borderRadius: '10px', fontFamily: "'DM Sans','Helvetica Neue',sans-serif" },
+        },
+      });
+      var el = wlElements.create('payment', { layout: 'tabs', defaultValues: { billingDetails: { address: { country: 'NL' } } }, wallets: { link: 'never' } });
+      document.getElementById('wl-stripe-container').innerHTML = '';
+      el.mount('#wl-stripe-container');
+    }).catch(function () {
+      document.getElementById('wl-error').textContent = t('booking.error.load');
+      document.getElementById('wl-error').style.display = 'block';
+    });
+
+    document.getElementById('wl-cancel-btn').addEventListener('click', function () {
+      modal.remove();
+      if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.textContent = 'Wachtlijst'; }
+    });
+
+    document.getElementById('wl-pay-btn').addEventListener('click', function () {
+      if (!wlElements || !wlClientSecret) return;
+      var payBtn = document.getElementById('wl-pay-btn');
+      var errEl  = document.getElementById('wl-error');
+      payBtn.disabled = true;
+      payBtn.textContent = '\u2026';
+      errEl.style.display = 'none';
+
+      wlStripe.confirmPayment({
+        elements: wlElements,
+        confirmParams: { return_url: window.location.origin + '/payment-return' },
+        redirect: 'if_required',
+      }).then(function (result) {
+        if (result.error) {
+          errEl.textContent = result.error.message;
+          errEl.style.display = 'block';
+          payBtn.disabled = false;
+          payBtn.textContent = t('booking.waitlist.pay');
+        } else {
+          modal.remove();
+          if (triggerBtn) {
+            triggerBtn.textContent = '\u2713 Op wachtlijst (betaald)';
+            triggerBtn.style.color = '#2E7D32';
+            triggerBtn.style.borderColor = '#2E7D32';
+          }
+        }
+      });
+    });
+  }
 
   function selectSlot() {
     // Load saved group size preference
@@ -489,9 +646,9 @@
         if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
-        } else if (data.credits_remaining !== undefined && !data.is_unlimited) {
+        } else if (data.has_subscription && !data.is_unlimited) {
           document.getElementById('stripe-errors').textContent =
-            'Not enough credits. You have ' + data.credits_remaining + ' credits but need ' + data.credits_cost + '.';
+            'Je hebt ' + data.credits_remaining + ' credits over, maar hebt er ' + data.credits_cost + ' nodig. Je kunt gewoon betalen via iDEAL of kaart.';
           initStripePayment();
         } else {
           initStripePayment();
@@ -532,7 +689,7 @@
     document.getElementById('payment-request-btn-container').style.display = 'none';
 
     var payBtn = document.getElementById('pay-btn');
-    payBtn.querySelector('#pay-label').textContent = data.is_unlimited ? 'Confirm booking' : 'Use ' + data.credits_cost + ' credits';
+    payBtn.querySelector('#pay-label').textContent = data.is_unlimited ? t('booking.member.unlimited') : t('booking.member.credits').replace('{n}', data.credits_cost);
     payBtn.disabled = false;
     payBtn.onclick = function() {
       confirmMemberBooking(data.credits_cost, data.is_unlimited);
@@ -552,7 +709,7 @@
       if (res.error) {
         document.getElementById('stripe-errors').textContent = res.error;
         payBtn.disabled = false;
-        payBtn.querySelector('#pay-label').textContent = 'Try again';
+        payBtn.querySelector('#pay-label').textContent = t('booking.retry');
         return;
       }
       showConfirmation();
@@ -708,6 +865,12 @@
         '&location=' + encodeURIComponent('Gietijzerstraat 3, Utrecht');
       document.getElementById('gcal-btn').href = gcalUrl;
     }
+
+    // QR link on confirmation
+    var qrNote = document.getElementById('confirm-qr-note');
+    if (qrNote && state.bookingId) {
+      qrNote.innerHTML = '<a href="/account#qr-' + state.bookingId + '" style="color:var(--terra);font-size:0.875rem;">\u2192 Bekijk QR-code voor inchecken in je account</a>';
+    }
   }
 
   // ─── Event bindings ────────────────────────────────────────────────────────
@@ -734,7 +897,29 @@
       if (el) el.addEventListener('click', function () { showStep(3); });
     });
 
-    document.getElementById('next-4a').addEventListener('click', initPayment);
+    document.getElementById('next-4a').addEventListener('click', proceedAfterAuth);
+
+    document.getElementById('back-4b').addEventListener('click', showStep4);
+    document.getElementById('waiver-submit').addEventListener('click', function () {
+      if (!document.getElementById('waiver-agree').checked) {
+        document.getElementById('waiver-error').textContent = t('waiver.error');
+        return;
+      }
+      document.getElementById('waiver-error').textContent = '';
+      var btn = document.getElementById('waiver-submit');
+      btn.disabled = true;
+      var token = localStorage.getItem('soki_token');
+      fetch('/api/auth/me/waiver', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      }).then(function() {
+        if (state.user) state.user.waiver_signed_at = new Date().toISOString();
+        btn.disabled = false;
+        initPayment();
+      }).catch(function() {
+        btn.disabled = false;
+      });
+    });
 
     // Google sign-in
     document.getElementById('google-signin-btn').addEventListener('click', initGoogleSignIn);
@@ -771,7 +956,7 @@
         state.token = res.token;
         state.user  = res.user;
         localStorage.setItem('soki_token', res.token);
-        initPayment();
+        proceedAfterAuth();
       });
     });
 
@@ -779,6 +964,11 @@
     document.getElementById('register-form').addEventListener('submit', function (e) {
       e.preventDefault();
       document.getElementById('reg-error').textContent = '';
+      const gdprConsent = document.getElementById('gdpr-consent');
+      if (gdprConsent && !gdprConsent.checked) {
+        document.getElementById('reg-error').textContent = t('booking.gdpr');
+        return;
+      }
       var btn = e.target.querySelector('[type=submit]');
       btn.disabled = true;
       api('/auth/register', {
@@ -794,7 +984,64 @@
         state.token = res.token;
         state.user  = res.user;
         localStorage.setItem('soki_token', res.token);
-        initPayment();
+        proceedAfterAuth();
+      });
+    });
+
+    // Promo code toggle
+    document.getElementById('promo-toggle').addEventListener('click', function () {
+      var field = document.getElementById('promo-field');
+      field.style.display = field.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    // Promo code apply
+    document.getElementById('promo-apply').addEventListener('click', function () {
+      var code = document.getElementById('promo-input').value.trim();
+      var msgEl = document.getElementById('promo-msg');
+      if (!code) { msgEl.textContent = t('promo.empty'); msgEl.style.color = '#C62828'; return; }
+
+      var applyBtn = document.getElementById('promo-apply');
+      applyBtn.disabled = true;
+      msgEl.textContent = '';
+
+      api('/bookings', {
+        method: 'POST',
+        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, promo_code: code }),
+      }).then(function (res) {
+        applyBtn.disabled = false;
+        if (res.error) {
+          msgEl.style.color = '#C62828';
+          msgEl.textContent = res.error;
+          return;
+        }
+        if (res.free) {
+          state.bookingId  = res.booking_id;
+          state.totalCents = 0;
+          state.promoCode  = code;
+          msgEl.style.color = '#2E7D32';
+          msgEl.textContent = t('promo.accepted');
+          document.getElementById('stripe-element').style.display = 'none';
+          document.getElementById('payment-request-btn-container').style.display = 'none';
+          var payBtn = document.getElementById('pay-btn');
+          payBtn.disabled = false;
+          payBtn.querySelector('#pay-label').textContent = t('promo.confirm');
+          payBtn.onclick = function () { showConfirmation(); };
+        } else if (res.discount_cents > 0) {
+          state.bookingId  = res.booking_id;
+          state.totalCents = res.total_cents;
+          state.promoCode  = code;
+          msgEl.style.color = '#2E7D32';
+          var saved = (res.discount_cents / 100).toFixed(2).replace('.', ',');
+          var msg = '✓ Code geaccepteerd! Je bespaart €' + saved + '.';
+          if (res.gift_card_remaining !== undefined) {
+            var rem = (res.gift_card_remaining / 100).toFixed(2).replace('.', ',');
+            msg += ' Resterend saldo: €' + rem + '.';
+          }
+          msgEl.textContent = msg;
+        } else {
+          msgEl.style.color = '#C62828';
+          msgEl.textContent = t('promo.invalid');
+        }
       });
     });
 

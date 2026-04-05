@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inchecken — Soki Social Sauna</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: var(--cream, #F9F4EF); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+    .checkin-card { background: #fff; border-radius: 24px; padding: 2.5rem; max-width: 440px; width: 100%; box-shadow: 0 4px 32px rgba(74,28,12,0.1); text-align: center; }
+    .checkin-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; }
+    .icon--loading  { background: rgba(74,28,12,0.08); }
+    .icon--ok       { background: rgba(46,125,50,0.12); }
+    .icon--error    { background: rgba(198,40,40,0.12); }
+    .icon--already  { background: rgba(25,118,210,0.12); }
+    .checkin-name   { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; color: var(--brown, #4A1C0C); }
+    .checkin-meta   { color: var(--text-muted, #8C7B6B); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .checkin-detail { background: var(--cream, #F9F4EF); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; text-align: left; }
+    .checkin-row    { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.875rem; }
+    .checkin-row span:first-child { color: var(--text-muted, #8C7B6B); }
+    .checkin-row span:last-child  { font-weight: 600; }
+    .btn-checkin    { width: 100%; padding: 14px; border-radius: 100px; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; }
+    .btn-checkin--confirm { background: #2E7D32; color: #fff; }
+    .btn-checkin--done    { background: #E8F5E9; color: #2E7D32; cursor: default; }
+    #error-msg { color: #C62828; font-size: 0.875rem; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+<div class="checkin-card" id="card">
+  <div class="checkin-icon icon--loading" id="icon">⏳</div>
+  <div class="checkin-name" id="title">Laden…</div>
+  <div class="checkin-meta" id="meta"></div>
+  <div id="details"></div>
+  <div id="error-msg"></div>
+</div>
+
+<script>
+(function() {
+  var params = new URLSearchParams(location.search);
+  var bid = params.get('bid');
+  var sig = params.get('sig');
+  var card = document.getElementById('card');
+  var icon = document.getElementById('icon');
+  var title = document.getElementById('title');
+  var meta  = document.getElementById('meta');
+  var details = document.getElementById('details');
+  var errMsg  = document.getElementById('error-msg');
+
+  if (!bid || !sig) {
+    icon.className = 'checkin-icon icon--error'; icon.textContent = '✕';
+    title.textContent = 'Ongeldige QR-code';
+    meta.textContent = 'Scan opnieuw of voer het boekingsnummer handmatig in.';
+    return;
+  }
+
+  fetch('/api/checkin/' + bid + '?sig=' + sig)
+    .then(function(r) { return r.json(); })
+    .then(function(b) {
+      if (b.error) {
+        icon.className = 'checkin-icon icon--error'; icon.textContent = '✕';
+        title.textContent = b.error;
+        meta.textContent = 'Status: ' + (b.status || 'onbekend');
+        return;
+      }
+
+      if (b.checked_in) {
+        icon.className = 'checkin-icon icon--already'; icon.textContent = '✓';
+        title.textContent = b.customer_name;
+        meta.textContent = 'Al ingecheckt';
+      } else {
+        icon.className = 'checkin-icon icon--ok'; icon.textContent = '👤';
+        title.textContent = b.customer_name;
+        meta.textContent = 'Boeking #' + b.id;
+      }
+
+      details.innerHTML = '<div class="checkin-detail">' +
+        '<div class="checkin-row"><span>Sessie</span><span>' + b.session_name + '</span></div>' +
+        '<div class="checkin-row"><span>Datum</span><span>' + b.date + '</span></div>' +
+        '<div class="checkin-row"><span>Tijd</span><span>' + b.start_time + ' – ' + b.end_time + '</span></div>' +
+        '<div class="checkin-row"><span>Groep</span><span>' + b.group_size + ' persoon' + (b.group_size > 1 ? 'en' : '') + '</span></div>' +
+      '</div>';
+
+      if (!b.checked_in) {
+        var btn = document.createElement('button');
+        btn.className = 'btn-checkin btn-checkin--confirm';
+        btn.textContent = 'Inchecken bevestigen';
+        btn.onclick = function() {
+          btn.disabled = true;
+          btn.textContent = '…';
+          fetch('/api/checkin/' + bid + '?sig=' + sig, { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              if (res.ok) {
+                icon.className = 'checkin-icon icon--ok'; icon.textContent = '✓';
+                title.textContent = b.customer_name;
+                meta.textContent = 'Ingecheckt!';
+                btn.className = 'btn-checkin btn-checkin--done';
+                btn.textContent = '✓ Ingecheckt';
+              } else {
+                errMsg.textContent = 'Inchecken mislukt.';
+                btn.disabled = false;
+                btn.textContent = 'Opnieuw proberen';
+              }
+            });
+        };
+        details.appendChild(btn);
+      }
+    })
+    .catch(function() {
+      icon.className = 'checkin-icon icon--error'; icon.textContent = '✕';
+      title.textContent = 'Verbindingsfout';
+      meta.textContent = 'Controleer de internetverbinding en probeer opnieuw.';
+    });
+})();
+</script>
+</body>
+</html>
