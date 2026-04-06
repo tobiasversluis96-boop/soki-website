@@ -38,8 +38,13 @@ app.use((_req, res, next) => {
   next();
 });
 
-const allowedOrigin = process.env.BASE_URL || 'http://localhost:3001';
-app.use(cors({ origin: allowedOrigin }));
+const allowedOrigins = [
+  process.env.BASE_URL || 'http://localhost:3001',
+  'https://sokisocialsauna.nl',
+  'https://www.sokisocialsauna.nl',
+  'https://sokisocialsauna.netlify.app',
+];
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }));
 app.use(express.json());
 
 // Rate limiting on auth endpoints
