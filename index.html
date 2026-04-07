@@ -412,6 +412,11 @@
 </head>
 <body>
 
+  <!-- ===== LANG TOGGLE ===== -->
+  <div style="position:fixed; top:1.1rem; right:1.25rem; z-index:999;">
+    <button class="lang-toggle" id="langBtn" onclick="csToggleLang()" aria-label="Switch language">NL</button>
+  </div>
+
   <!-- ===== HERO ===== -->
   <section class="cs-hero">
     <div class="cs-hero__bg">
@@ -428,10 +433,10 @@
         <span class="cs-logo__tag">sauna van de stad</span>
       </div>
 
-      <div class="cs-badge">Opening soon · Utrecht</div>
+      <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
 
-      <h1>Sweat, relax, connect</h1>
-      <p class="lead">
+      <h1 data-en="Sweat, relax, connect" data-nl="Zweten, ontspannen, verbinden">Sweat, relax, connect</h1>
+      <p class="lead" data-en="A new kind of sauna space in Utrecht that fuses wellness with culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
         A new kind of sauna space in Utrecht that fuses wellness with culture, music and community.
         Be the first to know when we open.
       </p>
@@ -446,13 +451,13 @@
             autocomplete="email"
             required
           />
-          <button type="submit" id="submitBtn">Notify me</button>
+          <button type="submit" id="submitBtn" data-en="Notify me" data-nl="Houd me op de hoogte">Notify me</button>
         </div>
-        <p class="cs-form__note">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
-        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess">
+        <p class="cs-form__note" data-en="No spam &nbsp;·&nbsp; Unsubscribe any time" data-nl="Geen spam &nbsp;·&nbsp; Altijd uitschrijven">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
+        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess" data-en="🌿 &nbsp;You're on the list. We'll be in touch when we open." data-nl="🌿 &nbsp;Je staat op de lijst. We laten het je weten als we openen.">
           🌿 &nbsp;You're on the list. We'll be in touch when we open.
         </div>
-        <div class="cs-form__msg cs-form__msg--error" id="msgError">
+        <div class="cs-form__msg cs-form__msg--error" id="msgError" data-en="Something went wrong. Please try again." data-nl="Er is iets misgegaan. Probeer het opnieuw.">
           Something went wrong. Please try again.
         </div>
       </form>
@@ -465,21 +470,21 @@
     <div class="container">
       <div class="cs-what__grid">
         <div class="cs-what__text">
-          <span class="eyebrow">Our answer</span>
-          <h2>This is why we built SOKI.</h2>
-          <p>
+          <span class="eyebrow" data-en="Our answer" data-nl="Ons antwoord">Our answer</span>
+          <h2 data-en="This is why we built SOKI." data-nl="Daarom bouwden we SOKI.">This is why we built SOKI.</h2>
+          <p data-en="Not a silent, anonymous spa. Not a luxury wellness club. Something much more human: a living, breathing venue where you can sweat, relax and also discover art, talks, DJ sets or small performances." data-nl="Geen stille, anonieme spa. Geen luxe wellnessclub. Iets veel menselijkers: een levende, ademende ruimte waar je kunt zweten, ontspannen en ook kunst, talks, DJ-sets of kleine optredens kunt ontdekken.">
             Not a silent, anonymous spa. Not a luxury wellness club.
             Something much more human: a living, breathing venue where
             you can sweat, relax and also discover art, talks, DJ sets
             or small performances.
           </p>
-          <p>
+          <p data-en="Without loud music and alcohol, but with warmth, atmosphere, soft sounds and real encounters. A place you can also visit on a Friday night with friends, or on your own, to unwind, connect and recharge." data-nl="Zonder harde muziek en alcohol, maar met warmte, sfeer, zachte geluiden en echte ontmoetingen. Een plek die je ook op een vrijdagavond met vrienden kunt bezoeken, of alleen, om te ontspannen, te verbinden en op te laden.">
             Without loud music and alcohol, but with warmth, atmosphere,
             soft sounds and real encounters. A place you can also visit
             on a Friday night with friends, or on your own, to unwind,
             connect and recharge.
           </p>
-          <p>
+          <p data-en="SOKI is a hidden oasis just beyond the city limits of Utrecht, built by Luke &amp; Tobias — two friends who wanted to turn the sauna into a new form of socialising." data-nl="SOKI is een verborgen oase net buiten het centrum van Utrecht, gebouwd door Luke &amp; Tobias — twee vrienden die de sauna wilden omvormen tot een nieuwe vorm van socialiseren.">
             SOKI is a hidden oasis just beyond the city limits of Utrecht,
             built by Luke &amp; Tobias — two friends who wanted to turn the
             sauna into a new form of socialising.
@@ -501,24 +506,24 @@
   <section class="cs-values">
     <div class="container">
       <div class="text-center section-header">
-        <span class="eyebrow">What we stand for</span>
-        <h2>More than a sauna</h2>
+        <span class="eyebrow" data-en="What we stand for" data-nl="Waar we voor staan">What we stand for</span>
+        <h2 data-en="More than a sauna" data-nl="Meer dan een sauna">More than a sauna</h2>
       </div>
       <div class="cs-values__grid">
         <div class="cs-value">
           <span class="cs-value__icon">🌿</span>
-          <h4>Wellness without walls</h4>
-          <p>Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
+          <h4 data-en="Wellness without walls" data-nl="Wellness zonder drempels">Wellness without walls</h4>
+          <p data-en="Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience." data-nl="Saunasessies en koudedompels die betaalbaar en toegankelijk zijn voor iedereen in Utrecht. Niet alleen een luxe, maar een gedeelde ervaring.">Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
         </div>
         <div class="cs-value">
           <span class="cs-value__icon">🎵</span>
-          <h4>Culture &amp; community</h4>
-          <p>A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
+          <h4 data-en="Culture &amp; community" data-nl="Cultuur &amp; gemeenschap">Culture &amp; community</h4>
+          <p data-en="A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience." data-nl="Een levende, ademende ruimte, geen stille spa. Verwacht kunst, talks, DJ-sets en kleine optredens verweven in de saunaervaring.">A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
         </div>
         <div class="cs-value">
           <span class="cs-value__icon">🤝</span>
-          <h4>Real human connection</h4>
-          <p>Space for genuine encounters away from bars and clubs — where you can truly be yourself, whether you arrive alone or with friends.</p>
+          <h4 data-en="Real human connection" data-nl="Echte menselijke verbinding">Real human connection</h4>
+          <p data-en="Space for genuine encounters away from bars and clubs — where you can truly be yourself, whether you arrive alone or with friends." data-nl="Ruimte voor echte ontmoetingen, weg van bars en clubs — waar je jezelf kunt zijn, of je nu alleen of met vrienden komt.">Space for genuine encounters away from bars and clubs — where you can truly be yourself, whether you arrive alone or with friends.</p>
         </div>
       </div>
     </div>
@@ -529,9 +534,9 @@
   <section class="cs-sessions">
     <div class="container">
       <div class="text-center section-header">
-        <span class="eyebrow">Our sessions</span>
-        <h2>Four ways to experience SOKI</h2>
-        <p>Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included.</p>
+        <span class="eyebrow" data-en="Our sessions" data-nl="Onze sessies">Our sessions</span>
+        <h2 data-en="Four ways to experience SOKI" data-nl="Vier manieren om SOKI te beleven">Four ways to experience SOKI</h2>
+        <p data-en="Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included." data-nl="Elke sessie includeert toegang tot sauna, ijsbaden en onze lounge. Water en maté thee inbegrepen.">Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included.</p>
       </div>
       <div class="cs-sessions__grid">
         <div class="cs-session-card">
@@ -582,9 +587,9 @@
   <!-- ===== LOCATION ===== -->
   <section class="cs-location">
     <div class="container">
-      <span class="eyebrow">Find us</span>
+      <span class="eyebrow" data-en="Find us" data-nl="Vind ons">Find us</span>
       <h2>Europalaan 2B, Utrecht</h2>
-      <p>Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site.</p>
+      <p data-en="Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site." data-nl="Net buiten Vechtclub XL. Goed bereikbaar per fiets of bus. Gratis parkeren op het terrein.">Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site.</p>
       <div class="cs-location__detail">
         <div class="cs-location__item">
           <strong>Wed – Thu</strong>
@@ -614,9 +619,9 @@
   <!-- ===== BOTTOM CTA ===== -->
   <section class="cs-cta">
     <div class="container">
-      <span class="eyebrow">Stay in the loop</span>
-      <h2>Be first through the door</h2>
-      <p>Sign up and get early access to sessions, event announcements and news from SOKI before we go public.</p>
+      <span class="eyebrow" data-en="Stay in the loop" data-nl="Blijf op de hoogte">Stay in the loop</span>
+      <h2 data-en="Be first through the door" data-nl="Wees de eerste binnen">Be first through the door</h2>
+      <p data-en="Sign up and get early access to sessions, event announcements and news from SOKI before we go public." data-nl="Meld je aan en krijg vroege toegang tot sessies, aankondigingen en nieuws van SOKI voordat we opengaan.">Sign up and get early access to sessions, event announcements and news from SOKI before we go public.</p>
 
       <form class="cs-form" id="waitlistForm2" onsubmit="handleSignup(event)" novalidate>
         <div class="cs-form__row" style="border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);">
@@ -648,6 +653,25 @@
     </div>
   </footer>
 
+
+  <script>
+    var csLang = localStorage.getItem('soki-lang') || 'en';
+
+    function csToggleLang() {
+      csLang = csLang === 'en' ? 'nl' : 'en';
+      localStorage.setItem('soki-lang', csLang);
+      csApplyLang();
+    }
+
+    function csApplyLang() {
+      document.getElementById('langBtn').textContent = csLang === 'en' ? 'NL' : 'EN';
+      document.querySelectorAll('[data-en]').forEach(function(el) {
+        el.innerHTML = el.getAttribute('data-' + csLang) || el.getAttribute('data-en');
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', csApplyLang);
+  </script>
 
   <script>
     async function handleSignup(e) {
