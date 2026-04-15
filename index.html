@@ -56,10 +56,26 @@
       margin-bottom: 2.5rem;
     }
 
-    .cs-logo__img {
-      width: clamp(180px, 38vw, 300px);
-      height: auto;
+    .cs-logo__name {
+      font-family: var(--font-display);
+      font-size: clamp(3.5rem, 12vw, 7rem);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--white);
       display: block;
+      line-height: 1;
+    }
+
+    .cs-logo__tag {
+      font-family: var(--font-sub);
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--peach);
+      display: block;
+      margin-top: 0.35rem;
     }
 
     .cs-badge {
@@ -413,7 +429,8 @@
 
     <div class="cs-hero__content">
       <div class="cs-logo">
-        <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
+        <span class="cs-logo__name">SOKI</span>
+        <span class="cs-logo__tag">sauna van de stad</span>
       </div>
 
       <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
