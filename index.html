@@ -63,14 +63,31 @@
       margin: 0 auto;
     }
 
-    .cs-tagline {
+    .cs-badge {
+      display: inline-block;
       font-family: var(--font-sub);
-      font-size: 0.72rem;
-      font-weight: 500;
-      letter-spacing: 0.28em;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
-      color: rgba(242,194,153,0.65);
-      margin-bottom: 2rem;
+      color: var(--peach);
+      border: 1.5px solid rgba(242,194,153,0.5);
+      border-radius: 100px;
+      padding: 0.45rem 1.2rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .cs-hero__content h1 {
+      color: var(--white);
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      margin-bottom: 1.25rem;
+    }
+
+    .cs-hero__content .lead {
+      color: rgba(242,242,242,0.88);
+      margin-inline: auto;
+      margin-bottom: 2.5rem;
+      max-width: 52ch;
     }
 
     /* ── Email form ──────────────────────────────────────── */
@@ -400,7 +417,13 @@
         <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
       </div>
 
-      <p class="cs-tagline" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</p>
+      <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
+
+      <h1 data-en="Sweat, relax, connect" data-nl="Zweten, ontspannen, verbinden">Sweat, relax, connect</h1>
+      <p class="lead" data-en="A new kind of sauna space in Utrecht that fuses wellness with culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
+        A new kind of sauna space in Utrecht that fuses wellness with culture, music and community.
+        Be the first to know when we open.
+      </p>
 
       <form class="cs-form" id="waitlistForm" onsubmit="handleSignup(event)" novalidate>
         <div class="cs-form__row">
