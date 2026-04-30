@@ -65,6 +65,22 @@
       margin: 0 0 0 -2%;
     }
 
+    /* Steam decorative element */
+    .cs-hero__steam {
+      position: absolute;
+      bottom: -3rem;
+      right: 6%;
+      width: clamp(140px, 18vw, 260px);
+      opacity: 0.28;
+      z-index: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    @media (max-width: 700px) {
+      .cs-hero__steam { display: none; }
+    }
+
     /* Serif italic statement line */
     .cs-hero__statement {
       font-family: 'Cormorant Garamond', Georgia, serif;
@@ -243,9 +259,12 @@
     }
 
     .cs-value__icon {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
       display: block;
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1rem;
+      object-fit: contain;
+      opacity: 0.85;
     }
 
     .cs-value h4 {
@@ -460,6 +479,8 @@
       />
     </div>
 
+    <img src="images/Icons/steam300 kopie.png" class="cs-hero__steam" aria-hidden="true" />
+
     <div class="cs-hero__content">
       <div class="cs-logo">
         <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
@@ -542,17 +563,17 @@
       </div>
       <div class="cs-values__grid">
         <div class="cs-value">
-          <span class="cs-value__icon">🌿</span>
+          <img src="images/Icons/hat300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
           <h4 data-en="Wellness without walls" data-nl="Wellness zonder drempels">Wellness without walls</h4>
           <p data-en="Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience." data-nl="Saunasessies en koudedompels die betaalbaar en toegankelijk zijn voor iedereen in Utrecht. Niet alleen een luxe, maar een gedeelde ervaring.">Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
         </div>
         <div class="cs-value">
-          <span class="cs-value__icon">🎵</span>
+          <img src="images/Icons/unity300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
           <h4 data-en="Culture &amp; community" data-nl="Cultuur &amp; gemeenschap">Culture &amp; community</h4>
           <p data-en="A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience." data-nl="Een levende, ademende ruimte, geen stille spa. Verwacht kunst, talks, DJ-sets en kleine optredens verweven in de saunaervaring.">A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
         </div>
         <div class="cs-value">
-          <span class="cs-value__icon">🤝</span>
+          <img src="images/Icons/loyalty300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
           <h4 data-en="Real human connection" data-nl="Echte menselijke verbinding">Real human connection</h4>
           <p data-en="Space for genuine encounters away from bars and clubs, where you can truly be yourself, whether you arrive alone or with friends." data-nl="Ruimte voor echte ontmoetingen, weg van bars en clubs, waar je jezelf kunt zijn, of je nu alleen of met vrienden komt.">Space for genuine encounters away from bars and clubs, where you can truly be yourself, whether you arrive alone or with friends.</p>
         </div>
