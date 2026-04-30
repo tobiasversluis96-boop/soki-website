@@ -15,7 +15,7 @@
       min-height: 100vh;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       overflow: hidden;
     }
 
@@ -32,62 +32,72 @@
       object-position: center;
     }
 
+    /* Directional gradient — dark left, open right, lets wood tones breathe */
     .cs-hero__bg::after {
       content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(
-        160deg,
-        rgba(74,28,12,0.72) 0%,
-        rgba(74,28,12,0.55) 50%,
-        rgba(217,77,26,0.35) 100%
+        to right,
+        rgba(38, 14, 5, 0.92) 0%,
+        rgba(38, 14, 5, 0.80) 28%,
+        rgba(38, 14, 5, 0.48) 55%,
+        rgba(38, 14, 5, 0.0) 78%
       );
     }
 
     .cs-hero__content {
       position: relative;
       z-index: 1;
-      text-align: center;
-      padding: 2rem 1.5rem;
-      max-width: 720px;
+      text-align: left;
+      padding: 2rem 1.5rem 2rem clamp(2rem, 8vw, 7rem);
+      max-width: 580px;
     }
 
     .cs-logo {
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.75rem;
     }
 
     .cs-logo__img {
-      width: clamp(260px, 55vw, 480px);
+      width: clamp(180px, 30vw, 300px);
       height: auto;
       display: block;
-      margin: 0 auto;
+      margin: 0;
+    }
+
+    /* Serif italic statement line */
+    .cs-hero__statement {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(2rem, 4.2vw, 3.2rem);
+      color: var(--beige);
+      line-height: 1.25;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.01em;
     }
 
     .cs-badge {
       display: inline-block;
       font-family: var(--font-sub);
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--peach);
-      border: 1.5px solid rgba(242,194,153,0.5);
-      border-radius: 100px;
-      padding: 0.45rem 1.2rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .cs-hero__content h1 {
-      color: var(--white);
-      font-size: clamp(2.2rem, 6vw, 4rem);
+      border: 1px solid rgba(242,194,153,0.4);
+      border-radius: 3px;
+      padding: 0.38rem 0.9rem;
       margin-bottom: 1.25rem;
     }
 
     .cs-hero__content .lead {
-      color: rgba(242,242,242,0.88);
-      margin-inline: auto;
-      margin-bottom: 2.5rem;
-      max-width: 52ch;
+      color: rgba(255, 236, 211, 0.72);
+      margin-inline: 0;
+      margin-bottom: 2.25rem;
+      max-width: 44ch;
+      font-size: 0.93rem;
+      line-height: 1.7;
     }
 
     /* ── Email form ──────────────────────────────────────── */
@@ -95,26 +105,27 @@
     .cs-form {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
+      align-items: flex-start;
+      gap: 0.65rem;
       width: 100%;
-      max-width: 480px;
-      margin-inline: auto;
+      max-width: 400px;
+      margin-inline: 0;
     }
 
     .cs-form__row {
       display: flex;
       width: 100%;
       gap: 0;
-      border-radius: 100px;
+      border-radius: 4px;
       overflow: hidden;
-      background: rgba(255,255,255,0.12);
-      border: 1.5px solid rgba(242,194,153,0.4);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(242,194,153,0.32);
       transition: border-color var(--ease);
     }
 
     .cs-form__row:focus-within {
-      border-color: rgba(242,194,153,0.85);
+      border-color: rgba(242,194,153,0.72);
+      background: rgba(255,255,255,0.1);
     }
 
     .cs-form__row input {
@@ -122,15 +133,15 @@
       background: transparent;
       border: none;
       outline: none;
-      padding: 0.9rem 1.4rem;
+      padding: 0.85rem 1.2rem;
       font-family: var(--font-body);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--white);
       min-width: 0;
     }
 
     .cs-form__row input::placeholder {
-      color: rgba(242,242,242,0.45);
+      color: rgba(242,242,242,0.38);
     }
 
     .cs-form__row button {
@@ -139,11 +150,11 @@
       border: none;
       color: var(--white);
       font-family: var(--font-sub);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      padding: 0.9rem 1.6rem;
+      padding: 0.85rem 1.4rem;
       cursor: pointer;
       transition: background var(--ease);
       white-space: nowrap;
@@ -154,32 +165,32 @@
 
     .cs-form__note {
       font-family: var(--font-sub);
-      font-size: 0.7rem;
+      font-size: 0.66rem;
       letter-spacing: 0.12em;
-      color: rgba(242,242,242,0.4);
+      color: rgba(242,242,242,0.35);
       text-transform: uppercase;
     }
 
     .cs-form__msg {
       font-family: var(--font-body);
-      font-size: 0.9rem;
-      padding: 0.65rem 1.2rem;
-      border-radius: 8px;
+      font-size: 0.88rem;
+      padding: 0.6rem 1rem;
+      border-radius: 3px;
       width: 100%;
-      text-align: center;
+      text-align: left;
       display: none;
     }
 
     .cs-form__msg--success {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
       color: var(--peach);
-      border: 1px solid rgba(242,194,153,0.35);
+      border: 1px solid rgba(242,194,153,0.3);
     }
 
     .cs-form__msg--error {
-      background: rgba(255,80,50,0.15);
+      background: rgba(255,80,50,0.12);
       color: #ffb5a0;
-      border: 1px solid rgba(255,100,80,0.3);
+      border: 1px solid rgba(255,100,80,0.25);
     }
 
     /* ── What is SOKI section ────────────────────────────── */
@@ -386,11 +397,35 @@
       .cs-values__grid { grid-template-columns: 1fr; }
     }
 
+    /* On mobile: gradient shifts bottom-up so text is legible at the bottom */
+    @media (max-width: 700px) {
+      .cs-hero {
+        align-items: flex-end;
+      }
+
+      .cs-hero__bg::after {
+        background: linear-gradient(
+          to top,
+          rgba(38, 14, 5, 0.93) 0%,
+          rgba(38, 14, 5, 0.78) 38%,
+          rgba(38, 14, 5, 0.38) 65%,
+          rgba(38, 14, 5, 0.0) 90%
+        );
+      }
+
+      .cs-hero__content {
+        padding: 2rem 1.5rem 3.5rem;
+        max-width: 100%;
+      }
+
+      .cs-hero__statement { font-size: clamp(1.7rem, 7vw, 2.4rem); }
+    }
+
     @media (max-width: 560px) {
       .cs-sessions__grid { grid-template-columns: 1fr; }
-      .cs-form__row { flex-direction: column; border-radius: 12px; }
+      .cs-form__row { flex-direction: column; border-radius: 4px; }
       .cs-form__row input { padding: 0.9rem 1.2rem; }
-      .cs-form__row button { border-radius: 0 0 10px 10px; padding: 0.9rem; }
+      .cs-form__row button { border-radius: 0 0 3px 3px; padding: 0.9rem; }
       .cs-location__detail { gap: 1.5rem; }
     }
   </style>
@@ -417,10 +452,12 @@
         <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
       </div>
 
+      <p class="cs-hero__statement" data-en="Where the heat<br>brings you closer." data-nl="Waar de warmte<br>je dichter brengt.">Where the heat<br>brings you closer.</p>
+
       <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
 
-      <p class="lead" data-en="A new kind of sauna space in Utrecht that fuses wellness with culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
-        A new kind of sauna space in Utrecht that fuses wellness with culture, music and community.
+      <p class="lead" data-en="A new kind of sauna space in Utrecht — where wellness meets culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht — waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
+        A new kind of sauna space in Utrecht — where wellness meets culture, music and community.
         Be the first to know when we open.
       </p>
 
@@ -437,8 +474,8 @@
           <button type="submit" id="submitBtn" data-en="Notify me" data-nl="Houd me op de hoogte">Notify me</button>
         </div>
         <p class="cs-form__note" data-en="No spam &nbsp;·&nbsp; Unsubscribe any time" data-nl="Geen spam &nbsp;·&nbsp; Altijd uitschrijven">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
-        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess" data-en="🌿 &nbsp;You're on the list. We'll be in touch when we open." data-nl="🌿 &nbsp;Je staat op de lijst. We laten het je weten als we openen.">
-          🌿 &nbsp;You're on the list. We'll be in touch when we open.
+        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess" data-en="You're on the list. We'll be in touch when we open." data-nl="Je staat op de lijst. We laten het je weten als we openen.">
+          You're on the list. We'll be in touch when we open.
         </div>
         <div class="cs-form__msg cs-form__msg--error" id="msgError" data-en="Something went wrong. Please try again." data-nl="Er is iets misgegaan. Probeer het opnieuw.">
           Something went wrong. Please try again.

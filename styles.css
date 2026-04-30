@@ -3,7 +3,7 @@
    Shared Stylesheet
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Funnel+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Funnel+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap');
 
 /* ============================================
    CSS VARIABLES — Brand colors
@@ -11,17 +11,19 @@
 
 :root {
   /* Brand palette */
-  --white:       #F2F2F2;
+  --white:       #F0EFEA;
+  --beige:       #FFECD3;
   --peach:       #F2C299;
   --peach-light: #FAE4C8;
   --terra:       #D94D1A;
   --terra-mid:   #BF491F;
   --terra-dark:  #BC3A1C;
+  --warm-brown:  #8C3A1C;
   --brown:       #4A1C0C;
   --brown-soft:  #6B2E18;
 
   /* Functional aliases */
-  --bg:          var(--white);
+  --bg:          var(--beige);
   --text:        var(--brown);
   --text-muted:  #8C5A44;
   --accent:      var(--terra);
