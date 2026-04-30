@@ -3,7 +3,7 @@
    Shared Stylesheet
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Jost:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300;400;500;600;700&display=swap');
 
 /* ============================================
    CSS VARIABLES — Brand colors
@@ -27,9 +27,9 @@
   --accent:      var(--terra);
 
   /* Typography */
-  --font-display: 'Barlow Condensed', 'Impact', sans-serif;
-  --font-sub:     'Jost', 'Futura', system-ui, sans-serif;
-  --font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Funnel Sans', system-ui, sans-serif;
+  --font-sub:     'Funnel Sans', system-ui, sans-serif;
+  --font-body:    'Funnel Sans', system-ui, sans-serif;
 
   /* Spacing */
   --space-xs:  0.5rem;
