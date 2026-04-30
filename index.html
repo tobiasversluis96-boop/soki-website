@@ -62,8 +62,7 @@
       width: clamp(220px, 36vw, 400px);
       height: auto;
       display: block;
-      /* Compensate for ~21% internal left whitespace in the PNG */
-      margin: 0 0 0 clamp(-84px, -7.5vw, -46px);
+      margin: 0;
     }
 
 
@@ -237,10 +236,10 @@
 
     .cs-values__steam {
       position: absolute;
-      bottom: -10%;
-      right: -8%;
+      bottom: 0;
+      right: -4%;
       width: clamp(400px, 55vw, 700px);
-      opacity: 0.2;
+      opacity: 0.22;
       pointer-events: none;
       user-select: none;
       transform: rotate(-90deg);
@@ -440,7 +439,7 @@
 
       .cs-logo__img {
         width: clamp(240px, 70vw, 340px);
-        margin: 0 auto; /* centered on mobile, overrides desktop offset */
+        margin: 0 auto;
       }
 
       .cs-badge { display: block; margin-inline: auto; width: fit-content; }
