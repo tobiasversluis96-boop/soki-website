@@ -42,7 +42,6 @@ const allowedOrigins = [
   process.env.BASE_URL || 'http://localhost:3001',
   'https://sokisocialsauna.nl',
   'https://www.sokisocialsauna.nl',
-  'https://sokisocialsauna.netlify.app',
 ];
 app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }));
 app.use(express.json());
