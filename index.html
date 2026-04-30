@@ -397,28 +397,41 @@
       .cs-values__grid { grid-template-columns: 1fr; }
     }
 
-    /* On mobile: gradient shifts bottom-up so text is legible at the bottom */
+    /* On mobile: centered layout with bigger logo */
     @media (max-width: 700px) {
       .cs-hero {
-        align-items: flex-end;
+        align-items: center;
+        justify-content: center;
       }
 
       .cs-hero__bg::after {
         background: linear-gradient(
-          to top,
-          rgba(38, 14, 5, 0.93) 0%,
-          rgba(38, 14, 5, 0.78) 38%,
-          rgba(38, 14, 5, 0.38) 65%,
-          rgba(38, 14, 5, 0.0) 90%
+          160deg,
+          rgba(38, 14, 5, 0.82) 0%,
+          rgba(38, 14, 5, 0.68) 50%,
+          rgba(38, 14, 5, 0.50) 100%
         );
       }
 
       .cs-hero__content {
-        padding: 2rem 1.5rem 3.5rem;
+        padding: 2rem 1.5rem;
         max-width: 100%;
+        text-align: center;
       }
 
-      .cs-hero__statement { font-size: clamp(1.7rem, 7vw, 2.4rem); }
+      .cs-logo__img {
+        width: clamp(240px, 70vw, 340px);
+        margin: 0 auto;
+      }
+
+      .cs-badge { display: block; margin-inline: auto; width: fit-content; }
+
+      .cs-hero__content .lead { margin-inline: auto; }
+
+      .cs-form {
+        align-items: center;
+        margin-inline: auto;
+      }
     }
 
     @media (max-width: 560px) {
@@ -452,12 +465,10 @@
         <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
       </div>
 
-      <p class="cs-hero__statement" data-en="Where the heat<br>brings you closer." data-nl="Waar de warmte<br>je dichter brengt.">Where the heat<br>brings you closer.</p>
-
       <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
 
-      <p class="lead" data-en="A new kind of sauna space in Utrecht — where wellness meets culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht — waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
-        A new kind of sauna space in Utrecht — where wellness meets culture, music and community.
+      <p class="lead" data-en="A new kind of sauna space in Utrecht where wellness meets culture, music and community. Be the first to know when we open." data-nl="Een nieuw soort saunaruimte in Utrecht waar welzijn, cultuur, muziek en gemeenschap samenkomen. Wees de eerste die het weet als we openen.">
+        A new kind of sauna space in Utrecht where wellness meets culture, music and community.
         Be the first to know when we open.
       </p>
 
