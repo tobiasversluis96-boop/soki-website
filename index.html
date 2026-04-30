@@ -62,7 +62,8 @@
       width: clamp(220px, 36vw, 400px);
       height: auto;
       display: block;
-      margin: 0 0 0 -2%;
+      /* Compensate for ~21% internal left whitespace in the PNG */
+      margin: 0 0 0 clamp(-84px, -7.5vw, -46px);
     }
 
 
@@ -437,7 +438,7 @@
 
       .cs-logo__img {
         width: clamp(240px, 70vw, 340px);
-        margin: 0 auto;
+        margin: 0 auto; /* centered on mobile, overrides desktop offset */
       }
 
       .cs-badge { display: block; margin-inline: auto; width: fit-content; }
