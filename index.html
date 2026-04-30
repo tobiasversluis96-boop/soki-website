@@ -65,21 +65,6 @@
       margin: 0 0 0 -2%;
     }
 
-    /* Steam decorative element */
-    .cs-hero__steam {
-      position: absolute;
-      bottom: -3rem;
-      right: 6%;
-      width: clamp(140px, 18vw, 260px);
-      opacity: 0.28;
-      z-index: 1;
-      pointer-events: none;
-      user-select: none;
-    }
-
-    @media (max-width: 700px) {
-      .cs-hero__steam { display: none; }
-    }
 
     /* Serif italic statement line */
     .cs-hero__statement {
@@ -245,6 +230,18 @@
     .cs-values {
       background: var(--peach-light);
       padding-block: var(--space-xl);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cs-values__steam {
+      position: absolute;
+      top: -2rem;
+      right: -3rem;
+      width: clamp(160px, 22vw, 320px);
+      opacity: 0.18;
+      pointer-events: none;
+      user-select: none;
     }
 
     .cs-values__grid {
@@ -479,8 +476,6 @@
       />
     </div>
 
-    <img src="images/Icons/steam300 kopie.png" class="cs-hero__steam" aria-hidden="true" />
-
     <div class="cs-hero__content">
       <div class="cs-logo">
         <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
@@ -556,6 +551,7 @@
 
   <!-- ===== VALUES ===== -->
   <section class="cs-values">
+    <img src="images/Icons/steam300 kopie.png" class="cs-values__steam" aria-hidden="true" />
     <div class="container">
       <div class="text-center section-header">
         <span class="eyebrow" data-en="What we stand for" data-nl="Waar we voor staan">What we stand for</span>
