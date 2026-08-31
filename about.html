@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>About us | SOKI Social Sauna Utrecht</title>
   <meta name="description" content="We're SOKI, Social Sauna. Our mission is to reimagine social spaces by bringing people together through wellness, art and music in Utrecht." />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260826-7" />
   <link rel="icon" type="image/png" href="images/favicon.png" />
   <style>
 
@@ -33,7 +33,6 @@
       opacity: 1 !important;
       transform: none !important;
     }
-
 
     /* ============================================
        ACT 1 — OPENER
@@ -74,18 +73,18 @@
     }
 
     .opener__line--l1 {
-      font-size: clamp(5rem, 15vw, 12rem);
+      font-size: clamp(2.5rem, 7vw, 5rem);
       animation: anim-up 1s cubic-bezier(0.16,1,0.3,1) 0.5s forwards;
     }
 
     .opener__line--l2 {
-      font-size: clamp(5rem, 15vw, 12rem);
+      font-size: clamp(2.5rem, 7vw, 5rem);
       color: var(--terra);
       animation: anim-up 1s cubic-bezier(0.16,1,0.3,1) 0.8s forwards;
     }
 
     .opener__line--l3 {
-      font-size: clamp(5rem, 15vw, 12rem);
+      font-size: clamp(2.5rem, 7vw, 5rem);
       animation: anim-up 1s cubic-bezier(0.16,1,0.3,1) 1.05s forwards;
     }
 
@@ -136,7 +135,6 @@
       from { opacity: 0; }
       to   { opacity: 1; }
     }
-
 
     /* ============================================
        PROBLEM — text + image side by side
@@ -195,7 +193,6 @@
       background: linear-gradient(to top, rgba(74,28,12,0.5) 0%, transparent 50%);
     }
 
-
     /* ============================================
        PIVOT
        ============================================ */
@@ -250,7 +247,6 @@
       margin-inline: auto;
     }
 
-
     /* ============================================
        RESPONSE — image + text side by side
        ============================================ */
@@ -301,7 +297,6 @@
 
     .response-text h2 { margin-bottom: var(--space-md); }
     .response-text p + p { margin-top: 1.25rem; }
-
 
     /* ============================================
        STORY — text + stacked images
@@ -358,7 +353,6 @@
       object-fit: cover;
     }
 
-
     /* ============================================
        MANIFESTO QUOTE
        ============================================ */
@@ -410,7 +404,6 @@
       z-index: 1;
     }
 
-
     /* ============================================
        BELIEFS GRID
        ============================================ */
@@ -455,7 +448,6 @@
 
     .belief-item h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
     .belief-item p  { font-size: 0.95rem; }
-
 
     /* ============================================
        FOUNDERS
@@ -522,7 +514,6 @@
       max-width: 34ch;
     }
 
-
     /* ============================================
        CONTACT
        ============================================ */
@@ -583,7 +574,6 @@
       color: rgba(140,90,68,0.4);
     }
 
-
     /* ============================================
        RESPONSIVE
        ============================================ */
@@ -624,12 +614,123 @@
       .opener__line--l1,
       .opener__line--l2,
       .opener__line--l3 {
-        font-size: clamp(3.5rem, 18vw, 5.5rem);
+        font-size: clamp(2rem, 10vw, 3.5rem);
       }
 
       .opener__sub { margin-top: 2rem; }
 
       .founder-card { flex-direction: column; }
+
+      .plan-grid { grid-template-columns: 1fr; }
+      .softcta-actions { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ============================================
+       PIVOT STAKES
+       ============================================ */
+    .pivot-stakes {
+      margin-top: 2rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: rgba(242, 194, 153, 0.55);
+      max-width: 44ch;
+      font-style: italic;
+    }
+
+    /* ============================================
+       PLAN — 3 STEPS
+       ============================================ */
+    .plan-section {
+      padding-block: var(--space-2xl);
+      background: var(--peach-light);
+    }
+
+    .plan-header {
+      margin-bottom: var(--space-xl);
+      text-align: center;
+    }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .plan-step {
+      background: var(--white);
+      border-radius: 20px;
+      padding: var(--space-lg);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .plan-step:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(74, 28, 12, 0.06);
+    }
+
+    .plan-num {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--terra);
+      margin-bottom: 1rem;
+    }
+
+    .plan-step h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: var(--brown);
+    }
+
+    .plan-step p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .plan-cta {
+      margin-top: var(--space-xl);
+      text-align: center;
+    }
+
+    /* ============================================
+       SOFT / TRANSITIONAL CTA
+       ============================================ */
+    .softcta-section {
+      padding-block: var(--space-xl);
+      background: var(--beige);
+    }
+
+    .softcta-card {
+      max-width: 720px;
+      margin: 0 auto;
+      text-align: center;
+      background: var(--white);
+      border: 1px solid rgba(242, 194, 153, 0.5);
+      border-radius: 20px;
+      padding: var(--space-xl) var(--space-lg);
+    }
+
+    .softcta-card h2 {
+      margin-bottom: 0.75rem;
+    }
+
+    .softcta-card p {
+      color: var(--text-muted);
+      max-width: 48ch;
+      margin: 0 auto var(--space-md);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .softcta-actions {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      margin-top: var(--space-md);
     }
 
   </style>
@@ -640,14 +741,12 @@
   <nav class="nav" id="nav">
     <div class="container nav__inner">
       <a href="index.html" class="nav__logo">
-        <span class="nav__logo-name">SOKI</span>
-        <span class="nav__logo-tagline">sauna van de stad</span>
+        <img src="images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
       </a>
       <ul class="nav__links">
         <li><a href="index.html"data-i18n="nav.home">Home</a></li>
         <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
         <li><a href="about.html" class="active" data-i18n="nav.about">About us</a></li>
-        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
         <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
         <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
       </ul>
@@ -666,14 +765,12 @@
     <a href="index.html"data-i18n="nav.home">Home</a>
     <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
     <a href="about.html" data-i18n="nav.about">About us</a>
-    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
     <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
     <a href="faq.html" data-i18n="nav.faq">FAQ</a>
     <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
     <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
     <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
   </div>
-
 
   <!-- ============================================================
        ACT 1 — THE PROBLEM
@@ -696,7 +793,6 @@
       <span class="opener__scroll-label">Scroll</span>
     </div>
   </section>
-
 
   <!-- ============================================================
        PROBLEM EXPANDED
@@ -729,8 +825,8 @@
 
         <div class="problem-img" data-reveal="right">
           <img
-            src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=900&auto=format&fit=crop&q=75"
-            alt="City at night, busy, overwhelming, always lit"
+            src="images/about-hero.jpg"
+            alt="SOKI"
             loading="lazy"
           />
         </div>
@@ -738,7 +834,6 @@
       </div>
     </div>
   </section>
-
 
   <!-- ============================================================
        PIVOT — THE TURNING POINT
@@ -756,7 +851,6 @@
     </div>
   </section>
 
-
   <!-- ============================================================
        ACT 2 — THE RESPONSE
        What SOKI is.
@@ -768,30 +862,28 @@
 
         <div class="response-img" data-reveal="left">
           <img
-            src="https://images.unsplash.com/photo-1545579133-99bb5ad189be?w=900&auto=format&fit=crop&q=80"
-            alt="Warm steam rising inside SOKI's sauna"
+            src="images/soki-illustration.jpg"
+            alt="SOKI illustration — Dom tower with steam over Utrecht"
             loading="lazy"
           />
-          <span class="img-tag">Europalaan 2B · Utrecht</span>
         </div>
 
         <div class="response-text">
-          <span class="eyebrow" data-reveal="up" data-i18n="about.answer.eyebrow">Our answer</span>
-          <h2 data-reveal="up" data-delay="80" data-i18n="about.answer.h2">This is why we built SOKI.</h2>
+          <span class="eyebrow" data-reveal="up" data-i18n="about.answer.eyebrow">A place to land</span>
+          <h2 data-reveal="up" data-delay="80" data-i18n="about.answer.h2">A room built for slowing down.</h2>
           <p data-reveal="up" data-delay="140" data-i18n="about.answer.p1">
-            SOKI is a new kind of sauna space in Utrecht that fuses wellness with
-            culture, music and community. A hidden oasis just beyond the city limits,
-            where you can step inside and leave the noise behind.
+            SOKI is a sauna, ice bath and listening space just outside the centre of
+            Utrecht. You step in, the door closes, the phone goes quiet — and for the
+            next hour or so, nothing is asked of you.
           </p>
           <p data-reveal="up" data-delay="200" data-i18n="about.answer.p2">
-            Not a silent, anonymous spa. Not a luxury wellness club. Something much more
-            human: a living, breathing venue where you can sweat, relax and also discover
-            art, talks, DJ sets or small performances.
+            Not a silent, anonymous spa. Not a luxury club. Something more human —
+            warm wood, low light, soft sound, and other people doing the same thing
+            you are: exhaling.
           </p>
           <p data-reveal="up" data-delay="260" data-i18n="about.answer.p3">
-            Without loud music and alcohol, but with warmth, atmosphere, soft sounds
-            and real encounters. A place you can also visit on a Friday night with friends,
-            or on your own, to unwind, connect and recharge.
+            You leave slower. Warmer. A little more in your body than when you arrived.
+            Come alone. Come with a friend. Come on a Friday night instead of the bar.
           </p>
           <div data-reveal="up" data-delay="340" style="margin-top: 2.5rem;">
             <a href="sessions.html" class="btn btn--primary" data-i18n="see.sessions">See our sessions</a>
@@ -802,6 +894,40 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       PLAN — HOW IT WORKS
+  ============================================================== -->
+
+  <section class="plan-section">
+    <div class="container">
+      <div class="plan-header" data-reveal="up">
+        <span class="eyebrow" data-i18n="about.plan.eyebrow">How it works</span>
+        <h2 style="margin-top:0.5rem;" data-i18n="about.plan.h2">Three simple steps.</h2>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan-step" data-reveal="up" data-delay="0">
+          <div class="plan-num">01</div>
+          <h3 data-i18n="about.plan.s1.h3">Pick a session</h3>
+          <p data-i18n="about.plan.s1.p">Everyday sauna, Social, Ambient or Aufguss — book in about two minutes.</p>
+        </div>
+        <div class="plan-step" data-reveal="up" data-delay="100">
+          <div class="plan-num">02</div>
+          <h3 data-i18n="about.plan.s2.h3">Show up as you are</h3>
+          <p data-i18n="about.plan.s2.p">Bring a towel, arrive a few minutes early. First-timer? We'll walk you through it.</p>
+        </div>
+        <div class="plan-step" data-reveal="up" data-delay="200">
+          <div class="plan-num">03</div>
+          <h3 data-i18n="about.plan.s3.h3">Leave lighter</h3>
+          <p data-i18n="about.plan.s3.p">Come back whenever the world gets loud. Membership optional, always welcome.</p>
+        </div>
+      </div>
+
+      <div class="plan-cta" data-reveal="up" data-delay="300">
+        <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+      </div>
+    </div>
+  </section>
 
   <!-- ============================================================
        ACT 3 — THE STORY
@@ -813,43 +939,26 @@
       <div class="story-grid">
 
         <div class="story-text">
-          <span class="eyebrow" data-reveal="up" data-i18n="about.story.eyebrow">The story</span>
-          <h2 data-reveal="up" data-delay="80" data-i18n="about.story.h2">Two friends, one problem.</h2>
+          <span class="eyebrow" data-reveal="up" data-i18n="about.story.eyebrow">Why we built this</span>
+          <h2 data-reveal="up" data-delay="80" data-i18n="about.story.h2">We built it because we needed it too.</h2>
           <p data-reveal="up" data-delay="140" data-i18n="about.story.p1">
-            We're Luke and Tobias. We met eight years ago during an internship in the
-            events industry and have been close friends ever since. Luke has a background
-            as a calisthenics trainer and tour manager. Tobias works as a marketing
-            manager with roots in hospitality.
+            We're Luke and Tobias — two friends who kept looking for a place like this
+            in Utrecht and never quite finding it. Bars burnt us out. Spas felt cold.
+            The kind of sauna spaces already thriving in Berlin, London and Copenhagen
+            hadn't landed here yet.
           </p>
           <p data-reveal="up" data-delay="200" data-i18n="about.story.p2">
-            Together we've seen how art, music and human connection can help people
-            thrive. But we've also seen how nightlife so often revolves around alcohol
-            and other substances, leaving people more depleted than when they arrived.
-          </p>
-          <p data-reveal="up" data-delay="260" data-i18n="about.story.p3">
-            In London, Berlin and Copenhagen, a new generation of sauna spaces is
-            proving there's another way. We wanted to bring that spirit to Utrecht,
-            in our own way. To turn the sauna into a new form of socialising.
-          </p>
-          <p data-reveal="up" data-delay="320" data-i18n="about.story.p4">
-            We also want to make a positive social impact. Keeping sessions affordable
-            and creating space for groups who don't always feel at home in traditional
-            wellness environments. Our goal: a place where everyone feels welcome.
+            So we started building one — small, honest, and made for the people we
+            share the city with. If you've been looking for the same thing, you're
+            already part of it.
           </p>
         </div>
 
         <div class="story-images" data-reveal="right">
           <div class="story-img-main">
             <img
-              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=700&auto=format&fit=crop&q=80"
-              alt="Warm connection, the spirit of SOKI"
-              loading="lazy"
-            />
-          </div>
-          <div class="story-img-float">
-            <img
-              src="https://images.unsplash.com/photo-1618220179428-22790b461013?w=500&auto=format&fit=crop&q=80"
-              alt="Inside the sauna"
+              src="images/luke-tobias-chalet.jpg"
+              alt="Luke and Tobias sitting on the chalet doorstep while SOKI is being built"
               loading="lazy"
             />
           </div>
@@ -858,7 +967,6 @@
       </div>
     </div>
   </section>
-
 
   <!-- ============================================================
        MANIFESTO PULL QUOTE
@@ -876,7 +984,6 @@
     </div>
   </section>
 
-
   <!-- ============================================================
        WHAT WE BELIEVE
   ============================================================== -->
@@ -885,36 +992,35 @@
     <div class="container">
 
       <div class="beliefs-header" data-reveal="up">
-        <span class="eyebrow" data-i18n="about.beliefs.eyebrow">What drives us</span>
-        <h2 style="margin-top: 0.5rem;" data-i18n="about.beliefs.h2">Four things we believe in.</h2>
+        <span class="eyebrow" data-i18n="about.beliefs.eyebrow">What you'll leave with</span>
+        <h2 style="margin-top: 0.5rem;" data-i18n="about.beliefs.h2">Four ways an hour here changes the day.</h2>
       </div>
 
       <div class="beliefs-grid">
         <div class="belief-item" data-reveal="up" data-delay="0">
           <div class="belief-num">01</div>
-          <h3 data-i18n="about.b1.h3">Accessible to all</h3>
-          <p data-i18n="about.b1.p">Our mission is to make sauna sessions and cold plunges affordable for everyone in Utrecht. Not a luxury, but a shared experience of wellbeing and community.</p>
+          <h3 data-i18n="about.b1.h3">You feel welcome</h3>
+          <p data-i18n="about.b1.p">Prices are kept honest and the door is genuinely open — whatever your body, background or budget looks like. Wellness shouldn't be a members-only club.</p>
         </div>
         <div class="belief-item" data-reveal="up" data-delay="100">
           <div class="belief-num">02</div>
-          <h3 data-i18n="about.b2.h3">Wellness meets culture</h3>
-          <p data-i18n="about.b2.p">A living, breathing venue where you can sweat, relax and also discover art, talks, DJ sets and small performances. The sauna is the backdrop, not the limit.</p>
+          <h3 data-i18n="about.b2.h3">You leave inspired, not drained</h3>
+          <p data-i18n="about.b2.p">Some nights it's just sauna and silence. Others there's a DJ, a talk, a small performance. You go home with something more than a hangover.</p>
         </div>
         <div class="belief-item" data-reveal="up" data-delay="160">
           <div class="belief-num">03</div>
-          <h3 data-i18n="about.b3.h3">Genuine connection</h3>
-          <p data-i18n="about.b3.p">A substance-free environment where real encounters happen naturally. In a hyper-connected world, we're building space for actual presence, whether you arrive alone or with friends.</p>
+          <h3 data-i18n="about.b3.h3">You reconnect — for real</h3>
+          <p data-i18n="about.b3.p">No alcohol, no phones, no pressure to perform. Just warm rooms and honest conversation. You arrive as yourself; you leave a little more so.</p>
         </div>
         <div class="belief-item" data-reveal="up" data-delay="220">
           <div class="belief-num">04</div>
-          <h3 data-i18n="about.b4.h3">Safer spaces</h3>
-          <p data-i18n="about.b4.p">We uphold a clear safer spaces policy: respect diversity, practise consent, keep communication respectful and share space considerately. Everyone is welcome here, and we mean it.</p>
+          <h3 data-i18n="about.b4.h3">You feel safe to be yourself</h3>
+          <p data-i18n="about.b4.p">Clear safer-spaces policy, real consent, mutual respect. Everyone is welcome here, and we mean it — so you can drop your guard and actually rest.</p>
         </div>
       </div>
 
     </div>
   </section>
-
 
   <!-- ============================================================
        MEET THE FOUNDERS
@@ -964,6 +1070,26 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       TRANSITIONAL CTA — LOW-COMMITMENT NEXT STEP
+  ============================================================== -->
+
+  <section class="softcta-section">
+    <div class="container">
+      <div class="softcta-card" data-reveal="up">
+        <span class="eyebrow" data-i18n="about.softcta.eyebrow">Not ready to book?</span>
+        <h2 style="margin-top:0.5rem;" data-i18n="about.softcta.h2">Start with a slow email.</h2>
+        <p data-i18n="about.softcta.p">
+          Join the SOKI list. Get a short first-visit guide, opening news and the
+          occasional invite to something we've cooked up — nothing else, no noise.
+        </p>
+        <div class="softcta-actions">
+          <a href="newsletter.html" class="btn btn--primary" data-i18n="about.softcta.btn">Join the list</a>
+          <a href="sessions.html" class="btn btn--ghost" data-i18n="about.softcta.btn2">Or see the sessions →</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ============================================================
        CONTACT
@@ -1014,14 +1140,12 @@
     </div>
   </section>
 
-
   <!-- ===== FOOTER ===== -->
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">
         <div class="footer__brand">
-          <div class="logo-text">SOKI</div>
-          <div class="logo-tag">sauna van de stad</div>
+          <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
           <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
         </div>
         <div class="footer__col">
@@ -1030,7 +1154,6 @@
             <li><a href="index.html"data-i18n="nav.home">Home</a></li>
             <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
             <li><a href="about.html" data-i18n="nav.about">About us</a></li>
-            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
             <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
         <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
           </ul>
@@ -1058,7 +1181,6 @@
     </div>
   </footer>
 
-
   <script src="translations.js"></script>
   <script src="sanity-content.js"></script>
   <script src="main.js"></script>
@@ -1085,7 +1207,6 @@
 
       els.forEach(el => observer.observe(el));
     })();
-
 
     /* ===== CONTACT FORM ===== */
     function handleContact(e) {

@@ -31,6 +31,17 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'checkout.session.completed': {
         const session = event.data.object;
+
+        // Walk-in booking payment via QR: confirm booking + clear the hold
+        if (session.mode === 'payment' && session.metadata && session.metadata.walkin === '1') {
+          const bookingId = parseInt(session.metadata.booking_id);
+          if (bookingId && session.payment_status === 'paid') {
+            await queries.confirmWalkinBooking(bookingId, session.payment_intent);
+            console.log(`✓ Walk-in booking #${bookingId} confirmed via QR checkout`);
+          }
+          break;
+        }
+
         if (session.mode !== 'subscription') break;
 
         const userId = parseInt(session.metadata.user_id);
@@ -77,9 +88,26 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'customer.subscription.updated': {
         const stripeSub = event.data.object;
-        const status = mapStripeStatus(stripeSub.status);
         const periodEnd = new Date(stripeSub.current_period_end * 1000);
-        await queries.updateSubscriptionFromWebhook(stripeSub.id, status, periodEnd, stripeSub.cancel_at_period_end);
+
+        // If Stripe reports pause_collection, mirror locally as 'paused'.
+        // If it's cleared (e.g. auto-resumed at resumes_at), mark resumed.
+        if (stripeSub.pause_collection) {
+          const local = await queries.getSubscriptionByStripeId(stripeSub.id);
+          if (local && local.status !== 'paused') {
+            const resumesAt = stripeSub.pause_collection.resumes_at
+              ? new Date(stripeSub.pause_collection.resumes_at * 1000)
+              : null;
+            await queries.markSubscriptionPaused(local.id, resumesAt);
+          }
+        } else {
+          const local = await queries.getSubscriptionByStripeId(stripeSub.id);
+          if (local && local.status === 'paused') {
+            await queries.markSubscriptionResumedByStripeId(stripeSub.id);
+          }
+          const status = mapStripeStatus(stripeSub.status);
+          await queries.updateSubscriptionFromWebhook(stripeSub.id, status, periodEnd, stripeSub.cancel_at_period_end);
+        }
         break;
       }
 

@@ -3,7 +3,7 @@
    Shared Stylesheet
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Jost:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Urbanist:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap');
 
 /* ============================================
    CSS VARIABLES — Brand colors
@@ -11,25 +11,27 @@
 
 :root {
   /* Brand palette */
-  --white:       #F2F2F2;
+  --white:       #F0EFEA;
+  --beige:       #FFECD3;
   --peach:       #F2C299;
   --peach-light: #FAE4C8;
   --terra:       #D94D1A;
   --terra-mid:   #BF491F;
   --terra-dark:  #BC3A1C;
+  --warm-brown:  #8C3A1C;
   --brown:       #4A1C0C;
   --brown-soft:  #6B2E18;
 
   /* Functional aliases */
-  --bg:          var(--white);
+  --bg:          var(--beige);
   --text:        var(--brown);
   --text-muted:  #8C5A44;
   --accent:      var(--terra);
 
   /* Typography */
-  --font-display: 'Barlow Condensed', 'Impact', sans-serif;
-  --font-sub:     'Jost', 'Futura', system-ui, sans-serif;
-  --font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Montserrat', system-ui, sans-serif;
+  --font-sub:     'Urbanist', system-ui, sans-serif;
+  --font-body:    'Urbanist', system-ui, sans-serif;
 
   /* Spacing */
   --space-xs:  0.5rem;
@@ -93,8 +95,8 @@ h1, h2, h3 {
 }
 
 h1 { font-size: clamp(3rem, 8vw, 6rem); }
-h2 { font-size: clamp(2rem, 4.5vw, 3.5rem); }
-h3 { font-size: clamp(1.4rem, 2.5vw, 2rem); }
+h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); }
+h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
 
 h4 {
   font-family: var(--font-sub);
@@ -292,10 +294,31 @@ p {
 
 .nav__logo {
   display: flex;
-  flex-direction: column;
-  line-height: 1;
-  gap: 2px;
+  align-items: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
 }
+
+.nav__logo--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nav__logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.hero__logo-img {
+  width: clamp(180px, 22vw, 280px);
+  height: auto;
+  display: block;
+  margin: 0 0 1.5rem 0;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
 
 .nav__logo-name {
   font-family: var(--font-display);
@@ -516,23 +539,10 @@ p {
   margin-bottom: var(--space-lg);
 }
 
-.footer__brand .logo-text {
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--terra);
-  text-transform: uppercase;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.footer__brand .logo-tag {
-  font-family: var(--font-sub);
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(242,194,153,0.5);
+.footer__brand-logo {
+  display: block;
+  width: 160px;
+  height: auto;
   margin-bottom: var(--space-md);
 }
 
@@ -621,7 +631,18 @@ p {
   clip-path: ellipse(55% 100% at 50% 100%);
 }
 
-.page-hero h1 { margin-bottom: var(--space-sm); }
+.page-hero h1 {
+  font-size: clamp(2rem, 3.6vw, 2.75rem);
+  margin-bottom: var(--space-sm);
+  letter-spacing: 0.005em;
+}
+
+.page-hero p {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 52ch;
+}
 
 /* ============================================
    HOME — HERO
@@ -653,10 +674,11 @@ p {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    160deg,
-    rgba(74, 28, 12, 0.78) 0%,
-    rgba(74, 28, 12, 0.45) 50%,
-    rgba(74, 28, 12, 0.18) 100%
+    to right,
+    rgba(38, 14, 5, 0.92) 0%,
+    rgba(38, 14, 5, 0.80) 28%,
+    rgba(38, 14, 5, 0.48) 55%,
+    rgba(38, 14, 5, 0.0) 78%
   );
 }
 
@@ -684,9 +706,11 @@ p {
 }
 
 .hero .lead {
-  color: rgba(242,194,153,0.85);
+  color: rgba(255, 236, 211, 0.72);
   max-width: 44ch;
   margin-bottom: var(--space-xl);
+  font-size: 0.93rem;
+  line-height: 1.7;
 }
 
 .hero__actions {

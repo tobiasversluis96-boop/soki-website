@@ -139,7 +139,7 @@
     const navBtn = document.querySelector('.nav-item[data-view="' + name + '"]');
     if (navBtn) navBtn.classList.add('active');
 
-    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', staff: 'Medewerkers' };
+    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', staff: 'Medewerkers' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
 
     if (name === 'dashboard') loadDashboard();
@@ -150,6 +150,8 @@
     if (name === 'customers') loadCustomers();
     if (name === 'generate')  loadGenerate();
     if (name === 'messages')  loadMessages();
+    if (name === 'walkin')        resetWalkin();
+    if (name === 'subscriptions') loadSubscriptions();
     if (name === 'staff') {
       // Admin sees full staff management; staff only sees own password change
       const createSection = document.querySelector('#view-staff .table-card');
@@ -555,6 +557,7 @@
     document.getElementById('slot-end').value      = slot ? slot.end_time : '';
     document.getElementById('slot-capacity').value = slot && slot.max_capacity ? slot.max_capacity : '';
     document.getElementById('slot-notes').value    = slot ? (slot.notes || '') : '';
+    document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0);
     if (slot) document.getElementById('slot-session-type').value = slot.session_type_id;
     document.getElementById('slot-error').textContent = '';
     document.getElementById('slot-modal').classList.add('open');
@@ -574,6 +577,7 @@
       end_time:   document.getElementById('slot-end').value,
       max_capacity: document.getElementById('slot-capacity').value || null,
       notes:      document.getElementById('slot-notes').value || null,
+      price_cents: document.getElementById('slot-free').checked ? 0 : null,
     };
 
     const btn = document.getElementById('slot-modal-submit');
@@ -935,6 +939,7 @@
     const toDate    = document.getElementById('gen-to').value;
     const capacity  = parseInt(document.getElementById('gen-capacity').value) || null;
     const days      = [...document.querySelectorAll('#gen-days input:checked')].map(i => parseInt(i.value));
+    const isFree    = document.getElementById('gen-free').checked;
 
     if (!typeId || !startTime || !endTime || !fromDate || !toDate || !days.length) return null;
     if (fromDate > toDate) return null;
@@ -951,6 +956,7 @@
           start_time: startTime,
           end_time:   endTime,
           max_capacity: capacity,
+          price_cents: isFree ? 0 : null,
         });
       }
       cur.setDate(cur.getDate() + 1);
@@ -974,14 +980,17 @@
     }
 
     const typeName = document.getElementById('gen-session-type').selectedOptions[0].text;
-    document.getElementById('gen-preview-label').textContent = `${slots.length} slots om aan te maken`;
+    const freeBadge = document.getElementById('gen-free').checked
+      ? ' <span style="background:#2E7D32;color:#fff;font-size:10px;padding:1px 6px;border-radius:100px;margin-left:6px;">GRATIS</span>'
+      : '';
+    document.getElementById('gen-preview-label').innerHTML = `${slots.length} slots om aan te maken${freeBadge}`;
     document.getElementById('gen-preview-body').innerHTML = slots.map(s => {
       const d = new Date(s.date + 'T12:00:00');
       return `<tr>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.date}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${DAY_NL[d.getDay()]}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
       </tr>`;
     }).join('');
     document.getElementById('gen-preview').style.display = 'block';
@@ -1238,6 +1247,255 @@
       else { errEl.style.color = '#2E7D32'; errEl.textContent = '✓ Wachtwoord gewijzigd'; e.target.reset(); }
     });
   }
+
+  // ─── Subscriptions view ────────────────────────────────────────────────────
+  async function loadSubscriptions() {
+    const listEl = document.getElementById('subscriptions-list');
+    listEl.innerHTML = '<div class="loading" style="padding:24px;">Laden…</div>';
+
+    let subs;
+    try {
+      subs = await api('/subscriptions');
+    } catch { return; }
+
+    if (!Array.isArray(subs) || !subs.length) {
+      listEl.innerHTML = '<div style="padding:24px;color:var(--text-muted);font-size:14px;">Nog geen abonnementen.</div>';
+      return;
+    }
+
+    const rows = subs.map(s => {
+      const isPaused = s.status === 'paused';
+      const statusLabel = { active: 'Actief', paused: 'Gepauzeerd', past_due: 'Achterstallig', expired: 'Verlopen' }[s.status] || s.status;
+      const statusColor = isPaused ? '#B7791F' : s.status === 'active' ? '#2E7D32' : s.status === 'past_due' ? '#C62828' : 'var(--text-muted)';
+      const periodEnd = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '–';
+      const resumesAt = s.pause_resumes_at ? new Date(s.pause_resumes_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+
+      const action = isPaused
+        ? `<button class="btn btn--primary" data-sub-resume="${s.id}" style="font-size:12px;padding:6px 12px;">Hervatten</button>`
+        : `<button class="btn btn--outline" data-sub-pause="${s.id}" style="font-size:12px;padding:6px 12px;">Pauzeren</button>`;
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:600;">${escapeHtml(s.user_name || '–')}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(s.user_email || '')}</div>
+          </td>
+          <td>${escapeHtml(s.plan_name)}</td>
+          <td>${formatEur(s.price_cents)}</td>
+          <td><span style="color:${statusColor};font-weight:600;font-size:13px;">${statusLabel}</span>${resumesAt ? `<div style="font-size:11px;color:var(--text-muted);">Hervat op ${resumesAt}</div>` : ''}</td>
+          <td>${periodEnd}</td>
+          <td style="text-align:right;">${action}</td>
+        </tr>`;
+    }).join('');
+
+    listEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f7f2ec;">
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Klant</th>
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Plan</th>
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Bedrag</th>
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Status</th>
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Periode eindigt</th>
+            <th style="text-align:right;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Actie</th>
+          </tr>
+        </thead>
+        <tbody style="[&_td]:padding:12px 16px;[&_td]:border-bottom:1px solid rgba(0,0,0,.05);">${rows.replace(/<td>/g, '<td style="padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);">').replace(/<td style="text-align:right/g, '<td style="padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right')}</tbody>
+      </table>`;
+
+    listEl.querySelectorAll('[data-sub-pause]').forEach(btn => {
+      btn.addEventListener('click', () => pauseSubscription(btn.dataset.subPause));
+    });
+    listEl.querySelectorAll('[data-sub-resume]').forEach(btn => {
+      btn.addEventListener('click', () => resumeSubscription(btn.dataset.subResume));
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function pauseSubscription(id) {
+    if (!confirm('Weet je zeker dat je dit abonnement wilt pauzeren?')) return;
+    const resumesAt = document.getElementById('subs-resumes-at').value || undefined;
+    const res = await api(`/subscriptions/${id}/pause`, { method: 'PATCH', body: JSON.stringify({ resumes_at: resumesAt }) });
+    if (res.error) { alert('Pauzeren mislukt: ' + res.error); return; }
+    loadSubscriptions();
+  }
+
+  async function resumeSubscription(id) {
+    if (!confirm('Weet je zeker dat je dit abonnement wilt hervatten?')) return;
+    const res = await api(`/subscriptions/${id}/resume`, { method: 'PATCH' });
+    if (res.error) { alert('Hervatten mislukt: ' + res.error); return; }
+    loadSubscriptions();
+  }
+
+  const pauseAllBtn = document.getElementById('subs-pause-all');
+  if (pauseAllBtn) pauseAllBtn.addEventListener('click', async () => {
+    const resumesAt = document.getElementById('subs-resumes-at').value || undefined;
+    const msg = resumesAt
+      ? `Alle actieve abonnementen pauzeren tot ${resumesAt}? Facturatie wordt gestopt.`
+      : 'ALLE actieve abonnementen pauzeren? Facturatie wordt gestopt tot handmatig hervat.';
+    if (!confirm(msg)) return;
+    pauseAllBtn.disabled = true;
+    const res = await api('/subscriptions/pause-all', { method: 'POST', body: JSON.stringify({ resumes_at: resumesAt }) });
+    pauseAllBtn.disabled = false;
+    if (res.error) { alert('Bulk pauzeren mislukt: ' + res.error); return; }
+    alert(`${res.count} abonnement(en) gepauzeerd.` + (res.failed?.length ? `\n${res.failed.length} mislukt.` : ''));
+    loadSubscriptions();
+  });
+
+  const resumeAllBtn = document.getElementById('subs-resume-all');
+  if (resumeAllBtn) resumeAllBtn.addEventListener('click', async () => {
+    if (!confirm('Alle gepauzeerde abonnementen hervatten?')) return;
+    resumeAllBtn.disabled = true;
+    const res = await api('/subscriptions/resume-all', { method: 'POST' });
+    resumeAllBtn.disabled = false;
+    if (res.error) { alert('Bulk hervatten mislukt: ' + res.error); return; }
+    alert(`${res.count} abonnement(en) hervat.` + (res.failed?.length ? `\n${res.failed.length} mislukt.` : ''));
+    loadSubscriptions();
+  });
+
+  // ─── Walk-in booking flow ────────────────────────────────────────────────
+  let walkinUser = null;
+  let walkinSlot = null;
+  let walkinPollTimer = null;
+
+  function resetWalkin() {
+    walkinUser = null;
+    walkinSlot = null;
+    if (walkinPollTimer) { clearInterval(walkinPollTimer); walkinPollTimer = null; }
+    ['walkin-name','walkin-email'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const groupEl = document.getElementById('walkin-group'); if (groupEl) groupEl.value = 1;
+    document.getElementById('walkin-step-customer').style.display = '';
+    document.getElementById('walkin-step-slot').style.display = 'none';
+    document.getElementById('walkin-step-pay').style.display = 'none';
+    document.getElementById('walkin-step-result').style.display = 'none';
+    document.getElementById('walkin-user-msg').textContent = '';
+    document.getElementById('walkin-confirm-msg').textContent = '';
+  }
+
+  function bindWalkin() {
+    const userNextBtn = document.getElementById('walkin-user-next');
+    if (!userNextBtn) return; // view not present
+
+    userNextBtn.addEventListener('click', async () => {
+      const name  = document.getElementById('walkin-name').value.trim();
+      const email = document.getElementById('walkin-email').value.trim();
+      const msg   = document.getElementById('walkin-user-msg');
+      msg.style.color = 'var(--text-muted)';
+      msg.textContent = 'Bezig…';
+      const res = await api('/walkin/find-or-create-user', { method: 'POST', body: JSON.stringify({ name, email }) });
+      if (res.error) { msg.style.color = '#C62828'; msg.textContent = res.error; return; }
+      walkinUser = res.user;
+      msg.textContent = '';
+      document.getElementById('walkin-user-label').textContent = `${walkinUser.name} (${walkinUser.email})` + (res.created ? ' — nieuw account' : ' — bestaand account');
+      document.getElementById('walkin-step-customer').style.display = 'none';
+      document.getElementById('walkin-step-slot').style.display = '';
+      loadWalkinSlots();
+    });
+
+    document.getElementById('walkin-user-change').addEventListener('click', e => {
+      e.preventDefault();
+      walkinUser = null; walkinSlot = null;
+      document.getElementById('walkin-step-slot').style.display = 'none';
+      document.getElementById('walkin-step-pay').style.display = 'none';
+      document.getElementById('walkin-step-customer').style.display = '';
+    });
+
+    document.getElementById('walkin-confirm').addEventListener('click', confirmWalkin);
+    document.getElementById('walkin-restart').addEventListener('click', resetWalkin);
+  }
+
+  async function loadWalkinSlots() {
+    const listEl = document.getElementById('walkin-slots-list');
+    listEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Slots laden…</div>';
+    const slots = await api('/walkin/upcoming-slots');
+    if (!Array.isArray(slots) || !slots.length) {
+      listEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Geen aankomende sessies met vrije plekken.</div>';
+      return;
+    }
+    listEl.innerHTML = slots.map(s => {
+      const dateFmt = new Date(s.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+      const price = formatEur(s.price_cents);
+      return `<label style="display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;">
+        <input type="radio" name="walkin-slot" data-slot-id="${s.id}" data-price="${s.price_cents}" data-name="${escapeHtml(s.session_name)}" />
+        <div><strong>${escapeHtml(s.session_name)}</strong><div style="font-size:11px;color:var(--text-muted);">${dateFmt} · ${s.start_time}–${s.end_time}</div></div>
+        <span style="font-size:12px;color:var(--text-muted);">${s.spots_left} vrij</span>
+        <span style="font-weight:600;">${price}</span>
+      </label>`;
+    }).join('');
+    listEl.querySelectorAll('input[type=radio]').forEach(r => {
+      r.addEventListener('change', () => {
+        walkinSlot = { id: parseInt(r.dataset.slotId), price_cents: parseInt(r.dataset.price), name: r.dataset.name };
+        document.getElementById('walkin-step-pay').style.display = '';
+      });
+    });
+  }
+
+  async function confirmWalkin() {
+    if (!walkinUser || !walkinSlot) return;
+    const group = parseInt(document.getElementById('walkin-group').value) || 1;
+    const mode  = document.querySelector('input[name=walkin-pay]:checked').value;
+    const btn   = document.getElementById('walkin-confirm');
+    const msg   = document.getElementById('walkin-confirm-msg');
+    btn.disabled = true; msg.textContent = 'Boeking aanmaken…';
+    const res = await api('/walkin/book', { method: 'POST', body: JSON.stringify({
+      user_id: walkinUser.id, slot_id: walkinSlot.id, group_size: group, payment_mode: mode,
+    })});
+    btn.disabled = false;
+    if (res.error) { msg.style.color = '#C62828'; msg.textContent = res.error; return; }
+    msg.textContent = '';
+    document.getElementById('walkin-step-pay').style.display = 'none';
+    document.getElementById('walkin-step-result').style.display = '';
+    if (mode === 'free') {
+      document.getElementById('walkin-result-body').innerHTML =
+        `<div style="font-size:36px;">✓</div>
+         <div style="margin-top:6px;font-weight:600;color:var(--brown);">Gratis boeking bevestigd</div>
+         <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Boeking #${res.booking_id} — ${escapeHtml(walkinSlot.name)}</div>`;
+    } else {
+      renderWalkinQR(res.booking_id, res.checkout_url, res.hold_until);
+    }
+  }
+
+  function renderWalkinQR(bookingId, checkoutUrl, holdUntil) {
+    const body = document.getElementById('walkin-result-body');
+    body.innerHTML = `
+      <div style="font-weight:600;color:var(--brown);margin-bottom:6px;">Scan om te betalen</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Klant scant met telefoon en betaalt via Stripe.</div>
+      <canvas id="walkin-qr" style="background:#fff;padding:12px;border-radius:8px;"></canvas>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">
+        Slot gereserveerd tot <strong id="walkin-hold-until"></strong>
+      </div>
+      <div id="walkin-poll-status" style="margin-top:14px;font-size:13px;color:var(--terra);font-weight:600;">Wachten op betaling…</div>
+      <div style="margin-top:8px;font-size:11px;">
+        <a href="${checkoutUrl}" target="_blank" style="color:var(--terra);">of open link handmatig</a>
+      </div>`;
+    if (window.QRCode && window.QRCode.toCanvas) {
+      window.QRCode.toCanvas(document.getElementById('walkin-qr'), checkoutUrl, { width: 220, margin: 1 });
+    }
+    if (holdUntil) {
+      document.getElementById('walkin-hold-until').textContent =
+        new Date(holdUntil).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (walkinPollTimer) clearInterval(walkinPollTimer);
+    walkinPollTimer = setInterval(async () => {
+      const s = await api(`/walkin/booking/${bookingId}/status`);
+      if (s.status === 'confirmed' || s.payment_status === 'succeeded') {
+        clearInterval(walkinPollTimer); walkinPollTimer = null;
+        body.innerHTML = `<div style="font-size:44px;color:#2E7D32;">✓</div>
+          <div style="margin-top:8px;font-weight:600;color:var(--brown);">Betaling ontvangen!</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Boeking #${bookingId} bevestigd.</div>`;
+      } else if (s.status === 'cancelled') {
+        clearInterval(walkinPollTimer); walkinPollTimer = null;
+        body.innerHTML = `<div style="font-size:36px;color:#C62828;">✕</div>
+          <div style="margin-top:6px;font-weight:600;color:var(--brown);">Reservering verlopen</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Het slot is vrijgegeven omdat de betaling niet op tijd binnenkwam.</div>`;
+      }
+    }, 3000);
+  }
+
+  bindWalkin();
 
   // ─── Init ─────────────────────────────────────────────────────────────────
   if (adminToken) {

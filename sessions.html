@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sessions | SOKI Social Sauna Utrecht</title>
   <meta name="description" content="Book a sauna session at SOKI Utrecht: Everyday Sauna, Social Sauna, Ambient Sauna with DJs, and Aufguss ritual sessions." />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260826-7" />
   <link rel="icon" type="image/png" href="images/favicon.png" />
 </head>
 <body>
@@ -14,14 +14,12 @@
   <nav class="nav" id="nav">
     <div class="container nav__inner">
       <a href="index.html" class="nav__logo">
-        <span class="nav__logo-name">SOKI</span>
-        <span class="nav__logo-tagline">sauna van de stad</span>
+        <img src="images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
       </a>
       <ul class="nav__links">
         <li><a href="index.html"data-i18n="nav.home">Home</a></li>
         <li><a href="sessions.html" class="active">Sessions</a></li>
         <li><a href="about.html" data-i18n="nav.about">About us</a></li>
-        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
         <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
         <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
       </ul>
@@ -40,14 +38,12 @@
     <a href="index.html"data-i18n="nav.home">Home</a>
     <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
     <a href="about.html" data-i18n="nav.about">About us</a>
-    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
     <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
     <a href="faq.html" data-i18n="nav.faq">FAQ</a>
     <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
     <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
     <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
   </div>
-
 
   <!-- ===== PAGE HERO ===== -->
   <section class="page-hero">
@@ -56,7 +52,6 @@
       <p class="lead" data-i18n="sessions.lead">Sauna, ice baths and something a little more. Every session includes complimentary water and (maté)tea.</p>
     </div>
   </section>
-
 
   <!-- ===== SESSION TYPE CARDS ===== -->
   <section class="section">
@@ -140,7 +135,7 @@
             </div>
           </div>
           <div class="session-type-card__img">
-            <img src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=600&auto=format&fit=crop&q=80" alt="Everyday Sauna" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1761621711779-faf78317babd?q=80&w=1287&auto=format&fit=crop" alt="Everyday Sauna" loading="lazy" />
           </div>
         </div>
 
@@ -163,7 +158,7 @@
             </div>
           </div>
           <div class="session-type-card__img">
-            <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&auto=format&fit=crop&q=80" alt="Social Sauna" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1689093197152-dbdfd8c353c8?q=80&w=2340&auto=format&fit=crop" alt="Social Sauna" loading="lazy" />
           </div>
         </div>
 
@@ -193,12 +188,12 @@
         <!-- Aufguss -->
         <div class="session-type-card">
           <div class="session-type-card__body">
-            <div class="session-type-card__header" style="background:var(--brown);">
+            <div class="session-type-card__header" style="background:var(--brown-soft);">
               <div class="session-type-card__header-inner">
-                <h3 style="color:var(--peach); font-size:1.1rem;">Aufguss</h3>
-                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--terra); font-weight:700;">€25</span>
+                <h3 style="color:var(--white); font-size:1.1rem;">Aufguss</h3>
+                <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--peach); font-weight:700;">€25</span>
               </div>
-              <p style="color:rgba(242,194,153,0.6); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">90 minutes · Every other Sunday</p>
+              <p style="color:rgba(242,242,242,0.75); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">90 minutes · Every other Sunday</p>
             </div>
             <div class="session-type-card__text">
               <p data-i18n="sessions.aufguss.p1">A traditional ritual led by our sauna masters: essential oils poured over hot stones create a burst of steam that carries you through a guided, sensory journey.</p>
@@ -209,7 +204,7 @@
             </div>
           </div>
           <div class="session-type-card__img">
-            <img src="https://images.unsplash.com/photo-1588346135463-8d8b9018d7a2?w=600&auto=format&fit=crop&q=80" alt="Aufguss" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1656416212216-cf05b2af2650?q=80&w=2342&auto=format&fit=crop" alt="Aufguss" loading="lazy" />
           </div>
         </div>
 
@@ -217,7 +212,6 @@
 
     </div>
   </section>
-
 
   <!-- ===== PROGRAMME ===== -->
   <section class="section section--peach">
@@ -237,235 +231,150 @@
         <button class="filter-btn" data-filter="aufguss">Aufguss</button>
       </div>
 
-      <div class="sessions-month" style="margin-bottom: 3rem;">
-        <h4 style="font-family:var(--font-display); font-size:1rem; letter-spacing:0.12em; color:var(--terra); margin-bottom:1.5rem; padding-bottom:0.5rem; border-bottom: 1px solid rgba(217,77,26,0.2);">March 2026</h4>
-
-        <div class="sessions-list">
-
-          <div class="session-card" data-type="everyday">
-            <div class="session-card__date">
-              <div class="day">25</div>
-              <div class="month">Mar</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Everyday Sauna</h4>
-              <div class="session-card__meta">
-                <span class="time">16:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--mixed">€15 · 50 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
-
-          <div class="session-card" data-type="social">
-            <div class="session-card__date">
-              <div class="day">26</div>
-              <div class="month">Mar</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Social Sauna</h4>
-              <div class="session-card__meta">
-                <span class="time">16:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--flinta">€20 · 80 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
-
-          <div class="session-card" data-type="ambient">
-            <div class="session-card__date">
-              <div class="day">27</div>
-              <div class="month">Mar</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Ambient Sauna: Beste Hira</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 23:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--sound">€25 · 70 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
-
-          <div class="session-card" data-type="ambient">
-            <div class="session-card__date">
-              <div class="day">28</div>
-              <div class="month">Mar</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Ambient Sauna: Rebloom</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 23:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--sound">€25 · 70 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
-
-          <div class="session-card" data-type="aufguss">
-            <div class="session-card__date">
-              <div class="day">29</div>
-              <div class="month">Mar</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Aufguss / Opgieting: Luke</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--special">€25 · 90 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--primary">Book now</a>
-            </div>
-          </div>
-
-        </div>
+      <div id="programme-container">
+        <p class="slots-loading" style="text-align:center;padding:2rem 0;color:var(--text-muted);">Loading programme…</p>
       </div>
 
-      <div class="sessions-month">
-        <h4 style="font-family:var(--font-display); font-size:1rem; letter-spacing:0.12em; color:var(--terra); margin-bottom:1.5rem; padding-bottom:0.5rem; border-bottom: 1px solid rgba(217,77,26,0.2);">April 2026</h4>
+      <script>
+      (function loadProgramme() {
+        var container = document.getElementById('programme-container');
+        if (!container) return;
 
-        <div class="sessions-list">
+        var TYPE_MAP = { 1: 'everyday', 2: 'social', 3: 'ambient', 4: 'aufguss' };
+        var MONTH_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var MONTH_NL = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+        var MONTH_ABBR_EN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        var MONTH_ABBR_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+        var lang = (typeof SOKI_LANG !== 'undefined' && SOKI_LANG) || (localStorage.getItem('soki_lang') || 'en');
+        var isNL = lang === 'nl';
+        var STR = {
+          loading:      isNL ? 'Programma laden…'                            : 'Loading programme…',
+          empty:        isNL ? 'Nog geen aankomende sessies. Kom snel terug!'     : 'No upcoming sessions yet. Check back soon!',
+          errorLoad:    isNL ? 'Kan programma niet laden. Probeer het later opnieuw.' : 'Could not load the programme. Please try again later.',
+          free:         isNL ? 'GRATIS'                                            : 'FREE',
+          min:          'min',
+          full:         isNL ? 'Volgeboekt'                                        : 'Fully booked',
+          spotOne:      isNL ? '1 plek vrij'                                       : '1 spot left',
+          spotsMany:    isNL ? ' plekken vrij'                                     : ' spots left',
+          book:         isNL ? 'Boek nu'                                           : 'Book now',
+          fullBtn:      isNL ? 'Vol'                                               : 'Full',
+          tryOut:       isNL ? ' - try-out'                                        : ' - try-out',
+          sauna:        'sauna',
+          musicDur:     isNL ? '4u muziek'                                         : '4h music',
+          location:     'Europalaan 2B, Utrecht',
+        };
+        var MONTHS      = isNL ? MONTH_NL      : MONTH_EN;
+        var MONTH_ABBR  = isNL ? MONTH_ABBR_NL : MONTH_ABBR_EN;
 
-          <div class="session-card" data-type="everyday">
-            <div class="session-card__date">
-              <div class="day">1</div>
-              <div class="month">Apr</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Everyday Sauna</h4>
-              <div class="session-card__meta">
-                <span class="time">16:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--mixed">€15 · 50 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
+        function eur(cents) {
+          return '\u20AC' + (cents / 100).toFixed(2).replace('.', ',');
+        }
+        function timeShort(t) { return (t || '').slice(0, 5); }
 
-          <div class="session-card" data-type="ambient">
-            <div class="session-card__date">
-              <div class="day">3</div>
-              <div class="month">Apr</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Ambient Sauna: Live DJ (tbc)</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 23:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--sound">€25 · 70 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
+        function tagLabel(name) {
+          var t = String(name || '').toLowerCase();
+          if (t.indexOf('everyday') > -1) return 'Everyday';
+          if (t.indexOf('social')   > -1) return 'Social';
+          if (t.indexOf('ambient')  > -1) return 'Ambient';
+          if (t.indexOf('aufguss')  > -1 || t.indexOf('opgiet') > -1) return 'Aufguss';
+          return name;
+        }
 
-          <div class="session-card" data-type="ambient">
-            <div class="session-card__date">
-              <div class="day">4</div>
-              <div class="month">Apr</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Ambient Sauna: BUMPAH</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 23:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--sound">€25 · 70 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
+        function tagClass(name) {
+          var t = String(name || '').toLowerCase();
+          if (t.indexOf('everyday') > -1) return 'tag--everyday';
+          if (t.indexOf('social')   > -1) return 'tag--social';
+          if (t.indexOf('ambient')  > -1) return 'tag--ambient';
+          if (t.indexOf('aufguss')  > -1 || t.indexOf('opgiet') > -1) return 'tag--aufguss';
+          return 'tag--mixed';
+        }
 
-          <div class="session-card" data-type="aufguss">
-            <div class="session-card__date">
-              <div class="day">5</div>
-              <div class="month">Apr</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Aufguss / Opgieting: Luke</h4>
-              <div class="session-card__meta">
-                <span class="time">12:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--special">€25 · 90 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--primary">Book now</a>
-            </div>
-          </div>
+        fetch('/api/upcoming-slots?limit=200&include_full=1')
+          .then(function (r) { return r.json(); })
+          .then(function (slots) {
+            if (!Array.isArray(slots) || slots.length === 0) {
+              container.innerHTML = '<p class="slots-loading" style="text-align:center;padding:2rem 0;color:var(--text-muted);">' + STR.empty + '</p>';
+              return;
+            }
 
-          <div class="session-card" data-type="social">
-            <div class="session-card__date">
-              <div class="day">9</div>
-              <div class="month">Apr</div>
-            </div>
-            <div class="session-card__sep"></div>
-            <div class="session-card__info">
-              <h4>Social Sauna</h4>
-              <div class="session-card__meta">
-                <span class="time">16:00 – 22:00</span>
-                <span class="location">Gietijzerstraat 3, Utrecht</span>
-              </div>
-              <div class="session-card__meta" style="margin-top:6px;">
-                <span class="tag tag--flinta">€20 · 80 min</span>
-              </div>
-            </div>
-            <div class="session-card__action">
-              <a href="#" class="btn btn--outline">Book now</a>
-            </div>
-          </div>
+            // Group by month key YYYY-MM
+            var groups = {};
+            slots.forEach(function (s) {
+              var parts = s.date.split('-');
+              var key = parts[0] + '-' + parts[1];
+              (groups[key] = groups[key] || []).push(s);
+            });
 
-        </div>
-      </div>
+            var monthKeys = Object.keys(groups).sort();
+            var html = monthKeys.map(function (key, mIdx) {
+              var parts = key.split('-').map(Number);
+              var monthLabel = MONTHS[parts[1] - 1] + ' ' + parts[0];
+              var cards = groups[key].map(function (s) {
+                var dateParts = s.date.split('-').map(Number);
+                var day = dateParts[2];
+                var mon = MONTH_ABBR[dateParts[1] - 1];
+                var typeSlug = TYPE_MAP[s.type_id] || 'other';
+                var typeLabel = tagLabel(s.session_name);
+                var typeCls = tagClass(s.session_name);
+                var isFree = s.price_cents === 0;
+                var spotsLeft = s.spots_left;
+
+                var isAmbient = typeSlug === 'ambient';
+                var durationText = s.duration_min + ' ' + STR.min + (isAmbient ? (' ' + STR.sauna + ' \u00b7 ' + STR.musicDur) : '');
+                var priceHtml = isFree
+                  ? '<span class="tag tag--free" style="background:#2E7D32;color:#fff;">' + STR.free + ' \u00b7 ' + durationText + '</span>'
+                  : '<span class="tag ' + typeCls + '">' + eur(s.price_cents) + ' \u00b7 ' + durationText + '</span>';
+
+                var spotsHtml;
+                if (spotsLeft <= 0)       spotsHtml = '<span class="spots-badge spots-badge--full">' + STR.full + '</span>';
+                else if (spotsLeft === 1) spotsHtml = '<span class="spots-badge spots-badge--low">' + STR.spotOne + '</span>';
+                else if (spotsLeft <= 3)  spotsHtml = '<span class="spots-badge spots-badge--low">' + spotsLeft + STR.spotsMany + '</span>';
+                else                      spotsHtml = '<span class="spots-badge">' + spotsLeft + STR.spotsMany + '</span>';
+
+                var actionHtml = spotsLeft > 0
+                  ? '<a href="/booking?slot=' + s.id + '" class="btn btn--outline">' + STR.book + '</a>'
+                  : '<span class="btn btn--outline" style="opacity:.45;cursor:default;">' + STR.fullBtn + '</span>';
+
+                return '<div class="session-card" data-type="' + typeSlug + '">' +
+                  '<div class="session-card__date">' +
+                    '<div class="day">' + day + '</div>' +
+                    '<div class="month">' + mon + '</div>' +
+                  '</div>' +
+                  '<div class="session-card__sep"></div>' +
+                  '<div class="session-card__info">' +
+                    '<h4>' + (isFree ? (s.session_name + STR.tryOut) : typeLabel) + '</h4>' +
+                    '<div class="session-card__meta">' +
+                      '<span class="time">' + timeShort(s.start_time) + ' \u2013 ' + timeShort(s.end_time) + '</span>' +
+                      '<span class="location">' + STR.location + '</span>' +
+                    '</div>' +
+                    '<div class="session-card__meta" style="margin-top:6px;">' +
+                      priceHtml +
+                      spotsHtml +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="session-card__action">' +
+                    actionHtml +
+                  '</div>' +
+                '</div>';
+              }).join('');
+
+              var mbStyle = mIdx < monthKeys.length - 1 ? ' style="margin-bottom: 3rem;"' : '';
+              return '<div class="sessions-month"' + mbStyle + '>' +
+                '<h4 style="font-family:var(--font-display); font-size:1rem; letter-spacing:0.12em; color:var(--terra); margin-bottom:1.5rem; padding-bottom:0.5rem; border-bottom: 1px solid rgba(217,77,26,0.2);">' + monthLabel + '</h4>' +
+                '<div class="sessions-list">' + cards + '</div>' +
+              '</div>';
+            }).join('');
+
+            container.innerHTML = html;
+          })
+          .catch(function () {
+            container.innerHTML = '<p class="slots-loading" style="text-align:center;padding:2rem 0;color:var(--text-muted);">' + STR.errorLoad + '</p>';
+          });
+      })();
+      </script>
 
     </div>
   </section>
-
 
   <!-- ===== PRACTICAL INFO ===== -->
   <section class="section">
@@ -517,14 +426,12 @@
     </div>
   </section>
 
-
   <!-- ===== FOOTER ===== -->
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">
         <div class="footer__brand">
-          <div class="logo-text">SOKI</div>
-          <div class="logo-tag">sauna van de stad</div>
+          <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
           <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
         </div>
         <div class="footer__col">
@@ -533,7 +440,6 @@
             <li><a href="index.html"data-i18n="nav.home">Home</a></li>
             <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
             <li><a href="about.html" data-i18n="nav.about">About us</a></li>
-            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
             <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
         <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
           </ul>

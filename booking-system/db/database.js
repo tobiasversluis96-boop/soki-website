@@ -143,26 +143,26 @@ async function seedSubscriptionPlans() {
   const prod1 = await stripe.products.create({ name: 'Soki Everyday Member' });
   const price1 = await stripe.prices.create({
     product: prod1.id,
-    unit_amount: 3900,
+    unit_amount: 4900,
     currency: 'eur',
     recurring: { interval: 'month' },
   });
   await pool.query(
     'INSERT INTO subscription_plans (name, credits_per_month, price_cents, stripe_price_id) VALUES ($1, $2, $3, $4)',
-    ['Everyday Member', 4, 3900, price1.id]
+    ['Everyday Member', 4, 4900, price1.id]
   );
 
   // Create Unlimited plan
   const prod2 = await stripe.products.create({ name: 'Soki Unlimited Member' });
   const price2 = await stripe.prices.create({
     product: prod2.id,
-    unit_amount: 8900,
+    unit_amount: 9900,
     currency: 'eur',
     recurring: { interval: 'month' },
   });
   await pool.query(
     'INSERT INTO subscription_plans (name, credits_per_month, price_cents, stripe_price_id) VALUES ($1, $2, $3, $4)',
-    ['Unlimited', null, 8900, price2.id]
+    ['Unlimited', null, 9900, price2.id]
   );
 
   console.log('✓ Subscription plans seeded');
@@ -241,6 +241,11 @@ async function initializeDB() {
     created_at              TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_used INTEGER DEFAULT 0');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_walkin BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS price_cents INTEGER');
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS pause_resumes_at TIMESTAMPTZ');
 
   await pool.query(`CREATE TABLE IF NOT EXISTS staff_users (
     id            SERIAL      PRIMARY KEY,
@@ -319,9 +324,9 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT ts.*,
              st.name         AS session_name,
-             st.price_cents  AS price_cents,
+             COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
              st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
@@ -338,9 +343,9 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT ts.*,
              st.name         AS session_name,
-             st.price_cents  AS price_cents,
+             COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
              st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
@@ -467,7 +472,7 @@ const queries = {
       const { capacity } = slotRows[0];
       // Count existing bookings separately
       const { rows: countRows } = await client.query(
-        `SELECT COALESCE(SUM(group_size), 0)::int AS booked FROM bookings WHERE time_slot_id = $1 AND status != 'cancelled'`,
+        `SELECT COALESCE(SUM(group_size), 0)::int AS booked FROM bookings WHERE time_slot_id = $1 AND status != 'cancelled' AND (hold_until IS NULL OR hold_until > NOW())`,
         [slotId]
       );
       const booked = countRows[0].booked;
@@ -573,8 +578,8 @@ const queries = {
   getAllSlots: async (filters = {}) => {
     let sql = `
       SELECT ts.*,
-             st.name AS session_name, st.price_cents, st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+             st.name AS session_name, COALESCE(ts.price_cents, st.price_cents) AS price_cents, st.max_capacity AS type_capacity,
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
@@ -589,19 +594,21 @@ const queries = {
     return rows;
   },
 
-  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes) => {
+  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents) => {
+    const price = (priceCents === null || priceCents === undefined) ? null : parseInt(priceCents);
     const { rows } = await pool.query(`
-      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
-    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null]);
+      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price]);
     return rows[0]; // { id }
   },
 
   updateSlot: async (id, data) => {
+    const price = (data.price_cents === null || data.price_cents === undefined) ? null : parseInt(data.price_cents);
     await pool.query(`
-      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5
-      WHERE id = $6
-    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, id]);
+      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6
+      WHERE id = $7
+    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, id]);
   },
 
   cancelSlot: async (id) => {
@@ -790,13 +797,177 @@ const queries = {
 
   getAllSubscriptions: async () => {
     const { rows } = await pool.query(`
-      SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name
+      SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name, p.price_cents
       FROM subscriptions s
       JOIN users u ON u.id = s.user_id
       JOIN subscription_plans p ON p.id = s.plan_id
       ORDER BY s.created_at DESC
     `);
     return rows;
+  },
+
+  getSubscriptionById: async (id) => {
+    const { rows } = await pool.query(`
+      SELECT s.*, u.name AS user_name, u.email AS user_email, p.name AS plan_name
+      FROM subscriptions s
+      JOIN users u ON u.id = s.user_id
+      JOIN subscription_plans p ON p.id = s.plan_id
+      WHERE s.id = $1
+    `, [id]);
+    return rows[0] || null;
+  },
+
+  listSubscriptionsByStatus: async (statuses) => {
+    const { rows } = await pool.query(`
+      SELECT s.*, u.email AS user_email
+      FROM subscriptions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.status = ANY($1) AND s.stripe_subscription_id IS NOT NULL
+    `, [statuses]);
+    return rows;
+  },
+
+  markSubscriptionPaused: async (id, resumesAt) => {
+    await pool.query(`
+      UPDATE subscriptions
+      SET status = 'paused', paused_at = NOW(), pause_resumes_at = $2
+      WHERE id = $1
+    `, [id, resumesAt || null]);
+  },
+
+  markSubscriptionResumed: async (id) => {
+    await pool.query(`
+      UPDATE subscriptions
+      SET status = 'active', paused_at = NULL, pause_resumes_at = NULL
+      WHERE id = $1
+    `, [id]);
+  },
+
+  markSubscriptionResumedByStripeId: async (stripeSubId) => {
+    await pool.query(`
+      UPDATE subscriptions
+      SET status = 'active', paused_at = NULL, pause_resumes_at = NULL
+      WHERE stripe_subscription_id = $1
+    `, [stripeSubId]);
+  },
+
+  // ─── Walk-in booking flow ────────────────────────────────────────────────
+  createGuestUser: async (name, email) => {
+    const { rows } = await pool.query(
+      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email',
+      [name, email]
+    );
+    return rows[0];
+  },
+
+  getUpcomingSlotsWithSpots: async () => {
+    const { rows } = await pool.query(`
+      SELECT
+        ts.id,
+        ts.date,
+        ts.start_time,
+        ts.end_time,
+        COALESCE(ts.price_cents, st.price_cents) AS price_cents,
+        st.duration_min,
+        st.id            AS session_type_id,
+        st.name          AS session_name,
+        COALESCE(ts.max_capacity, st.max_capacity) AS capacity,
+        COALESCE(ts.max_capacity, st.max_capacity) - COALESCE((
+          SELECT SUM(group_size) FROM bookings b
+          WHERE b.time_slot_id = ts.id
+            AND b.status != 'cancelled'
+            AND (b.hold_until IS NULL OR b.hold_until > NOW())
+        ), 0)::int AS spots_left
+      FROM time_slots ts
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE ts.is_cancelled = FALSE
+        AND (ts.date > CURRENT_DATE OR (ts.date = CURRENT_DATE AND ts.start_time > CURRENT_TIME))
+      ORDER BY ts.date, ts.start_time
+    `);
+    return rows;
+  },
+
+  createWalkinBookingWithHold: async (userId, slotId, groupSize, totalCents, holdMinutes) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: slotRows } = await client.query(`
+        SELECT ts.id, COALESCE(ts.max_capacity, st.max_capacity) AS capacity
+        FROM time_slots ts
+        JOIN session_types st ON st.id = ts.session_type_id
+        WHERE ts.id = $1 AND ts.is_cancelled = FALSE
+        FOR UPDATE OF ts
+      `, [slotId]);
+      if (!slotRows[0]) throw Object.assign(new Error('Slot not found'), { code: 'SLOT_NOT_FOUND' });
+      const { capacity } = slotRows[0];
+      const { rows: countRows } = await client.query(
+        `SELECT COALESCE(SUM(group_size), 0)::int AS booked
+         FROM bookings
+         WHERE time_slot_id = $1 AND status != 'cancelled'
+           AND (hold_until IS NULL OR hold_until > NOW())`,
+        [slotId]
+      );
+      if (countRows[0].booked + groupSize > capacity) {
+        throw Object.assign(new Error(`Only ${capacity - countRows[0].booked} spot(s) left`), { code: 'NO_CAPACITY' });
+      }
+      const holdUntil = holdMinutes > 0 ? new Date(Date.now() + holdMinutes * 60 * 1000) : null;
+      const status = totalCents === 0 ? 'confirmed' : 'pending';
+      const { rows } = await client.query(
+        `INSERT INTO bookings (user_id, time_slot_id, group_size, total_cents, status, hold_until, is_walkin)
+         VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, status`,
+        [userId, slotId, groupSize, totalCents, status, holdUntil]
+      );
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  expireStaleHolds: async () => {
+    const { rowCount } = await pool.query(`
+      UPDATE bookings SET status = 'cancelled'
+      WHERE status = 'pending' AND is_walkin = TRUE
+        AND hold_until IS NOT NULL AND hold_until < NOW()
+    `);
+    return rowCount;
+  },
+
+  countUserFreeSlotBookings: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT COUNT(*)::int AS n
+      FROM bookings b
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      WHERE b.user_id = $1
+        AND b.status != 'cancelled'
+        AND ts.price_cents = 0
+    `, [userId]);
+    return rows[0].n;
+  },
+
+  confirmWalkinBooking: async (bookingId, paymentIntentId) => {
+    await pool.query(
+      "UPDATE bookings SET status = 'confirmed', hold_until = NULL, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($2, stripe_payment_intent_id) WHERE id = $1",
+      [bookingId, paymentIntentId || null]
+    );
+  },
+
+  getBookingBasic: async (id) => {
+    const { rows } = await pool.query(`
+      SELECT b.id, b.status, b.total_cents, b.hold_until, b.stripe_payment_status,
+             ts.date, ts.start_time, ts.end_time,
+             st.name AS session_name,
+             u.name AS customer_name, u.email AS customer_email
+      FROM bookings b
+      JOIN time_slots ts   ON ts.id = b.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      JOIN users u          ON u.id = b.user_id
+      WHERE b.id = $1
+    `, [id]);
+    return rows[0] || null;
   },
 
   // Waiver
@@ -825,7 +996,7 @@ const queries = {
   getWaitlistEntryByPaymentIntent: async (paymentIntentId) => {
     const { rows } = await pool.query(
       `SELECT w.*, u.name AS customer_name, u.email AS customer_email,
-              ts.date, ts.start_time, ts.end_time, st.name AS session_name, st.price_cents
+              ts.date, ts.start_time, ts.end_time, st.name AS session_name, COALESCE(ts.price_cents, st.price_cents) AS price_cents
        FROM waitlist w
        JOIN users u ON u.id = w.user_id
        JOIN time_slots ts ON ts.id = w.time_slot_id

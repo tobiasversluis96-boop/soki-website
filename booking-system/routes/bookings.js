@@ -27,6 +27,23 @@ router.post('/', requireAuth, async (req, res) => {
   if (group_size > spotsLeft)
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
+  // Free-slot rule: each account may book only ONE free (price_cents=0) session
+  if (slot.price_cents === 0) {
+    const used = await queries.countUserFreeSlotBookings(req.user.userId);
+    if (used > 0) {
+      return res.status(409).json({
+        error: 'Je hebt al een gratis sessie geboekt. Elk account mag één gratis sessie ervaren.',
+        code: 'FREE_ALREADY_USED',
+      });
+    }
+    if (group_size > 1) {
+      return res.status(400).json({
+        error: 'Voor een gratis sessie kun je alleen voor jezelf boeken (1 persoon).',
+        code: 'FREE_GROUP_TOO_LARGE',
+      });
+    }
+  }
+
   // Validate promo / test code
   const testCode = process.env.TEST_BOOKING_CODE;
   const isFree   = testCode && promo_code && promo_code.trim().toUpperCase() === testCode.toUpperCase();

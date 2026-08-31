@@ -50,12 +50,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* ===== NAV: scroll effect ===== */
 const nav = document.getElementById('nav');
+const navLogo = document.getElementById('navLogo');
+const heroLogo = document.getElementById('heroLogo');
 
 function updateNav() {
+  const heroHeight = document.querySelector('.hero') ? document.querySelector('.hero').offsetHeight : 400;
+  const scrolled = window.scrollY > heroHeight * 0.5;
+
   if (window.scrollY > 40) {
     nav.classList.add('scrolled');
   } else {
     nav.classList.remove('scrolled');
+  }
+
+  if (navLogo) {
+    navLogo.classList.toggle('nav__logo--hidden', !scrolled);
+  }
+  if (heroLogo) {
+    heroLogo.style.opacity = scrolled ? '0' : '1';
+    heroLogo.style.pointerEvents = scrolled ? 'none' : 'auto';
   }
 }
 
@@ -95,8 +108,7 @@ if (navToggle && navMobile) {
 
 
 /* ===== SESSIONS: filter buttons ===== */
-const filterBtns   = document.querySelectorAll('.filter-btn');
-const sessionCards = document.querySelectorAll('.session-card[data-type]');
+const filterBtns = document.querySelectorAll('.filter-btn');
 
 filterBtns.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -106,8 +118,8 @@ filterBtns.forEach(btn => {
     filterBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    // Show/hide cards
-    sessionCards.forEach(card => {
+    // Query cards on each click so dynamically-inserted cards are included
+    document.querySelectorAll('.session-card[data-type]').forEach(card => {
       if (filter === 'all') {
         card.style.display = '';
         return;
@@ -298,6 +310,14 @@ document.head.appendChild(revealStyle);
     var mon   = MONTH_NL[parts[1] - 1];
     var dots  = spotsLabel(s.spots_left);
     var cls   = spotsClass(s.spots_left);
+    var isNL  = SOKI_LANG === 'nl';
+    var isFree = s.price_cents === 0;
+    var freeLabel = isNL ? 'GRATIS' : 'FREE';
+    var tryOutSuffix = ' - try-out';
+
+    var priceHtml = isFree
+      ? '<span class="tag" style="background:#2E7D32;color:#fff;">' + freeLabel + ' · ' + s.duration_min + ' min</span>'
+      : '<span class="tag tag--mixed">' + eur(s.price_cents) + ' · ' + s.duration_min + ' min</span>';
 
     return '<div class="session-card">' +
       '<div class="session-card__date">' +
@@ -306,20 +326,20 @@ document.head.appendChild(revealStyle);
       '</div>' +
       '<div class="session-card__sep"></div>' +
       '<div class="session-card__info">' +
-        '<h4>' + s.session_name + '</h4>' +
+        '<h4>' + (isFree ? (s.session_name + tryOutSuffix) : s.session_name) + '</h4>' +
         '<div class="session-card__meta">' +
           '<span class="time">' + s.start_time + ' – ' + s.end_time + '</span>' +
-          '<span class="location">Gietijzerstraat 3, Utrecht</span>' +
+          '<span class="location">Europalaan 2B, Utrecht</span>' +
         '</div>' +
         '<div class="session-card__meta" style="margin-top:6px;">' +
-          '<span class="tag tag--mixed">' + eur(s.price_cents) + ' · ' + s.duration_min + ' min</span>' +
+          priceHtml +
           '<span class="spots-badge ' + cls + '">' + dots + '</span>' +
         '</div>' +
       '</div>' +
       '<div class="session-card__action">' +
         (s.spots_left > 0
-          ? '<a href="/booking?slot=' + s.id + '" class="btn btn--outline">' + (SOKI_LANG === 'nl' ? 'Boek nu' : 'Book now') + '</a>'
-          : '<span class="btn btn--outline" style="opacity:.45;cursor:default;">' + (SOKI_LANG === 'nl' ? 'Vol' : 'Full') + '</span>') +
+          ? '<a href="/booking?slot=' + s.id + '" class="btn btn--outline">' + (isNL ? 'Boek nu' : 'Book now') + '</a>'
+          : '<span class="btn btn--outline" style="opacity:.45;cursor:default;">' + (isNL ? 'Vol' : 'Full') + '</span>') +
       '</div>' +
     '</div>';
   }

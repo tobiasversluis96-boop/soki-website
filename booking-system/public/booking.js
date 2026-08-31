@@ -89,7 +89,10 @@
       [t('booking.summary.group'),   personStr(state.groupSize)],
     ];
     if (includeTotal !== false) {
-      rows.push([t('booking.summary.total'), eur(state.totalCents || state.sessionType.price_cents * state.groupSize)]);
+      var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
+      var computedTotal = perPerson * state.groupSize;
+      var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
+      rows.push([t('booking.summary.total'), finalTotal === 0 ? 'Gratis' : eur(finalTotal)]);
     }
     var html = '<div class="booking-summary-box__label">' + t('booking.summary.title') + '</div>';
     rows.forEach(function (r) {
@@ -547,7 +550,8 @@
     var spotsLeft = state.slot ? state.slot.spots_left : 15;
     if (state.groupSize > spotsLeft) state.groupSize = spotsLeft;
     document.getElementById('group-count').textContent = state.groupSize;
-    document.getElementById('group-total').textContent = eur(state.sessionType.price_cents * state.groupSize);
+    var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
+    document.getElementById('group-total').textContent = perPerson === 0 ? 'Gratis' : eur(perPerson * state.groupSize);
     document.getElementById('group-caption').textContent =
       personStr(state.groupSize) + ' · ' + spotsLeft + ' ' + t('booking.spots.left');
     document.getElementById('group-minus').disabled = state.groupSize <= 1;
@@ -632,6 +636,28 @@
 
   // ─── Step 5: Payment ──────────────────────────────────────────────────────
   function initPayment() {
+    // Free slot (e.g. try-out weekend): skip payment entirely, confirm booking, jump to confirmation.
+    var slotPrice = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null)
+      ? state.slot.price_cents
+      : state.sessionType.price_cents;
+    if (slotPrice === 0) {
+      api('/bookings', {
+        method: 'POST',
+        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
+      }).then(function (bRes) {
+        if (bRes.error) {
+          // Still show payment step so error is visible
+          showStep(5);
+          document.getElementById('stripe-errors').textContent = bRes.error;
+          return;
+        }
+        state.bookingId  = bRes.booking_id;
+        state.totalCents = bRes.total_cents;
+        showConfirmation();
+      });
+      return;
+    }
+
     showStep(5);
     document.getElementById('payment-summary').innerHTML = summaryHTML();
     document.getElementById('stripe-errors').textContent = '';

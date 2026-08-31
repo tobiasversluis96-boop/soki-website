@@ -112,26 +112,34 @@ app.get('/api/slots', async (req, res) => {
   res.json(result);
 });
 
-// Next N available slots (homepage widget)
+// Next N upcoming slots (homepage widget + sessions programme)
+// Query params:
+//   limit         (default 3, max 200)
+//   include_full  ('1' to include sold-out slots — used by /sessions programme)
 app.get('/api/upcoming-slots', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 3, 10);
-  const today = new Date().toISOString().slice(0, 10);
+  const limit       = Math.min(parseInt(req.query.limit) || 3, 200);
+  const includeFull = req.query.include_full === '1';
+  const today       = new Date().toISOString().slice(0, 10);
+
+  const havingClause = includeFull
+    ? ''
+    : `HAVING (COALESCE(ts.max_capacity, st.max_capacity)) - COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0) > 0`;
 
   const { rows: slots } = await getPool().query(`
     SELECT ts.*,
            st.name         AS session_name,
-           st.price_cents  AS price_cents,
+           COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
            st.color        AS color,
            st.duration_min AS duration_min,
            st.id           AS type_id,
            st.max_capacity AS type_capacity,
-           COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+           COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
     FROM time_slots ts
     JOIN session_types st ON st.id = ts.session_type_id
     LEFT JOIN bookings b ON b.time_slot_id = ts.id
     WHERE ts.date >= $1 AND ts.is_cancelled = FALSE
     GROUP BY ts.id, st.name, st.price_cents, st.color, st.duration_min, st.id, st.max_capacity
-    HAVING (COALESCE(ts.max_capacity, st.max_capacity)) - COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0) > 0
+    ${havingClause}
     ORDER BY ts.date ASC, ts.start_time ASC
     LIMIT $2
   `, [today, limit]);
@@ -349,3 +357,13 @@ setInterval(async () => {
     console.error('Pending cleanup error:', err.message);
   }
 }, 15 * 60 * 1000); // every 15 minutes
+
+// ─── Walk-in hold cleanup (runs every minute) ────────────────────────────────
+setInterval(async () => {
+  try {
+    const cancelled = await queries.expireStaleHolds();
+    if (cancelled > 0) console.log(`✓ Expired ${cancelled} walk-in hold(s)`);
+  } catch (err) {
+    console.error('Hold cleanup error:', err.message);
+  }
+}, 60 * 1000); // every minute

@@ -194,7 +194,7 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
   const results = { created: 0, skipped: 0, errors: [] };
   for (const s of slots) {
     try {
-      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null);
+      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null);
       results.created++;
     } catch (err) {
       results.skipped++;
@@ -205,20 +205,20 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
 });
 
 router.post('/slots', requireAdmin, async (req, res) => {
-  const { session_type_id, date, start_time, end_time, max_capacity, notes } = req.body;
+  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents } = req.body;
   if (!session_type_id || !date || !start_time || !end_time)
     return res.status(400).json({ error: 'session_type_id, date, start_time, end_time are required' });
 
-  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes);
+  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null);
   res.status(201).json({ id: slot.id });
 });
 
 router.put('/slots/:id', requireAdmin, async (req, res) => {
-  const { date, start_time, end_time, max_capacity, notes } = req.body;
+  const { date, start_time, end_time, max_capacity, notes, price_cents } = req.body;
   if (!date || !start_time || !end_time)
     return res.status(400).json({ error: 'date, start_time, end_time are required' });
 
-  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes });
+  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents });
   res.json({ ok: true });
 });
 
@@ -571,6 +571,195 @@ router.post('/staff/change-own-password', requireStaff(null), async (req, res) =
   await queries.updateStaffPassword(staff.id, passwordHash);
   res.json({ ok: true });
 });
+
+// ─── Subscriptions: list, pause, resume (single + bulk) ────────────────────────
+
+// GET /api/admin/subscriptions — list all subscriptions with user + plan info
+router.get('/subscriptions', requireAdmin, async (req, res) => {
+  const rows = await queries.getAllSubscriptions();
+  res.json(rows);
+});
+
+// Helper: build pause_collection payload for Stripe
+function pausePayload(resumesAt) {
+  const payload = { pause_collection: { behavior: 'void' } };
+  if (resumesAt) {
+    const ts = Math.floor(new Date(resumesAt).getTime() / 1000);
+    if (Number.isFinite(ts) && ts > Math.floor(Date.now() / 1000)) {
+      payload.pause_collection.resumes_at = ts;
+    }
+  }
+  return payload;
+}
+
+// PATCH /api/admin/subscriptions/:id/pause  { resumes_at?: 'YYYY-MM-DD' }
+router.patch('/subscriptions/:id/pause', requireAdmin, async (req, res) => {
+  const sub = await queries.getSubscriptionById(req.params.id);
+  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+  if (!sub.stripe_subscription_id) return res.status(400).json({ error: 'Subscription is not linked to Stripe' });
+  if (sub.status === 'paused')     return res.status(409).json({ error: 'Subscription already paused' });
+
+  try {
+    await stripe.subscriptions.update(sub.stripe_subscription_id, pausePayload(req.body.resumes_at));
+    await queries.markSubscriptionPaused(sub.id, req.body.resumes_at || null);
+    res.json({ ok: true, id: sub.id });
+  } catch (err) {
+    console.error('Stripe pause failed:', err.message);
+    res.status(502).json({ error: 'Stripe pause failed', detail: err.message });
+  }
+});
+
+// PATCH /api/admin/subscriptions/:id/resume
+router.patch('/subscriptions/:id/resume', requireAdmin, async (req, res) => {
+  const sub = await queries.getSubscriptionById(req.params.id);
+  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+  if (!sub.stripe_subscription_id) return res.status(400).json({ error: 'Subscription is not linked to Stripe' });
+  if (sub.status !== 'paused')     return res.status(409).json({ error: 'Subscription is not paused' });
+
+  try {
+    await stripe.subscriptions.update(sub.stripe_subscription_id, { pause_collection: '' });
+    await queries.markSubscriptionResumed(sub.id);
+    res.json({ ok: true, id: sub.id });
+  } catch (err) {
+    console.error('Stripe resume failed:', err.message);
+    res.status(502).json({ error: 'Stripe resume failed', detail: err.message });
+  }
+});
+
+// POST /api/admin/subscriptions/pause-all  { resumes_at?: 'YYYY-MM-DD' }
+router.post('/subscriptions/pause-all', requireAdmin, async (req, res) => {
+  const targets = await queries.listSubscriptionsByStatus(['active', 'past_due']);
+  const payload = pausePayload(req.body.resumes_at);
+  const results = { paused: [], failed: [] };
+
+  for (const sub of targets) {
+    try {
+      await stripe.subscriptions.update(sub.stripe_subscription_id, payload);
+      await queries.markSubscriptionPaused(sub.id, req.body.resumes_at || null);
+      results.paused.push(sub.id);
+    } catch (err) {
+      console.error(`Pause failed for sub ${sub.id}:`, err.message);
+      results.failed.push({ id: sub.id, error: err.message });
+    }
+  }
+  res.json({ ok: true, count: results.paused.length, ...results });
+});
+
+// POST /api/admin/subscriptions/resume-all
+router.post('/subscriptions/resume-all', requireAdmin, async (req, res) => {
+  const targets = await queries.listSubscriptionsByStatus(['paused']);
+  const results = { resumed: [], failed: [] };
+
+  for (const sub of targets) {
+    try {
+      await stripe.subscriptions.update(sub.stripe_subscription_id, { pause_collection: '' });
+      await queries.markSubscriptionResumed(sub.id);
+      results.resumed.push(sub.id);
+    } catch (err) {
+      console.error(`Resume failed for sub ${sub.id}:`, err.message);
+      results.failed.push({ id: sub.id, error: err.message });
+    }
+  }
+  res.json({ ok: true, count: results.resumed.length, ...results });
+});
+
+
+// ─── Walk-in booking flow ──────────────────────────────────────────────────
+
+// POST /api/admin/walkin/find-or-create-user  { name, email }
+router.post('/walkin/find-or-create-user', requireAdmin, async (req, res) => {
+  const name  = String(req.body.name  || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!name || !email) return res.status(400).json({ error: 'name and email are required' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid email' });
+
+  const existing = await queries.getUserByEmail(email);
+  if (existing) {
+    return res.json({ user: { id: existing.id, name: existing.name, email: existing.email }, created: false });
+  }
+  const created = await queries.createGuestUser(name, email);
+  res.json({ user: created, created: true });
+});
+
+// GET /api/admin/walkin/upcoming-slots
+router.get('/walkin/upcoming-slots', requireAdmin, async (req, res) => {
+  const slots = await queries.getUpcomingSlotsWithSpots();
+  res.json(slots.filter(s => s.spots_left > 0));
+});
+
+// POST /api/admin/walkin/book
+// body: { user_id, slot_id, group_size, payment_mode: 'free' | 'stripe_qr' }
+router.post('/walkin/book', requireAdmin, async (req, res) => {
+  const { user_id, slot_id, group_size, payment_mode } = req.body;
+  if (!user_id || !slot_id || !group_size) return res.status(400).json({ error: 'user_id, slot_id, group_size required' });
+  if (!['free', 'stripe_qr'].includes(payment_mode)) return res.status(400).json({ error: 'payment_mode must be free or stripe_qr' });
+
+  // Fetch slot to know price
+  const slot = await queries.getSlotById(slot_id);
+  if (!slot) return res.status(404).json({ error: 'Slot not found' });
+
+  const totalCents = payment_mode === 'free' ? 0 : slot.price_cents * group_size;
+  const holdMinutes = payment_mode === 'stripe_qr' ? 15 : 0;
+
+  let booking;
+  try {
+    booking = await queries.createWalkinBookingWithHold(user_id, slot_id, group_size, totalCents, holdMinutes);
+  } catch (err) {
+    return res.status(400).json({ error: err.message, code: err.code });
+  }
+
+  // Free: booking is already confirmed — done
+  if (payment_mode === 'free') {
+    return res.json({ ok: true, booking_id: booking.id, status: 'confirmed', payment_mode: 'free' });
+  }
+
+  // Stripe QR: create a Checkout Session that the customer can pay on their phone
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: `Soki – ${slot.session_name || 'Session'}` },
+          unit_amount: slot.price_cents,
+        },
+        quantity: group_size,
+      }],
+      success_url: (process.env.BASE_URL || 'http://localhost:3001') + '/payment-return?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url:  (process.env.BASE_URL || 'http://localhost:3001') + '/payment-return?cancelled=1',
+      metadata: { booking_id: String(booking.id), walkin: '1' },
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30-min link expiry
+    });
+    // Store the checkout session id on the booking for polling
+    await queries.updateBookingPayment(booking.id, session.id, 'pending');
+    res.json({
+      ok: true,
+      booking_id: booking.id,
+      status: 'pending',
+      payment_mode: 'stripe_qr',
+      checkout_url: session.url,
+      hold_until: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    });
+  } catch (err) {
+    console.error('Stripe checkout create failed:', err.message);
+    return res.status(502).json({ error: 'Stripe checkout failed', detail: err.message });
+  }
+});
+
+// GET /api/admin/walkin/booking/:id/status — polling for QR flow
+router.get('/walkin/booking/:id/status', requireAdmin, async (req, res) => {
+  const booking = await queries.getBookingBasic(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  res.json({
+    id: booking.id,
+    status: booking.status,                          // 'pending' | 'confirmed' | 'cancelled'
+    payment_status: booking.stripe_payment_status,   // 'pending' | 'succeeded' | null
+    hold_until: booking.hold_until,
+    customer_name: booking.customer_name,
+    session_name: booking.session_name,
+  });
+});
+
 
 module.exports = router;
 module.exports.requireAdmin = requireAdmin;

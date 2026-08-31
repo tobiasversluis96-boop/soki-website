@@ -3,769 +3,369 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SOKI — Coming Soon · Social Sauna Utrecht</title>
-  <meta name="description" content="SOKI is a new kind of sauna space in Utrecht, fusing wellness with culture, music and community. Opening soon." />
-  <link rel="stylesheet" href="styles.css" />
+  <title>SOKI: Social Sauna, Ice Bath &amp; Listening Space in Utrecht</title>
+  <meta name="description" content="SOKI is a new kind of sauna space in Utrecht, fusing wellness with culture, music and community. Book a sauna, ice bath or ambient session." />
+  <link rel="stylesheet" href="styles.css?v=20260826-7" />
   <link rel="icon" type="image/png" href="images/favicon.png" />
-  <style>
-    /* ── Coming Soon overrides ───────────────────────────── */
-
-    .cs-hero {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      overflow: hidden;
-    }
-
-    .cs-hero__bg {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-    }
-
-    .cs-hero__bg img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-    }
-
-    /* Directional gradient — dark left, open right, lets wood tones breathe */
-    .cs-hero__bg::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        to right,
-        rgba(38, 14, 5, 0.92) 0%,
-        rgba(38, 14, 5, 0.80) 28%,
-        rgba(38, 14, 5, 0.48) 55%,
-        rgba(38, 14, 5, 0.0) 78%
-      );
-    }
-
-    .cs-hero__content {
-      position: relative;
-      z-index: 1;
-      text-align: left;
-      padding: 2rem 1.5rem 2rem clamp(2rem, 8vw, 7rem);
-      max-width: 580px;
-    }
-
-    .cs-logo {
-      margin-bottom: 1.75rem;
-    }
-
-    .cs-logo__img {
-      width: clamp(150px, 22vw, 260px);
-      height: auto;
-      display: block;
-      margin: 0;
-    }
-
-
-    /* Serif italic statement line */
-    .cs-hero__statement {
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-style: italic;
-      font-weight: 300;
-      font-size: clamp(2rem, 4.2vw, 3.2rem);
-      color: var(--beige);
-      line-height: 1.25;
-      margin-bottom: 1.5rem;
-      letter-spacing: 0.01em;
-    }
-
-    .cs-badge {
-      display: inline-block;
-      font-family: var(--font-sub);
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--peach);
-      border: 1px solid rgba(242,194,153,0.4);
-      border-radius: 3px;
-      padding: 0.38rem 0.9rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .cs-hero__content .lead {
-      color: rgba(255, 236, 211, 0.72);
-      margin-inline: 0;
-      margin-bottom: 2.25rem;
-      max-width: 44ch;
-      font-size: 0.93rem;
-      line-height: 1.7;
-    }
-
-    /* ── Email form ──────────────────────────────────────── */
-
-    .cs-form {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.65rem;
-      width: 100%;
-      max-width: 400px;
-      margin-inline: 0;
-    }
-
-    .cs-form__row {
-      display: flex;
-      width: 100%;
-      gap: 0;
-      border-radius: 4px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(242,194,153,0.32);
-      transition: border-color var(--ease);
-    }
-
-    .cs-form__row:focus-within {
-      border-color: rgba(242,194,153,0.72);
-      background: rgba(255,255,255,0.1);
-    }
-
-    .cs-form__row input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      padding: 0.85rem 1.2rem;
-      font-family: var(--font-body);
-      font-size: 0.9rem;
-      color: var(--white);
-      min-width: 0;
-    }
-
-    .cs-form__row input::placeholder {
-      color: rgba(242,242,242,0.38);
-    }
-
-    .cs-form__row button {
-      flex-shrink: 0;
-      background: var(--terra);
-      border: none;
-      color: var(--white);
-      font-family: var(--font-sub);
-      font-size: 0.76rem;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      padding: 0.85rem 1.4rem;
-      cursor: pointer;
-      transition: background var(--ease);
-      white-space: nowrap;
-    }
-
-    .cs-form__row button:hover { background: var(--terra-dark); }
-    .cs-form__row button:disabled { opacity: 0.6; cursor: default; }
-
-    .cs-form__note {
-      font-family: var(--font-sub);
-      font-size: 0.66rem;
-      letter-spacing: 0.12em;
-      color: rgba(242,242,242,0.35);
-      text-transform: uppercase;
-    }
-
-    .cs-form__msg {
-      font-family: var(--font-body);
-      font-size: 0.88rem;
-      padding: 0.6rem 1rem;
-      border-radius: 3px;
-      width: 100%;
-      text-align: left;
-      display: none;
-    }
-
-    .cs-form__msg--success {
-      background: rgba(255,255,255,0.08);
-      color: var(--peach);
-      border: 1px solid rgba(242,194,153,0.3);
-    }
-
-    .cs-form__msg--error {
-      background: rgba(255,80,50,0.12);
-      color: #ffb5a0;
-      border: 1px solid rgba(255,100,80,0.25);
-    }
-
-    /* ── What is SOKI section ────────────────────────────── */
-
-    .cs-what {
-      background: var(--brown);
-      padding-block: var(--space-2xl);
-    }
-
-    .cs-what__grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-xl);
-      align-items: center;
-    }
-
-    .cs-what__text .eyebrow { color: var(--peach); }
-    .cs-what__text h2 { color: var(--peach); margin-bottom: 1.25rem; }
-    .cs-what__text p  { color: rgba(242,194,153,0.75); margin-bottom: 1rem; }
-    .cs-what__text p:last-of-type { margin-bottom: 0; }
-
-    .cs-what__image {
-      border-radius: 4px;
-      overflow: hidden;
-      aspect-ratio: 4/5;
-    }
-
-    .cs-what__image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    /* ── Values strip ────────────────────────────────────── */
-
-    .cs-values {
-      background: var(--peach-light);
-      padding-block: var(--space-xl);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .cs-values__steam {
-      position: absolute;
-      bottom: 0;
-      right: -4%;
-      width: clamp(400px, 55vw, 700px);
-      opacity: 0.22;
-      pointer-events: none;
-      user-select: none;
-      transform: rotate(-90deg);
-      transform-origin: bottom right;
-    }
-
-    .cs-values__grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-md);
-    }
-
-    .cs-value {
-      text-align: center;
-      padding: 2rem 1.5rem;
-    }
-
-    .cs-value__icon {
-      display: block;
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 1rem;
-      object-fit: contain;
-      opacity: 0.85;
-    }
-
-    .cs-value h4 {
-      color: var(--brown);
-      margin-bottom: 0.5rem;
-    }
-
-    .cs-value p {
-      font-size: 0.95rem;
-      margin-inline: auto;
-    }
-
-    /* ── Sessions preview ────────────────────────────────── */
-
-    .cs-sessions {
-      background: var(--white);
-      padding-block: var(--space-2xl);
-    }
-
-    .cs-sessions__grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.25rem;
-      margin-top: var(--space-lg);
-    }
-
-    .cs-session-card {
-      background: var(--peach-light);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .cs-session-card__img {
-      aspect-ratio: 3/2;
-      overflow: hidden;
-    }
-
-    .cs-session-card__img img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.5s ease;
-    }
-
-    .cs-session-card:hover .cs-session-card__img img {
-      transform: scale(1.04);
-    }
-
-    .cs-session-card__body {
-      padding: 1.25rem;
-    }
-
-    .cs-session-card__body h3 {
-      font-size: 1.2rem;
-      color: var(--brown);
-      margin-bottom: 0.4rem;
-    }
-
-    .cs-session-card__body p {
-      font-size: 0.88rem;
-      line-height: 1.6;
-      margin-bottom: 0.75rem;
-    }
-
-    .cs-session-card__meta {
-      font-family: var(--font-sub);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--terra);
-    }
-
-    /* ── Location teaser ─────────────────────────────────── */
-
-    .cs-location {
-      background: var(--brown);
-      padding-block: var(--space-xl);
-      text-align: center;
-    }
-
-    .cs-location .eyebrow { color: var(--peach); }
-    .cs-location h2 { color: var(--peach); margin-bottom: 0.75rem; }
-    .cs-location p  { color: rgba(242,194,153,0.75); margin-inline: auto; }
-
-    .cs-location__detail {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      margin-top: 2rem;
-      flex-wrap: wrap;
-    }
-
-    .cs-location__item {
-      text-align: center;
-    }
-
-    .cs-location__item strong {
-      display: block;
-      font-family: var(--font-sub);
-      font-size: 0.7rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--terra);
-      margin-bottom: 0.3rem;
-    }
-
-    .cs-location__item span {
-      font-family: var(--font-body);
-      font-size: 0.95rem;
-      color: rgba(242,194,153,0.85);
-    }
-
-    /* ── Bottom CTA ──────────────────────────────────────── */
-
-    .cs-cta {
-      background: var(--terra);
-      padding-block: var(--space-xl);
-      text-align: center;
-    }
-
-    .cs-cta h2 { color: var(--white); margin-bottom: 1rem; }
-    .cs-cta p  { color: rgba(242,242,242,0.85); margin-inline: auto; margin-bottom: 2rem; }
-    .cs-cta .eyebrow { color: var(--peach); }
-
-    .cs-cta .cs-form {
-      align-items: center;
-      margin-inline: auto;
-    }
-
-    /* ── Footer minimal ──────────────────────────────────── */
-
-    .cs-footer {
-      background: var(--brown);
-      padding-block: 2rem;
-      text-align: center;
-    }
-
-    .cs-footer p {
-      font-size: 0.82rem;
-      color: rgba(242,194,153,0.45);
-      margin-inline: auto;
-    }
-
-    .cs-footer a { color: rgba(242,194,153,0.6); }
-    .cs-footer a:hover { color: var(--peach); }
-
-    /* ── Responsive ──────────────────────────────────────── */
-
-    @media (max-width: 900px) {
-      .cs-what__grid { grid-template-columns: 1fr; }
-      .cs-what__image { aspect-ratio: 16/9; order: -1; }
-      .cs-sessions__grid { grid-template-columns: repeat(2, 1fr); }
-      .cs-values__grid { grid-template-columns: 1fr; }
-    }
-
-    /* On mobile: centered layout with bigger logo */
-    @media (max-width: 700px) {
-      .cs-hero {
-        align-items: center;
-        justify-content: center;
-      }
-
-      .cs-hero__bg::after {
-        background: linear-gradient(
-          160deg,
-          rgba(38, 14, 5, 0.82) 0%,
-          rgba(38, 14, 5, 0.68) 50%,
-          rgba(38, 14, 5, 0.50) 100%
-        );
-      }
-
-      .cs-hero__content {
-        padding: 2rem 1.5rem;
-        max-width: 100%;
-        text-align: center;
-      }
-
-      .cs-logo__img {
-        width: clamp(180px, 55vw, 260px);
-        margin: 0 auto;
-      }
-
-      .cs-badge { display: block; margin-inline: auto; width: fit-content; }
-
-      .cs-hero__content .lead { margin-inline: auto; }
-
-      .cs-form {
-        align-items: center;
-        margin-inline: auto;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .cs-sessions__grid { grid-template-columns: 1fr; }
-      .cs-form__row { flex-direction: column; border-radius: 4px; }
-      .cs-form__row input { padding: 0.9rem 1.2rem; }
-      .cs-form__row button { border-radius: 0 0 3px 3px; padding: 0.9rem; background: transparent; color: var(--terra); border: 1.5px solid var(--terra); }
-      .cs-form__row button:hover { background: transparent; color: var(--terra-dark); border-color: var(--terra-dark); }
-      .cs-location__detail { gap: 1.5rem; }
-    }
-  </style>
 </head>
 <body>
 
-  <!-- ===== LANG TOGGLE ===== -->
-  <div style="position:fixed; top:1.1rem; right:1.25rem; z-index:999;">
-    <button class="lang-toggle" id="langBtn" onclick="csToggleLang()" aria-label="Switch language">NL</button>
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo nav__logo--hidden" id="navLogo">
+        <img src="images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
+      </a>
+
+      <ul class="nav__links">
+        <li><a href="index.html" class="active" data-i18n="nav.home">Home</a></li>
+        <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+        <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+        <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav__cta">
+        <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
+        <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+        <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" data-i18n="book.now">Book now</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav__mobile" id="navMobile">
+    <a href="index.html" data-i18n="nav.home">Home</a>
+    <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
+    <a href="about.html" data-i18n="nav.about">About us</a>
+    <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+    <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
+    <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
   </div>
 
   <!-- ===== HERO ===== -->
-  <section class="cs-hero">
-    <div class="cs-hero__bg">
+  <section class="hero">
+    <div class="hero__bg">
       <img
         src="/images/new header.jpg"
-        alt="Warm sauna interior with soft amber light"
+        alt="Group of friends relaxing together in a warm wooden sauna"
         loading="eager"
       />
     </div>
 
-    <div class="cs-hero__content">
-      <div class="cs-logo">
-        <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
-      </div>
-
-      <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
-
-      <p class="lead" data-en="Sauna, ice baths and good company in Utrecht. A place to slow down and really connect. Be the first to know when we open." data-nl="Sauna, ijsbaden en goed gezelschap in Utrecht. Een plek om echt te vertragen en te verbinden. Wees de eerste die het weet als we openen.">
-        Sauna, ice baths and good company in Utrecht. A place to slow down and really connect.
-        Be the first to know when we open.
+    <div class="container hero__content">
+      <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" id="heroLogo" class="hero__logo-img" />
+      <p class="lead" data-i18n="home.hero.lead">
+        SOKI is a new kind of sauna space that fuses wellness with culture,
+        music and community. A warm, inspiring place where wellbeing, creativity
+        and genuine human connection come first.
       </p>
+      <div class="hero__actions">
+        <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" data-i18n="home.hero.book">Book a session</a>
+        <a href="about.html" class="btn btn--outline-light" data-i18n="home.hero.story">Our story</a>
+      </div>
+    </div>
 
-      <form class="cs-form" id="waitlistForm" onsubmit="handleSignup(event)" novalidate>
-        <div class="cs-form__row">
-          <input
-            type="email"
-            id="waitlistEmail"
-            name="email"
-            placeholder="your@email.com"
-            autocomplete="email"
-            required
-          />
-          <button type="submit" id="submitBtn" data-en="Notify me" data-nl="Houd me op de hoogte">Notify me</button>
-        </div>
-        <p class="cs-form__note" data-en="No spam &nbsp;·&nbsp; Unsubscribe any time" data-nl="Geen spam &nbsp;·&nbsp; Altijd uitschrijven">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
-        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess" data-en="You're on the list. We'll be in touch when we open." data-nl="Je staat op de lijst. We laten het je weten als we openen.">
-          You're on the list. We'll be in touch when we open.
-        </div>
-        <div class="cs-form__msg cs-form__msg--error" id="msgError" data-en="Something went wrong. Please try again." data-nl="Er is iets misgegaan. Probeer het opnieuw.">
-          Something went wrong. Please try again.
-        </div>
-      </form>
+    <div class="hero__scroll-hint">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+      Scroll
     </div>
   </section>
 
-
-  <!-- ===== WHAT IS SOKI ===== -->
-  <section class="cs-what">
+  <!-- ===== INTRO ===== -->
+  <section class="section">
     <div class="container">
-      <div class="cs-what__grid">
-        <div class="cs-what__text">
-          <span class="eyebrow" data-en="our answer" data-nl="ons antwoord">our answer</span>
-          <h2 data-en="this is why we built SOKI." data-nl="daarom bouwden we SOKI.">this is why we built SOKI.</h2>
-          <p data-en="Not a silent, anonymous spa. Not a luxury wellness club. Something more human: a place where you sweat, relax and can also catch a DJ set, a talk or a small performance." data-nl="Geen stille, anonieme spa. Geen luxe wellnessclub. Iets menselijkers: een plek waar je zweet, ontspant en ook een DJ-set, een talk of een klein optreden kunt meemaken.">
-            Not a silent, anonymous spa. Not a luxury wellness club.
-            Something more human: a place where you sweat, relax and can
-            also catch a DJ set, a talk or a small performance.
-          </p>
-          <p data-en="Without loud music and alcohol, but with warmth, soft sounds and real encounters. Come on a Friday night with friends, or on your own. Either works." data-nl="Zonder harde muziek en alcohol, maar met warmte, zachte geluiden en echte ontmoetingen. Kom op vrijdagavond met vrienden, of alleen. Allebei prima.">
-            Without loud music and alcohol, but with warmth, soft sounds
-            and real encounters. Come on a Friday night with friends, or
-            on your own. Either works.
-          </p>
-          <p data-en="SOKI is a spot tucked away just outside Utrecht city centre, built by Luke &amp; Tobias, two friends who wanted to make the sauna a real place to socialise." data-nl="SOKI is een plek net buiten het centrum van Utrecht, gebouwd door Luke &amp; Tobias, twee vrienden die de sauna wilden omvormen tot een echte plek om te socialiseren.">
-            SOKI is a spot tucked away just outside Utrecht city centre,
-            built by Luke &amp; Tobias, two friends who wanted to make
-            the sauna a real place to socialise.
-          </p>
-        </div>
-        <div class="cs-what__image">
+      <div class="intro-grid">
+        <div class="intro-grid__image">
           <img
             src="https://images.unsplash.com/photo-1660735698223-23a4edefa264?q=80&w=1287&auto=format&fit=crop"
-            alt="Warm wooden sauna interior"
+            alt="Wooden sauna heater with steaming stones"
             loading="lazy"
           />
+
+        </div>
+
+        <div class="intro-grid__text">
+          <span class="eyebrow" data-i18n="home.intro.eyebrow">A hidden oasis just beyond the city limits</span>
+          <h2 data-i18n="home.intro.h2">Reshaping the sauna experience</h2>
+          <p data-i18n="home.intro.p1">
+            Step inside and leave the noise behind. This is a space to slow down,
+            reconnect with yourself, meet others and break free from everyday constraints.
+          </p>
+          <p data-i18n="home.intro.p2">
+            Instead of a silent, anonymous spa, we're building a living, breathing venue
+            where you can sweat, relax and also discover art, talks, DJ sets or small
+            performances.
+          </p>
+          <p data-i18n="home.intro.p3">
+            Our aim is to offer a true alternative to the usual social spaces like bars
+            and clubs: a warm, inspiring place where wellbeing, creativity and genuine
+            human connection come first.
+          </p>
+          <a href="about.html" class="btn btn--ghost">
+            <span data-i18n="read.story">Read our story</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ===== SESSION TYPES ===== -->
+  <section class="section section--peach">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2 data-i18n="home.sessions.h2">Choose your session</h2>
+        <p data-i18n="home.sessions.lead">Every session includes access to sauna, ice baths and our lounge. Complimentary water and (maté)tea included.</p>
+      </div>
+
+      <div class="session-types-grid">
+
+        <a href="/booking?type=1" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1761621711779-faf78317babd?q=80&w=1287&auto=format&fit=crop"
+              alt="Everyday Sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€15 · 50 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Everyday Sauna</h3>
+            <p data-i18n="type.everyday.desc">50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge. A free-flow experience: no fixed programme, just move at your own pace.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=2" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1689093197152-dbdfd8c353c8?q=80&w=2340&auto=format&fit=crop"
+              alt="Social Sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€20 · 80 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Social Sauna</h3>
+            <p data-i18n="type.social.desc">1hr 20 minutes of access to our sauna and ice baths, plus unlimited lounge time. Curl up with a book, meditate, catch up with friends or meet someone new.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=3" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1747151681636-93f538bbb070?q=80&w=1287&auto=format&fit=crop"
+              alt="Ambient Sauna with DJ"
+              loading="lazy"
+            />
+            <span class="type-card__label">€25 · 70 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Ambient Sauna</h3>
+            <p data-i18n="type.ambient.desc">A curated DJ transforms the sauna into an immersive listening lounge. 70 minutes of sauna access, stay for the full 4-hour event with live music from 19:00–23:00.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+        <a href="/booking?type=4" class="type-card" style="text-decoration:none;color:inherit;">
+          <div class="type-card__img">
+            <img
+              src="https://images.unsplash.com/photo-1656416212216-cf05b2af2650?q=80&w=2342&auto=format&fit=crop"
+              alt="Aufguss ritual sauna session"
+              loading="lazy"
+            />
+            <span class="type-card__label">€25 · 90 min</span>
+          </div>
+          <div class="type-card__body">
+            <h3>Aufguss / Opgieting</h3>
+            <p data-i18n="type.aufguss.desc">A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation and a homemade salt scrub.</p>
+            <span class="btn btn--primary" style="margin-top:1.25rem; display:inline-block;" data-i18n="book.now">Book now</span>
+          </div>
+        </a>
+
+      </div>
+
+      <div class="text-center" style="margin-top: 3rem;">
+        <a href="sessions.html" class="btn btn--dark" data-i18n="view.programme">View full programme</a>
+      </div>
+    </div>
+  </section>
 
   <!-- ===== VALUES ===== -->
-  <section class="cs-values">
-    <img src="images/Icons/steam300 kopie.png" class="cs-values__steam" aria-hidden="true" />
+  <section class="section section--brown">
     <div class="container">
-      <div class="text-center section-header">
-        <span class="eyebrow" data-en="what we stand for" data-nl="waar we voor staan">what we stand for</span>
-        <h2 data-en="more than a sauna" data-nl="meer dan een sauna">more than a sauna</h2>
+      <div class="section-header text-center">
+        <span class="eyebrow" data-i18n="home.values.eyebrow">What we stand for</span>
+        <h2 data-i18n="home.values.h2">More than a sauna</h2>
       </div>
-      <div class="cs-values__grid">
-        <div class="cs-value">
-          <img src="images/Icons/hat300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
-          <h4 data-en="Wellness without walls" data-nl="Wellness zonder drempels">Wellness without walls</h4>
-          <p data-en="Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience." data-nl="Saunasessies en koudedompels die betaalbaar en toegankelijk zijn voor iedereen in Utrecht. Niet alleen een luxe, maar een gedeelde ervaring.">Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
+
+      <div class="values-grid">
+        <div class="value-item">
+          <div class="value-item__icon">🌿</div>
+          <h4 data-i18n="home.values.wellness.h4">Wellness without walls</h4>
+          <p data-i18n="home.values.wellness.p">We want to make sauna sessions and cold plunges affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
         </div>
-        <div class="cs-value">
-          <img src="images/Icons/unity300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
-          <h4 data-en="Culture &amp; community" data-nl="Cultuur &amp; gemeenschap">Culture &amp; community</h4>
-          <p data-en="A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience." data-nl="Een levende, ademende ruimte, geen stille spa. Verwacht kunst, talks, DJ-sets en kleine optredens verweven in de saunaervaring.">A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
+        <div class="value-item">
+          <div class="value-item__icon">🎵</div>
+          <h4 data-i18n="home.values.culture.h4">Culture &amp; community</h4>
+          <p data-i18n="home.values.culture.p">We're building a living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
         </div>
-        <div class="cs-value">
-          <img src="images/Icons/loyalty300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
-          <h4 data-en="Real human connection" data-nl="Echte menselijke verbinding">Real human connection</h4>
-          <p data-en="A place to meet people without the noise of a bar. Come alone or with friends. Either works." data-nl="Een plek waar je mensen kunt ontmoeten zonder het lawaai van een bar. Kom alleen of met vrienden. Allebei prima.">A place to meet people without the noise of a bar. Come alone or with friends. Either works.</p>
+        <div class="value-item">
+          <div class="value-item__icon">🤝</div>
+          <h4 data-i18n="home.values.connection.h4">Real human connection</h4>
+          <p data-i18n="home.values.connection.p">In today's digital world, we create space for genuine encounters. An alternative to bars and clubs where you can truly be yourself.</p>
         </div>
       </div>
     </div>
   </section>
 
-
-  <!-- ===== SESSIONS PREVIEW ===== -->
-  <section class="cs-sessions">
+  <!-- ===== UPCOMING PROGRAMME ===== -->
+  <section class="section">
     <div class="container">
-      <div class="text-center section-header">
-        <span class="eyebrow" data-en="our sessions" data-nl="onze sessies">our sessions</span>
-        <h2 data-en="four ways to experience SOKI" data-nl="vier manieren om SOKI te beleven">four ways to experience SOKI</h2>
-        <p data-en="Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included." data-nl="Elke sessie includeert toegang tot sauna, ijsbaden en onze lounge. Water en maté thee inbegrepen.">Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included.</p>
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="home.upcoming.eyebrow">What's on</span>
+        <h2 data-i18n="home.upcoming.h2">Upcoming sessions</h2>
+        <p data-i18n="home.upcoming.lead">Reserve your spot. Live availability updated in real time.</p>
       </div>
-      <div class="cs-sessions__grid">
-        <div class="cs-session-card">
-          <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1761621711779-faf78317babd?q=80&w=1287&auto=format&fit=crop" alt="Everyday Sauna" loading="lazy" />
-          </div>
-          <div class="cs-session-card__body">
-            <h3 data-en="Everyday Sauna" data-nl="Everyday Sauna">Everyday Sauna</h3>
-            <p data-en="Free-flow access to our sauna and ice baths. Move at your own pace, unwind in the lounge." data-nl="Vrije toegang tot onze sauna en ijsbaden. Beweeg op je eigen tempo, ontspan in de lounge.">Free-flow access to our sauna and ice baths. Move at your own pace, unwind in the lounge.</p>
-            <div class="cs-session-card__meta">€15 &nbsp;·&nbsp; 50 min</div>
-          </div>
-        </div>
-        <div class="cs-session-card">
-          <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1689093197152-dbdfd8c353c8?q=80&w=2340&auto=format&fit=crop" alt="Social Sauna" loading="lazy" />
-          </div>
-          <div class="cs-session-card__body">
-            <h3 data-en="Social Sauna" data-nl="Social Sauna">Social Sauna</h3>
-            <p data-en="Extended sauna and ice bath access plus unlimited lounge time. Curl up, catch up, or meet someone new." data-nl="Uitgebreide sauna- en ijsbadtoegang plus onbeperkte loungetijd. Lekker neerploffen, bijpraten of iemand nieuw ontmoeten.">Extended sauna and ice bath access plus unlimited lounge time. Curl up, catch up, or meet someone new.</p>
-            <div class="cs-session-card__meta">€20 &nbsp;·&nbsp; 80 min</div>
-          </div>
-        </div>
-        <div class="cs-session-card">
-          <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1747151681636-93f538bbb070?q=80&w=1287&auto=format&fit=crop" alt="Ambient Sauna" loading="lazy" />
-          </div>
-          <div class="cs-session-card__body">
-            <h3 data-en="Ambient Sauna" data-nl="Ambient Sauna">Ambient Sauna</h3>
-            <p data-en="A curated DJ transforms the sauna into an immersive listening lounge. Stay for the full 4-hour event with live music." data-nl="Een DJ transformeert de sauna in een meeslepende luisterlounge. Blijf voor het volledige 4-uur durende evenement met livemuziek.">A curated DJ transforms the sauna into an immersive listening lounge. Stay for the full 4-hour event with live music.</p>
-            <div class="cs-session-card__meta" data-en="€25 &nbsp;·&nbsp; 70 min + 4hr event" data-nl="€25 &nbsp;·&nbsp; 70 min + 4u evenement">€25 &nbsp;·&nbsp; 70 min + 4hr event</div>
-          </div>
-        </div>
-        <div class="cs-session-card">
-          <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1656416212216-cf05b2af2650?q=80&w=2342&auto=format&fit=crop" alt="Aufguss" loading="lazy" />
-          </div>
-          <div class="cs-session-card__body">
-            <h3 data-en="Aufguss / Opgieting" data-nl="Aufguss / Opgieting">Aufguss / Opgieting</h3>
-            <p data-en="Traditional ritual led by our sauna masters. Essential oils, towel waves and a homemade salt scrub." data-nl="Traditioneel ritueel geleid door onze saunamasters. Essentiële oliën, handdoekzwaaien en een zelfgemaakt zoutpeeling.">Traditional ritual led by our sauna masters. Essential oils, towel waves and a homemade salt scrub.</p>
-            <div class="cs-session-card__meta">€25 &nbsp;·&nbsp; 90 min</div>
-          </div>
-        </div>
+
+      <div class="sessions-list" id="upcoming-slots-list">
+        <div class="slots-loading">Laden…</div>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <a href="sessions.html" class="btn btn--ghost">
+          <span data-i18n="home.upcoming.viewfull">View full programme</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
       </div>
     </div>
   </section>
-
 
   <!-- ===== LOCATION ===== -->
-  <section class="cs-location">
+  <section class="section location-section">
     <div class="container">
-      <span class="eyebrow" data-en="Find us" data-nl="Vind ons">Find us</span>
-      <h2>Europalaan 2B, Utrecht</h2>
-      <p data-en="Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site." data-nl="Net buiten Vechtclub XL. Goed bereikbaar per fiets of bus. Gratis parkeren op het terrein.">Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site.</p>
-      <div class="cs-location__detail">
-        <div class="cs-location__item">
-          <strong>Wed – Thu</strong>
-          <span>16:00 – 21:00</span>
+      <div class="location-grid">
+
+        <!-- Left: info -->
+        <div class="location-info">
+          <span class="eyebrow" data-i18n="location.eyebrow">Find us</span>
+          <h2 data-i18n="location.h2">Drop by</h2>
+
+          <p class="location-address">
+            Europalaan 2B<br>
+            3526 KS Utrecht
+          </p>
+
+          <div class="location-block">
+            <div class="location-label" data-i18n="location.hours">Hours</div>
+            <div data-i18n-html="location.hours.detail">
+              Mon – Fri: 07:00 – 22:00<br>
+              Sat – Sun: 08:00 – 22:00
+            </div>
+          </div>
+
+          <div class="location-block">
+            <div class="location-label" data-i18n="location.contact">Contact</div>
+            <a href="mailto:hello@sokisocialsauna.nl" class="location-link">hello@sokisocialsauna.nl</a>
+          </div>
+
+          <a href="https://maps.apple.com/?address=Europalaan+2B,+Utrecht" target="_blank" rel="noopener" class="btn btn--outline location-cta" data-i18n="location.directions">Get directions</a>
         </div>
-        <div class="cs-location__item">
-          <strong>Friday</strong>
-          <span>16:00 – 23:00</span>
-        </div>
-        <div class="cs-location__item">
-          <strong>Saturday</strong>
-          <span>10:00 – 23:00</span>
-        </div>
-        <div class="cs-location__item">
-          <strong>Sunday</strong>
-          <span>10:00 – 20:00</span>
-        </div>
-        <div class="cs-location__item">
-          <strong>Contact</strong>
-          <span><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></span>
-        </div>
+
+        <!-- Right: map -->
+        <iframe
+          class="location-map"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=5.096%2C52.071%2C5.116%2C52.080&amp;layer=mapnik&amp;marker=52.0753%2C5.1067"
+          style="border:0;"
+          loading="lazy"
+          title="SOKI Social Sauna, Europalaan 2B, Utrecht">
+        </iframe>
+
       </div>
     </div>
   </section>
 
+  <!-- ===== NEWSLETTER ===== -->
+  <section class="section section--terra">
+    <div class="container text-center">
+      <span class="eyebrow" data-i18n="home.nl.eyebrow">Stay in the loop</span>
+      <h2 style="color:var(--white); margin-bottom: 1rem;" data-i18n="home.nl.h2">Subscribe to our newsletter</h2>
+      <p style="margin-inline:auto; margin-bottom: 2rem; color: rgba(242,242,242,0.85);" data-i18n="home.nl.p">
+        Sign up to receive news, upcoming events and early access to new sessions.
+      </p>
 
-  <!-- ===== BOTTOM CTA ===== -->
-  <section class="cs-cta">
-    <div class="container">
-      <span class="eyebrow" data-en="stay in the loop" data-nl="blijf op de hoogte">stay in the loop</span>
-      <h2 data-en="Be first through the door" data-nl="Wees de eerste binnen">Be first through the door</h2>
-      <p data-en="Sign up and get early access to sessions, event announcements and news from SOKI before we go public." data-nl="Meld je aan en krijg vroege toegang tot sessies, aankondigingen en nieuws van SOKI voordat we opengaan.">Sign up and get early access to sessions, event announcements and news from SOKI before we go public.</p>
-
-      <form class="cs-form" id="waitlistForm2" onsubmit="handleSignup(event)" novalidate>
-        <div class="cs-form__row" style="border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);">
-          <input
-            type="email"
-            name="email"
-            placeholder="your@email.com"
-            autocomplete="email"
-            required
-          />
-          <button type="submit">Notify me</button>
+      <form class="newsletter-form centered" onsubmit="handleSignup(event)">
+        <div class="form-row" style="display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;">
+          <div class="form-group" style="flex:2; min-width:220px; max-width:340px;">
+            <label for="hero-email" data-i18n="email.label">Email address</label>
+            <input type="email" id="hero-email" name="email" placeholder="your@email.com" autocomplete="email" required data-i18n-placeholder="email.placeholder" />
+          </div>
         </div>
-        <p class="cs-form__note">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
-        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess2">
-          🌿 &nbsp;You're on the list. We'll be in touch when we open.
-        </div>
-        <div class="cs-form__msg cs-form__msg--error" id="msgError2">
-          Something went wrong. Please try again.
-        </div>
+        <button type="submit" class="btn btn--dark" style="margin-top:0.5rem;" data-i18n="sign.up">Sign up</button>
+        <p class="form-note" style="color:rgba(242,242,242,0.5);" data-i18n="nl.note">No spam. Unsubscribe any time.</p>
       </form>
     </div>
   </section>
 
-
   <!-- ===== FOOTER ===== -->
-  <footer class="cs-footer">
+  <footer class="footer">
     <div class="container">
-      <p>© 2026 SOKI Social Sauna &nbsp;·&nbsp; KVK: 93466307 &nbsp;·&nbsp; <a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a> &nbsp;·&nbsp; <a href="privacy.html">Privacy policy</a></p>
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
+          <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
+        </div>
+
+        <div class="footer__col">
+          <h4 data-i18n="footer.navigate">Navigate</h4>
+          <ul>
+            <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+            <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+            <li><a href="about.html" data-i18n="nav.about">About us</a></li>
+            <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+            <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+            <li><a href="/gift-card" data-i18n="nav.giftcard">Gift card</a></li>
+          </ul>
+        </div>
+
+        <div class="footer__col">
+          <h4 data-i18n="footer.findus">Find us</h4>
+          <ul>
+            <li><a href="#">Europalaan 2B</a></li>
+            <li><a href="#">3526 KS Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–21:00</a></li>
+            <li><a href="#">Fri: 16:00–23:00</a></li>
+            <li><a href="#">Sat: 10:00–23:00</a></li>
+            <li><a href="#">Sun: 10:00–20:00</a></li>
+            <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="#" style="color:inherit;">Terms &amp; conditions</a> · <a href="#" style="color:inherit;">Privacy policy</a></p>
+        <div class="footer__social">
+          <a href="#">Instagram</a>
+          <a href="#">Newsletter</a>
+        </div>
+      </div>
     </div>
   </footer>
 
-
-  <script>
-    var csLang = localStorage.getItem('soki-lang') || 'en';
-
-    function csToggleLang() {
-      csLang = csLang === 'en' ? 'nl' : 'en';
-      localStorage.setItem('soki-lang', csLang);
-      csApplyLang();
-    }
-
-    function csApplyLang() {
-      document.getElementById('langBtn').textContent = csLang === 'en' ? 'NL' : 'EN';
-      document.querySelectorAll('[data-en]').forEach(function(el) {
-        el.innerHTML = el.getAttribute('data-' + csLang) || el.getAttribute('data-en');
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', csApplyLang);
-  </script>
-
-  <script>
-    async function handleSignup(e) {
-      e.preventDefault();
-      const form    = e.target;
-      const isFirst = form.id === 'waitlistForm';
-      const successEl = document.getElementById(isFirst ? 'msgSuccess' : 'msgSuccess2');
-      const errorEl   = document.getElementById(isFirst ? 'msgError'   : 'msgError2');
-      const btn       = form.querySelector('button[type="submit"]');
-      const email     = form.querySelector('input[type="email"]').value.trim();
-
-      successEl.style.display = 'none';
-      errorEl.style.display   = 'none';
-      btn.disabled = true;
-      btn.textContent = '…';
-
-      try {
-        const res = await fetch('https://soki-website-production.up.railway.app/api/waitlist', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email }),
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          form.querySelector('input[type="email"]').value = '';
-          successEl.style.display = 'block';
-        } else {
-          errorEl.textContent = data.error || 'Something went wrong. Please try again.';
-          errorEl.style.display = 'block';
-        }
-      } catch (err) {
-        errorEl.style.display = 'block';
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Notify me';
-      }
-    }
-  </script>
-
+  <script src="translations.js"></script>
+  <script src="sanity-content.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

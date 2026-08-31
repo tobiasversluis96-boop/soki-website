@@ -15,7 +15,7 @@
       min-height: 100vh;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       overflow: hidden;
     }
 
@@ -32,77 +32,73 @@
       object-position: center;
     }
 
+    /* Directional gradient — dark left, open right, lets wood tones breathe */
     .cs-hero__bg::after {
       content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(
-        160deg,
-        rgba(74,28,12,0.72) 0%,
-        rgba(74,28,12,0.55) 50%,
-        rgba(217,77,26,0.35) 100%
+        to right,
+        rgba(38, 14, 5, 0.92) 0%,
+        rgba(38, 14, 5, 0.80) 28%,
+        rgba(38, 14, 5, 0.48) 55%,
+        rgba(38, 14, 5, 0.0) 78%
       );
     }
 
     .cs-hero__content {
       position: relative;
       z-index: 1;
-      text-align: center;
-      padding: 2rem 1.5rem;
-      max-width: 720px;
+      text-align: left;
+      padding: 2rem 1.5rem 2rem clamp(2rem, 8vw, 7rem);
+      max-width: 580px;
     }
 
     .cs-logo {
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.75rem;
     }
 
-    .cs-logo__name {
-      font-family: var(--font-display);
-      font-size: clamp(3.5rem, 12vw, 7rem);
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--white);
+    .cs-logo__img {
+      width: clamp(150px, 22vw, 260px);
+      height: auto;
       display: block;
-      line-height: 1;
+      margin: 0;
     }
 
-    .cs-logo__tag {
-      font-family: var(--font-sub);
-      font-size: 0.78rem;
-      font-weight: 400;
-      letter-spacing: 0.35em;
-      text-transform: uppercase;
-      color: var(--peach);
-      display: block;
-      margin-top: 0.35rem;
+
+    /* Serif italic statement line */
+    .cs-hero__statement {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(2rem, 4.2vw, 3.2rem);
+      color: var(--beige);
+      line-height: 1.25;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.01em;
     }
 
     .cs-badge {
       display: inline-block;
       font-family: var(--font-sub);
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--peach);
-      border: 1.5px solid rgba(242,194,153,0.5);
-      border-radius: 100px;
-      padding: 0.45rem 1.2rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .cs-hero__content h1 {
-      color: var(--white);
-      font-size: clamp(2.2rem, 6vw, 4rem);
+      border: 1px solid rgba(242,194,153,0.4);
+      border-radius: 3px;
+      padding: 0.38rem 0.9rem;
       margin-bottom: 1.25rem;
     }
 
     .cs-hero__content .lead {
-      color: rgba(242,242,242,0.88);
-      margin-inline: auto;
-      margin-bottom: 2.5rem;
-      max-width: 52ch;
+      color: rgba(255, 236, 211, 0.72);
+      margin-inline: 0;
+      margin-bottom: 2.25rem;
+      max-width: 44ch;
+      font-size: 0.93rem;
+      line-height: 1.7;
     }
 
     /* ── Email form ──────────────────────────────────────── */
@@ -110,26 +106,27 @@
     .cs-form {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
+      align-items: flex-start;
+      gap: 0.65rem;
       width: 100%;
-      max-width: 480px;
-      margin-inline: auto;
+      max-width: 400px;
+      margin-inline: 0;
     }
 
     .cs-form__row {
       display: flex;
       width: 100%;
       gap: 0;
-      border-radius: 100px;
+      border-radius: 4px;
       overflow: hidden;
-      background: rgba(255,255,255,0.12);
-      border: 1.5px solid rgba(242,194,153,0.4);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(242,194,153,0.32);
       transition: border-color var(--ease);
     }
 
     .cs-form__row:focus-within {
-      border-color: rgba(242,194,153,0.85);
+      border-color: rgba(242,194,153,0.72);
+      background: rgba(255,255,255,0.1);
     }
 
     .cs-form__row input {
@@ -137,15 +134,15 @@
       background: transparent;
       border: none;
       outline: none;
-      padding: 0.9rem 1.4rem;
+      padding: 0.85rem 1.2rem;
       font-family: var(--font-body);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--white);
       min-width: 0;
     }
 
     .cs-form__row input::placeholder {
-      color: rgba(242,242,242,0.45);
+      color: rgba(242,242,242,0.38);
     }
 
     .cs-form__row button {
@@ -154,11 +151,11 @@
       border: none;
       color: var(--white);
       font-family: var(--font-sub);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      padding: 0.9rem 1.6rem;
+      padding: 0.85rem 1.4rem;
       cursor: pointer;
       transition: background var(--ease);
       white-space: nowrap;
@@ -169,32 +166,32 @@
 
     .cs-form__note {
       font-family: var(--font-sub);
-      font-size: 0.7rem;
+      font-size: 0.66rem;
       letter-spacing: 0.12em;
-      color: rgba(242,242,242,0.4);
+      color: rgba(242,242,242,0.35);
       text-transform: uppercase;
     }
 
     .cs-form__msg {
       font-family: var(--font-body);
-      font-size: 0.9rem;
-      padding: 0.65rem 1.2rem;
-      border-radius: 8px;
+      font-size: 0.88rem;
+      padding: 0.6rem 1rem;
+      border-radius: 3px;
       width: 100%;
-      text-align: center;
+      text-align: left;
       display: none;
     }
 
     .cs-form__msg--success {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
       color: var(--peach);
-      border: 1px solid rgba(242,194,153,0.35);
+      border: 1px solid rgba(242,194,153,0.3);
     }
 
     .cs-form__msg--error {
-      background: rgba(255,80,50,0.15);
+      background: rgba(255,80,50,0.12);
       color: #ffb5a0;
-      border: 1px solid rgba(255,100,80,0.3);
+      border: 1px solid rgba(255,100,80,0.25);
     }
 
     /* ── What is SOKI section ────────────────────────────── */
@@ -233,6 +230,20 @@
     .cs-values {
       background: var(--peach-light);
       padding-block: var(--space-xl);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cs-values__steam {
+      position: absolute;
+      bottom: 0;
+      right: -4%;
+      width: clamp(400px, 55vw, 700px);
+      opacity: 0.22;
+      pointer-events: none;
+      user-select: none;
+      transform: rotate(-90deg);
+      transform-origin: bottom right;
     }
 
     .cs-values__grid {
@@ -247,9 +258,12 @@
     }
 
     .cs-value__icon {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
       display: block;
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1rem;
+      object-fit: contain;
+      opacity: 0.85;
     }
 
     .cs-value h4 {
@@ -375,6 +389,11 @@
     .cs-cta p  { color: rgba(242,242,242,0.85); margin-inline: auto; margin-bottom: 2rem; }
     .cs-cta .eyebrow { color: var(--peach); }
 
+    .cs-cta .cs-form {
+      align-items: center;
+      margin-inline: auto;
+    }
+
     /* ── Footer minimal ──────────────────────────────────── */
 
     .cs-footer {
@@ -401,22 +420,65 @@
       .cs-values__grid { grid-template-columns: 1fr; }
     }
 
+    /* On mobile: centered layout with bigger logo */
+    @media (max-width: 700px) {
+      .cs-hero {
+        align-items: center;
+        justify-content: center;
+      }
+
+      .cs-hero__bg::after {
+        background: linear-gradient(
+          160deg,
+          rgba(38, 14, 5, 0.82) 0%,
+          rgba(38, 14, 5, 0.68) 50%,
+          rgba(38, 14, 5, 0.50) 100%
+        );
+      }
+
+      .cs-hero__content {
+        padding: 2rem 1.5rem;
+        max-width: 100%;
+        text-align: center;
+      }
+
+      .cs-logo__img {
+        width: clamp(180px, 55vw, 260px);
+        margin: 0 auto;
+      }
+
+      .cs-badge { display: block; margin-inline: auto; width: fit-content; }
+
+      .cs-hero__content .lead { margin-inline: auto; }
+
+      .cs-form {
+        align-items: center;
+        margin-inline: auto;
+      }
+    }
+
     @media (max-width: 560px) {
       .cs-sessions__grid { grid-template-columns: 1fr; }
-      .cs-form__row { flex-direction: column; border-radius: 12px; }
+      .cs-form__row { flex-direction: column; border-radius: 4px; }
       .cs-form__row input { padding: 0.9rem 1.2rem; }
-      .cs-form__row button { border-radius: 0 0 10px 10px; padding: 0.9rem; }
+      .cs-form__row button { border-radius: 0 0 3px 3px; padding: 0.9rem; background: transparent; color: var(--terra); border: 1.5px solid var(--terra); }
+      .cs-form__row button:hover { background: transparent; color: var(--terra-dark); border-color: var(--terra-dark); }
       .cs-location__detail { gap: 1.5rem; }
     }
   </style>
 </head>
 <body>
 
+  <!-- ===== LANG TOGGLE ===== -->
+  <div style="position:fixed; top:1.1rem; right:1.25rem; z-index:999;">
+    <button class="lang-toggle" id="langBtn" onclick="csToggleLang()" aria-label="Switch language">NL</button>
+  </div>
+
   <!-- ===== HERO ===== -->
   <section class="cs-hero">
     <div class="cs-hero__bg">
       <img
-        src="/images/hero-sauna.webp"
+        src="/images/new header.jpg"
         alt="Warm sauna interior with soft amber light"
         loading="eager"
       />
@@ -424,15 +486,13 @@
 
     <div class="cs-hero__content">
       <div class="cs-logo">
-        <span class="cs-logo__name">SOKI</span>
-        <span class="cs-logo__tag">sauna van de stad</span>
+        <img src="images/soki-logo.png" alt="SOKI — sauna van de stad" class="cs-logo__img" />
       </div>
 
-      <div class="cs-badge">Opening soon · Utrecht</div>
+      <div class="cs-badge" data-en="Opening soon · Utrecht" data-nl="Binnenkort open · Utrecht">Opening soon · Utrecht</div>
 
-      <h1>Sweat, relax, connect</h1>
-      <p class="lead">
-        A new kind of sauna space in Utrecht that fuses wellness with culture, music and community.
+      <p class="lead" data-en="Sauna, ice baths and good company in Utrecht. A place to slow down and really connect. Be the first to know when we open." data-nl="Sauna, ijsbaden en goed gezelschap in Utrecht. Een plek om echt te vertragen en te verbinden. Wees de eerste die het weet als we openen.">
+        Sauna, ice baths and good company in Utrecht. A place to slow down and really connect.
         Be the first to know when we open.
       </p>
 
@@ -446,13 +506,13 @@
             autocomplete="email"
             required
           />
-          <button type="submit" id="submitBtn">Notify me</button>
+          <button type="submit" id="submitBtn" data-en="Notify me" data-nl="Houd me op de hoogte">Notify me</button>
         </div>
-        <p class="cs-form__note">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
-        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess">
-          🌿 &nbsp;You're on the list. We'll be in touch when we open.
+        <p class="cs-form__note" data-en="No spam &nbsp;·&nbsp; Unsubscribe any time" data-nl="Geen spam &nbsp;·&nbsp; Altijd uitschrijven">No spam &nbsp;·&nbsp; Unsubscribe any time</p>
+        <div class="cs-form__msg cs-form__msg--success" id="msgSuccess" data-en="You're on the list. We'll be in touch when we open." data-nl="Je staat op de lijst. We laten het je weten als we openen.">
+          You're on the list. We'll be in touch when we open.
         </div>
-        <div class="cs-form__msg cs-form__msg--error" id="msgError">
+        <div class="cs-form__msg cs-form__msg--error" id="msgError" data-en="Something went wrong. Please try again." data-nl="Er is iets misgegaan. Probeer het opnieuw.">
           Something went wrong. Please try again.
         </div>
       </form>
@@ -465,29 +525,27 @@
     <div class="container">
       <div class="cs-what__grid">
         <div class="cs-what__text">
-          <span class="eyebrow">Our answer</span>
-          <h2>This is why we built SOKI.</h2>
-          <p>
+          <span class="eyebrow" data-en="our answer" data-nl="ons antwoord">our answer</span>
+          <h2 data-en="this is why we built SOKI." data-nl="daarom bouwden we SOKI.">this is why we built SOKI.</h2>
+          <p data-en="Not a silent, anonymous spa. Not a luxury wellness club. Something more human: a place where you sweat, relax and can also catch a DJ set, a talk or a small performance." data-nl="Geen stille, anonieme spa. Geen luxe wellnessclub. Iets menselijkers: een plek waar je zweet, ontspant en ook een DJ-set, een talk of een klein optreden kunt meemaken.">
             Not a silent, anonymous spa. Not a luxury wellness club.
-            Something much more human: a living, breathing venue where
-            you can sweat, relax and also discover art, talks, DJ sets
-            or small performances.
+            Something more human: a place where you sweat, relax and can
+            also catch a DJ set, a talk or a small performance.
           </p>
-          <p>
-            Without loud music and alcohol, but with warmth, atmosphere,
-            soft sounds and real encounters. A place you can also visit
-            on a Friday night with friends, or on your own, to unwind,
-            connect and recharge.
+          <p data-en="Without loud music and alcohol, but with warmth, soft sounds and real encounters. Come on a Friday night with friends, or on your own. Either works." data-nl="Zonder harde muziek en alcohol, maar met warmte, zachte geluiden en echte ontmoetingen. Kom op vrijdagavond met vrienden, of alleen. Allebei prima.">
+            Without loud music and alcohol, but with warmth, soft sounds
+            and real encounters. Come on a Friday night with friends, or
+            on your own. Either works.
           </p>
-          <p>
-            SOKI is a hidden oasis just beyond the city limits of Utrecht,
-            built by Luke &amp; Tobias — two friends who wanted to turn the
-            sauna into a new form of socialising.
+          <p data-en="SOKI is a spot tucked away just outside Utrecht city centre, built by Luke &amp; Tobias, two friends who wanted to make the sauna a real place to socialise." data-nl="SOKI is een plek net buiten het centrum van Utrecht, gebouwd door Luke &amp; Tobias, twee vrienden die de sauna wilden omvormen tot een echte plek om te socialiseren.">
+            SOKI is a spot tucked away just outside Utrecht city centre,
+            built by Luke &amp; Tobias, two friends who wanted to make
+            the sauna a real place to socialise.
           </p>
         </div>
         <div class="cs-what__image">
           <img
-            src="https://images.unsplash.com/photo-1618220179428-22790b461013?w=900&auto=format&fit=crop&q=80"
+            src="https://images.unsplash.com/photo-1660735698223-23a4edefa264?q=80&w=1287&auto=format&fit=crop"
             alt="Warm wooden sauna interior"
             loading="lazy"
           />
@@ -499,26 +557,27 @@
 
   <!-- ===== VALUES ===== -->
   <section class="cs-values">
+    <img src="images/Icons/steam300 kopie.png" class="cs-values__steam" aria-hidden="true" />
     <div class="container">
       <div class="text-center section-header">
-        <span class="eyebrow">What we stand for</span>
-        <h2>More than a sauna</h2>
+        <span class="eyebrow" data-en="what we stand for" data-nl="waar we voor staan">what we stand for</span>
+        <h2 data-en="more than a sauna" data-nl="meer dan een sauna">more than a sauna</h2>
       </div>
       <div class="cs-values__grid">
         <div class="cs-value">
-          <span class="cs-value__icon">🌿</span>
-          <h4>Wellness without walls</h4>
-          <p>Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
+          <img src="images/Icons/hat300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
+          <h4 data-en="Wellness without walls" data-nl="Wellness zonder drempels">Wellness without walls</h4>
+          <p data-en="Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience." data-nl="Saunasessies en koudedompels die betaalbaar en toegankelijk zijn voor iedereen in Utrecht. Niet alleen een luxe, maar een gedeelde ervaring.">Sauna sessions and cold plunges that are affordable and accessible to everyone in Utrecht. Not just a luxury, but a shared experience.</p>
         </div>
         <div class="cs-value">
-          <span class="cs-value__icon">🎵</span>
-          <h4>Culture &amp; community</h4>
-          <p>A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
+          <img src="images/Icons/unity300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
+          <h4 data-en="Culture &amp; community" data-nl="Cultuur &amp; gemeenschap">Culture &amp; community</h4>
+          <p data-en="A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience." data-nl="Een levende, ademende ruimte, geen stille spa. Verwacht kunst, talks, DJ-sets en kleine optredens verweven in de saunaervaring.">A living, breathing venue, not a silent spa. Expect art, talks, DJ sets and small performances woven into the sauna experience.</p>
         </div>
         <div class="cs-value">
-          <span class="cs-value__icon">🤝</span>
-          <h4>Real human connection</h4>
-          <p>Space for genuine encounters away from bars and clubs — where you can truly be yourself, whether you arrive alone or with friends.</p>
+          <img src="images/Icons/loyalty300 kopie.png" class="cs-value__icon" alt="" aria-hidden="true" />
+          <h4 data-en="Real human connection" data-nl="Echte menselijke verbinding">Real human connection</h4>
+          <p data-en="A place to meet people without the noise of a bar. Come alone or with friends. Either works." data-nl="Een plek waar je mensen kunt ontmoeten zonder het lawaai van een bar. Kom alleen of met vrienden. Allebei prima.">A place to meet people without the noise of a bar. Come alone or with friends. Either works.</p>
         </div>
       </div>
     </div>
@@ -529,48 +588,48 @@
   <section class="cs-sessions">
     <div class="container">
       <div class="text-center section-header">
-        <span class="eyebrow">Our sessions</span>
-        <h2>Four ways to experience SOKI</h2>
-        <p>Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included.</p>
+        <span class="eyebrow" data-en="our sessions" data-nl="onze sessies">our sessions</span>
+        <h2 data-en="four ways to experience SOKI" data-nl="vier manieren om SOKI te beleven">four ways to experience SOKI</h2>
+        <p data-en="Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included." data-nl="Elke sessie includeert toegang tot sauna, ijsbaden en onze lounge. Water en maté thee inbegrepen.">Every session includes access to sauna, ice baths and our lounge. Complimentary water and maté tea included.</p>
       </div>
       <div class="cs-sessions__grid">
         <div class="cs-session-card">
           <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=700&auto=format&fit=crop&q=80" alt="Everyday Sauna" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1761621711779-faf78317babd?q=80&w=1287&auto=format&fit=crop" alt="Everyday Sauna" loading="lazy" />
           </div>
           <div class="cs-session-card__body">
-            <h3>Everyday Sauna</h3>
-            <p>Free-flow access to our sauna and ice baths. Move at your own pace, unwind in the lounge.</p>
+            <h3 data-en="Everyday Sauna" data-nl="Everyday Sauna">Everyday Sauna</h3>
+            <p data-en="Free-flow access to our sauna and ice baths. Move at your own pace, unwind in the lounge." data-nl="Vrije toegang tot onze sauna en ijsbaden. Beweeg op je eigen tempo, ontspan in de lounge.">Free-flow access to our sauna and ice baths. Move at your own pace, unwind in the lounge.</p>
             <div class="cs-session-card__meta">€15 &nbsp;·&nbsp; 50 min</div>
           </div>
         </div>
         <div class="cs-session-card">
           <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=700&auto=format&fit=crop&q=80" alt="Social Sauna" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1689093197152-dbdfd8c353c8?q=80&w=2340&auto=format&fit=crop" alt="Social Sauna" loading="lazy" />
           </div>
           <div class="cs-session-card__body">
-            <h3>Social Sauna</h3>
-            <p>Extended sauna and ice bath access plus unlimited lounge time. Curl up, catch up, or meet someone new.</p>
+            <h3 data-en="Social Sauna" data-nl="Social Sauna">Social Sauna</h3>
+            <p data-en="Extended sauna and ice bath access plus unlimited lounge time. Curl up, catch up, or meet someone new." data-nl="Uitgebreide sauna- en ijsbadtoegang plus onbeperkte loungetijd. Lekker neerploffen, bijpraten of iemand nieuw ontmoeten.">Extended sauna and ice bath access plus unlimited lounge time. Curl up, catch up, or meet someone new.</p>
             <div class="cs-session-card__meta">€20 &nbsp;·&nbsp; 80 min</div>
           </div>
         </div>
         <div class="cs-session-card">
           <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=700&auto=format&fit=crop&q=80" alt="Ambient Sauna" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1747151681636-93f538bbb070?q=80&w=1287&auto=format&fit=crop" alt="Ambient Sauna" loading="lazy" />
           </div>
           <div class="cs-session-card__body">
-            <h3>Ambient Sauna</h3>
-            <p>A curated DJ transforms the sauna into an immersive listening lounge. Stay for the full 4-hour event with live music.</p>
-            <div class="cs-session-card__meta">€25 &nbsp;·&nbsp; 70 min + 4hr event</div>
+            <h3 data-en="Ambient Sauna" data-nl="Ambient Sauna">Ambient Sauna</h3>
+            <p data-en="A curated DJ transforms the sauna into an immersive listening lounge. Stay for the full 4-hour event with live music." data-nl="Een DJ transformeert de sauna in een meeslepende luisterlounge. Blijf voor het volledige 4-uur durende evenement met livemuziek.">A curated DJ transforms the sauna into an immersive listening lounge. Stay for the full 4-hour event with live music.</p>
+            <div class="cs-session-card__meta" data-en="€25 &nbsp;·&nbsp; 70 min + 4hr event" data-nl="€25 &nbsp;·&nbsp; 70 min + 4u evenement">€25 &nbsp;·&nbsp; 70 min + 4hr event</div>
           </div>
         </div>
         <div class="cs-session-card">
           <div class="cs-session-card__img">
-            <img src="https://images.unsplash.com/photo-1588346135463-8d8b9018d7a2?w=700&auto=format&fit=crop&q=80" alt="Aufguss" loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1656416212216-cf05b2af2650?q=80&w=2342&auto=format&fit=crop" alt="Aufguss" loading="lazy" />
           </div>
           <div class="cs-session-card__body">
-            <h3>Aufguss / Opgieting</h3>
-            <p>Traditional ritual led by our sauna masters. Essential oils, guided visualisation and a homemade salt scrub.</p>
+            <h3 data-en="Aufguss / Opgieting" data-nl="Aufguss / Opgieting">Aufguss / Opgieting</h3>
+            <p data-en="Traditional ritual led by our sauna masters. Essential oils, towel waves and a homemade salt scrub." data-nl="Traditioneel ritueel geleid door onze saunamasters. Essentiële oliën, handdoekzwaaien en een zelfgemaakt zoutpeeling.">Traditional ritual led by our sauna masters. Essential oils, towel waves and a homemade salt scrub.</p>
             <div class="cs-session-card__meta">€25 &nbsp;·&nbsp; 90 min</div>
           </div>
         </div>
@@ -582,9 +641,9 @@
   <!-- ===== LOCATION ===== -->
   <section class="cs-location">
     <div class="container">
-      <span class="eyebrow">Find us</span>
+      <span class="eyebrow" data-en="Find us" data-nl="Vind ons">Find us</span>
       <h2>Europalaan 2B, Utrecht</h2>
-      <p>Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site.</p>
+      <p data-en="Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site." data-nl="Net buiten Vechtclub XL. Goed bereikbaar per fiets of bus. Gratis parkeren op het terrein.">Just outside Vechtclub XL. Easily accessible by bike or bus. Free parking on site.</p>
       <div class="cs-location__detail">
         <div class="cs-location__item">
           <strong>Wed – Thu</strong>
@@ -614,9 +673,9 @@
   <!-- ===== BOTTOM CTA ===== -->
   <section class="cs-cta">
     <div class="container">
-      <span class="eyebrow">Stay in the loop</span>
-      <h2>Be first through the door</h2>
-      <p>Sign up and get early access to sessions, event announcements and news from SOKI before we go public.</p>
+      <span class="eyebrow" data-en="stay in the loop" data-nl="blijf op de hoogte">stay in the loop</span>
+      <h2 data-en="Be first through the door" data-nl="Wees de eerste binnen">Be first through the door</h2>
+      <p data-en="Sign up and get early access to sessions, event announcements and news from SOKI before we go public." data-nl="Meld je aan en krijg vroege toegang tot sessies, aankondigingen en nieuws van SOKI voordat we opengaan.">Sign up and get early access to sessions, event announcements and news from SOKI before we go public.</p>
 
       <form class="cs-form" id="waitlistForm2" onsubmit="handleSignup(event)" novalidate>
         <div class="cs-form__row" style="border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);">
@@ -648,6 +707,25 @@
     </div>
   </footer>
 
+
+  <script>
+    var csLang = localStorage.getItem('soki-lang') || 'en';
+
+    function csToggleLang() {
+      csLang = csLang === 'en' ? 'nl' : 'en';
+      localStorage.setItem('soki-lang', csLang);
+      csApplyLang();
+    }
+
+    function csApplyLang() {
+      document.getElementById('langBtn').textContent = csLang === 'en' ? 'NL' : 'EN';
+      document.querySelectorAll('[data-en]').forEach(function(el) {
+        el.innerHTML = el.getAttribute('data-' + csLang) || el.getAttribute('data-en');
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', csApplyLang);
+  </script>
 
   <script>
     async function handleSignup(e) {

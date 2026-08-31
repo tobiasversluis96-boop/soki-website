@@ -21,3 +21,6 @@ npm-debug.log*
 # Sanity build output
 sanity/dist/
 .claude/
+
+# Local backup files (not for shared repo)
+coming-soon-backup.html
