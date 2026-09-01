@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/booking.css">
   <script src="https://js.stripe.com/v3/" defer></script>
+  <script src="/consent.js"></script>
 </head>
 <body>
 
@@ -250,6 +251,10 @@
       <p data-i18n="waiver.liability.text">Soki Social Sauna is not liable for personal injury, loss, or damage to property. Participation is entirely at your own risk.</p>
     </div>
 
+    <p style="margin:1rem 0 1.5rem;font-size:0.9rem;color:var(--text-muted);">
+      <a href="/waiver" target="_blank" style="color:var(--terra);text-decoration:underline;" data-i18n="waiver.readmore">Read the full health disclaimer &amp; contraindications →</a>
+    </p>
+
     <div class="waiver-agree">
       <label>
         <input type="checkbox" id="waiver-agree">
@@ -351,7 +356,7 @@
       </div>
     </div>
     <div class="footer__bottom">
-      <p>© 2026 Soki Social Sauna · KVK: 93466307 · <a href="/terms" style="color:inherit;text-decoration:underline;">Terms &amp; conditions</a> · <a href="/privacy" style="color:inherit;text-decoration:underline;" data-i18n="footer.privacy">Privacy Policy</a></p>
+      <p>© 2026 Soki Social Sauna · KVK: 93466307 · <a href="/terms" style="color:inherit;text-decoration:underline;">Terms &amp; conditions</a> · <a href="/privacy" style="color:inherit;text-decoration:underline;" data-i18n="footer.privacy">Privacy Policy</a> · <a href="/cookies" style="color:inherit;text-decoration:underline;">Cookies</a> · <a href="#" onclick="event.preventDefault();if(window.SOKI_CONSENT)window.SOKI_CONSENT.reopen();" style="color:inherit;text-decoration:underline;">Cookie preferences</a></p>
     </div>
   </div>
 </footer>

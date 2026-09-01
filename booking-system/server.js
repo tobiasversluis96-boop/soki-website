@@ -84,6 +84,11 @@ app.get('/api/config', (_req, res) => {
     sanityDataset:    process.env.SANITY_DATASET      || 'production',
     googleClientId:   process.env.GOOGLE_CLIENT_ID    || '',
     baseUrl:          process.env.BASE_URL            || 'http://localhost:3001',
+    // Tracking pixel IDs — empty by default (loader will no-op).
+    // Fill in .env when ready to activate GA4 / Meta / TikTok.
+    ga4MeasurementId: process.env.GA4_MEASUREMENT_ID || '',
+    metaPixelId:      process.env.META_PIXEL_ID      || '',
+    tiktokPixelId:    process.env.TIKTOK_PIXEL_ID    || '',
   });
 });
 
@@ -305,6 +310,7 @@ app.get('/reset-password', (_req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'booking.html')));
 app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, '..', 'privacy.html')));
 app.get('/terms',   (_req, res) => res.sendFile(path.join(__dirname, '..', 'terms.html')));
+app.get('/cookies', (_req, res) => res.sendFile(path.join(__dirname, '..', 'cookies.html')));
 app.get('/account', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'account.html')));
 app.get('/membership', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'membership.html')));
 app.get('/checkin', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'checkin.html')));
