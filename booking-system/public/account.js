@@ -52,7 +52,7 @@
 
   function bookingCard(b, canCancel, isPast) {
     var cancelBtn = canCancel
-      ? '<button class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="cancelBooking(' + b.id + ')">' + t('booking.cancel') + '</button>'
+      ? '<button class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="cancelBooking(' + b.id + ',\'' + b.date + '\',\'' + b.start_time + '\',' + b.total_cents + ')">' + t('booking.cancel') + '</button>'
       : '';
     var qrBtn = (!isPast && b.status === 'confirmed')
       ? '<button class="btn btn--sm" style="background:rgba(217,77,26,0.08);color:#D94D1A;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="showQR(' + b.id + ')">QR</button>'
@@ -369,7 +369,7 @@
         if (!sub) {
           el.innerHTML = '<div style="background:rgba(217,77,26,0.05);border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;text-align:center;">' +
             '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:20px;color:var(--brown,#4A1C0C);margin-bottom:8px;">Become a member</h3>' +
-            '<p style="color:var(--text-muted,#8C7B6B);margin-bottom:16px;font-size:14px;">Save with a monthly membership. From \u20ac39/month.</p>' +
+            '<p style="color:var(--text-muted,#8C7B6B);margin-bottom:16px;font-size:14px;">Save with a monthly membership. From \u20ac49/month.</p>' +
             '<a href="/membership" class="btn btn--primary">View memberships</a>' +
             '</div>';
           return;
@@ -501,8 +501,30 @@
 
   // Cancel booking
   var cancelConfirmId = null;
-  window.cancelBooking = function(id) {
+  window.cancelBooking = function(id, date, startTime, totalCents) {
     cancelConfirmId = id;
+    var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
+    var body = document.getElementById('cancel-modal-body');
+    if (body && date && startTime) {
+      var sessionDt = new Date(date + 'T' + startTime + ':00');
+      var hoursUntil = (sessionDt - Date.now()) / 36e5;
+      var refundPct = hoursUntil >= 48 ? 100 : 50;
+      var refundAmt = totalCents > 0
+        ? Math.floor(totalCents * refundPct / 100)
+        : 0;
+      var refundLine;
+      if (totalCents === 0) {
+        refundLine = isNL ? 'Deze boeking was gratis, dus er is niets terug te betalen.'
+                          : 'This booking was free, so there is nothing to refund.';
+      } else if (refundPct === 100) {
+        refundLine = isNL ? ('Je krijgt het volledige bedrag terug (' + eur(refundAmt) + ').')
+                          : ('You will receive a full refund (' + eur(refundAmt) + ').');
+      } else {
+        refundLine = isNL ? ('Deze sessie is binnen 48 uur, dus je krijgt 50% terug (' + eur(refundAmt) + ' van de ' + eur(totalCents) + ').')
+                          : ('This session is within 48 hours, so you get 50% back (' + eur(refundAmt) + ' of ' + eur(totalCents) + ').');
+      }
+      body.textContent = refundLine;
+    }
     document.getElementById('cancel-modal').style.display = 'flex';
   };
 
@@ -528,6 +550,24 @@
       document.getElementById('cancel-error').style.display = 'block';
       setTimeout(function() { document.getElementById('cancel-error').style.display = 'none'; }, 5000);
     } else {
+      // Success toast with refund detail
+      var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
+      var toast = document.getElementById('cancel-error');
+      var msg;
+      if (res.refunded && res.refund_amount_cents > 0) {
+        msg = isNL
+          ? ('Boeking geannuleerd. ' + eur(res.refund_amount_cents) + ' wordt terugbetaald (' + res.refund_pct + '%).')
+          : ('Booking cancelled. ' + eur(res.refund_amount_cents) + ' will be refunded (' + res.refund_pct + '%).');
+      } else {
+        msg = isNL ? 'Boeking geannuleerd.' : 'Booking cancelled.';
+      }
+      toast.textContent = msg;
+      toast.style.background = '#2E7D32';
+      toast.style.display = 'block';
+      setTimeout(function() {
+        toast.style.display = 'none';
+        toast.style.background = '#C62828';
+      }, 6000);
       init(); // reload bookings
     }
   });

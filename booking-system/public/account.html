@@ -13,14 +13,12 @@
 <nav class="nav" id="nav">
   <div class="container nav__inner">
     <a href="/" class="nav__logo">
-      <span class="nav__logo-name">Soki</span>
-      <span class="nav__logo-tagline">sauna van de stad</span>
+      <img src="/images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
     </a>
     <ul class="nav__links">
       <li><a href="/" data-i18n="nav.home">Home</a></li>
       <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
       <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
-      <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
       <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
       <li><a href="/faq.html" data-i18n="nav.faq">FAQ</a></li>
     </ul>
@@ -39,13 +37,11 @@
   <a href="/" data-i18n="nav.home">Home</a>
   <a href="/sessions.html" data-i18n="nav.sessions">Sessions</a>
   <a href="/about.html" data-i18n="nav.about">About us</a>
-  <a href="/gallery.html" data-i18n="nav.gallery">Gallery</a>
   <a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
   <a href="/faq.html" data-i18n="nav.faq">FAQ</a>
   <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
   <a href="/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;" data-i18n="book.now">Book now</a>
 </div>
-
 
 <!-- ===== AUTH GATE ===== -->
 <div id="auth-gate" style="display:none; text-align:center; padding:calc(var(--nav-height) + 5rem) 1.5rem 5rem;">
@@ -54,7 +50,6 @@
   <p style="margin:1rem auto 2rem;" data-i18n="account.gate.p">You need to be logged in to view your bookings.</p>
   <a href="/booking" class="btn btn--primary" data-i18n="account.gate.cta">Make a booking</a>
 </div>
-
 
 <!-- ===== ACCOUNT APP ===== -->
 <div id="account-app" style="display:none">
@@ -173,14 +168,12 @@
 
 </div>
 
-
 <!-- ===== FOOTER ===== -->
 <footer class="footer">
   <div class="container">
     <div class="footer__grid">
       <div class="footer__brand">
-        <div class="logo-text">Soki</div>
-        <div class="logo-tag">sauna van de stad</div>
+        <img src="/images/soki-logo-hero.png" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
         <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht.</p>
       </div>
       <div class="footer__col">
@@ -189,7 +182,6 @@
           <li><a href="/" data-i18n="nav.home">Home</a></li>
           <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
           <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
-          <li><a href="/gallery.html" data-i18n="nav.gallery">Gallery</a></li>
         </ul>
       </div>
       <div class="footer__col">
@@ -201,7 +193,7 @@
       </div>
     </div>
     <div class="footer__bottom">
-      <p>© 2026 Soki Social Sauna · KVK: 93466307 · <a href="/privacy" style="color:inherit;text-decoration:underline;" data-i18n="footer.privacy">Privacy Policy</a></p>
+      <p>© 2026 Soki Social Sauna · KVK: 93466307 · <a href="/terms" style="color:inherit;text-decoration:underline;">Terms &amp; conditions</a> · <a href="/privacy" style="color:inherit;text-decoration:underline;" data-i18n="footer.privacy">Privacy Policy</a></p>
     </div>
   </div>
 </footer>
@@ -210,7 +202,7 @@
 <div id="cancel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;padding:24px;">
   <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:400px;width:100%;text-align:center;">
     <h3 style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:24px;color:var(--brown);margin-bottom:12px;" data-i18n="booking.cancel.title">Cancel booking?</h3>
-    <p style="color:var(--text-muted);margin-bottom:24px;" data-i18n="booking.cancel.confirm">Cancellations are only possible up to 24 hours before the session. Confirmed bookings will be refunded.</p>
+    <p id="cancel-modal-body" style="color:var(--text-muted);margin-bottom:24px;">Cancellations are only possible up to 24 hours before the session. Confirmed bookings will be refunded.</p>
     <div style="display:flex;gap:12px;justify-content:center;">
       <button id="cancel-modal-no" class="btn btn--outline" data-i18n="booking.cancel.no">Keep booking</button>
       <button id="cancel-modal-yes" class="btn" style="background:#FFEBEE;color:#C62828;border:none;" data-i18n="booking.cancel.yes">Yes, cancel</button>

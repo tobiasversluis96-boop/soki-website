@@ -304,6 +304,7 @@ app.get('/payment-return', (_req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/reset-password', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/booking', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'booking.html')));
 app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, '..', 'privacy.html')));
+app.get('/terms',   (_req, res) => res.sendFile(path.join(__dirname, '..', 'terms.html')));
 app.get('/account', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'account.html')));
 app.get('/membership', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'membership.html')));
 app.get('/checkin', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'checkin.html')));

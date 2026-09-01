@@ -162,17 +162,29 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   if (booking.status === 'cancelled')
     return res.status(400).json({ error: 'Booking is already cancelled' });
 
-  // Enforce 24-hour cancellation cutoff
+  // Tiered cancellation policy:
+  //   > 48h before → 100% refund
+  //   24-48h before → 50% refund
+  //   < 24h before → cancellation blocked
   const sessionDatetime = new Date(booking.date + 'T' + booking.start_time + ':00');
   const hoursUntil = (sessionDatetime - Date.now()) / 36e5;
   if (hoursUntil < 24)
     return res.status(400).json({ error: 'Cancellations must be made at least 24 hours in advance', hours_until: Math.round(hoursUntil) });
 
+  const refundPct = hoursUntil >= 48 ? 100 : 50;
+
   // Refund via Stripe if payment was confirmed
+  let refundAmountCents = 0;
   if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
+    refundAmountCents = refundPct === 100
+      ? booking.total_cents
+      : Math.floor(booking.total_cents * refundPct / 100);
     try {
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      await stripe.refunds.create({ payment_intent: booking.stripe_payment_intent_id });
+      const refundArgs = { payment_intent: booking.stripe_payment_intent_id };
+      // Only pass amount for partial refund; omit for full so Stripe refunds the whole intent
+      if (refundPct !== 100) refundArgs.amount = refundAmountCents;
+      await stripe.refunds.create(refundArgs);
     } catch (stripeErr) {
       console.error('Stripe refund failed:', stripeErr.message);
       return res.status(502).json({ error: 'Refund failed — please contact us to cancel' });
@@ -218,7 +230,12 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     console.error('Waitlist auto-book error (non-fatal):', wErr.message);
   }
 
-  res.json({ ok: true, refunded: booking.stripe_payment_status === 'succeeded' });
+  res.json({
+    ok: true,
+    refunded: booking.stripe_payment_status === 'succeeded',
+    refund_pct: refundPct,
+    refund_amount_cents: refundAmountCents,
+  });
 });
 
 // POST /api/bookings/:id/confirm-member — confirm booking using subscription credits

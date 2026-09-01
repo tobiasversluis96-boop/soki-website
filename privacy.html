@@ -13,13 +13,14 @@
 <nav class="nav" id="nav">
   <div class="container nav__inner">
     <a href="/" class="nav__logo">
-      <span class="nav__logo-name">SOKI</span>
-      <span class="nav__logo-tagline">sauna van de stad</span>
+      <img src="/images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
     </a>
     <ul class="nav__links">
       <li><a href="/">Home</a></li>
       <li><a href="/sessions.html">Sessions</a></li>
       <li><a href="/about.html">About us</a></li>
+      <li><a href="/newsletter.html">Newsletter</a></li>
+      <li><a href="/faq.html">FAQ</a></li>
     </ul>
     <div class="nav__cta">
       <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary">Book now</a>
@@ -34,13 +35,15 @@
   <a href="/">Home</a>
   <a href="/sessions.html">Sessions</a>
   <a href="/about.html">About us</a>
-  <a href="https://soki-website-production.up.railway.app/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;">Book now</a>
+  <a href="/newsletter.html">Newsletter</a>
+  <a href="/faq.html">FAQ</a>
+  <a href="/booking" class="btn btn--primary" style="margin-top:1rem;justify-content:center;">Book now</a>
 </div>
 
 <main style="padding-top: calc(var(--nav-height) + 3rem); padding-bottom: 4rem;">
   <div class="container" style="max-width:760px;">
     <h1 style="font-size:clamp(2rem,5vw,3rem);margin-bottom:0.5rem;">Privacy Policy</h1>
-    <p style="color:var(--text-muted);margin-bottom:2.5rem;">Last updated: March 2025</p>
+    <p style="color:var(--text-muted);margin-bottom:2.5rem;">Last updated: September 2026</p>
 
     <section style="margin-bottom:2rem;">
       <h2 style="font-size:1.3rem;margin-bottom:0.75rem;">1. Who we are</h2>
@@ -89,9 +92,10 @@
       <h2 style="font-size:1.3rem;margin-bottom:0.75rem;">6. Third parties</h2>
       <p>We use the following third-party services:</p>
       <ul style="margin:0.75rem 0 0 1.5rem;line-height:1.8;">
-        <li><strong>Stripe:</strong> payment processing (Stripe's privacy policy applies to payment data)</li>
-        <li><strong>Google:</strong> optional Google Sign-In (Google's privacy policy applies)</li>
-        <li><strong>Railway:</strong> hosting infrastructure (servers located in the EU)</li>
+        <li><strong>Stripe:</strong> payment processing and subscription billing (card data is handled by Stripe and never stored on our servers).</li>
+        <li><strong>Brevo:</strong> transactional email delivery (booking confirmations, reminders, password resets).</li>
+        <li><strong>Google:</strong> optional Google Sign-In and (if you add it) Google Calendar links.</li>
+        <li><strong>Railway:</strong> application hosting and database (EU region).</li>
       </ul>
     </section>
 
@@ -111,8 +115,7 @@
   <div class="container">
     <div class="footer__grid">
       <div class="footer__brand">
-        <div class="logo-text">SOKI</div>
-        <div class="logo-tag">sauna van de stad</div>
+        <img src="/images/soki-logo-hero.png" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
         <p>Social sauna, ice bath &amp; listening space in Utrecht.</p>
       </div>
       <div class="footer__col">
@@ -121,19 +124,21 @@
           <li><a href="/">Home</a></li>
           <li><a href="/sessions.html">Sessions</a></li>
           <li><a href="/about.html">About us</a></li>
+          <li><a href="/newsletter.html">Newsletter</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
         </ul>
       </div>
       <div class="footer__col">
         <h4>Find us</h4>
         <ul>
-          <li><a href="#">Gietijzerstraat 3</a></li>
-          <li><a href="#">3534 AV, Utrecht</a></li>
+          <li><a href="#">Europalaan 2B</a></li>
+          <li><a href="#">3526 KS Utrecht</a></li>
           <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
         </ul>
       </div>
     </div>
     <div class="footer__bottom">
-      <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="/privacy" style="color:inherit;text-decoration:underline;">Privacy Policy</a></p>
+      <p>© 2026 SOKI Social Sauna · KVK: 93466307 · <a href="/terms" style="color:inherit;text-decoration:underline;">Terms &amp; conditions</a> · <a href="/privacy" style="color:inherit;text-decoration:underline;">Privacy policy</a></p>
     </div>
   </div>
 </footer>
