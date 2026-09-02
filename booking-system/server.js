@@ -263,29 +263,21 @@ app.post('/api/checkin/:bookingId', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/milestones', async (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev_secret_change_me');
-    const { getUserMilestoneStats, getClaimedMilestones } = require('./db/database').queries;
-    const { MILESTONES, getNextMilestone } = require('./utils/milestones');
+app.get('/api/milestones', require('./routes/auth').requireAuth, async (req, res) => {
+  const { getUserMilestoneStats, getClaimedMilestones } = queries;
+  const { MILESTONES, getNextMilestone } = require('./utils/milestones');
 
-    const stats    = await getUserMilestoneStats(decoded.userId);
-    const claimed  = await getClaimedMilestones(decoded.userId);
-    const next     = getNextMilestone(stats.total_visits);
+  const stats    = await getUserMilestoneStats(req.user.userId);
+  const claimed  = await getClaimedMilestones(req.user.userId);
+  const next     = getNextMilestone(stats.total_visits);
 
-    res.json({
-      total_visits:   stats.total_visits,
-      total_bookings: stats.total_bookings,
-      milestones:     MILESTONES,
-      claimed,
-      next_milestone: next,
-    });
-  } catch (e) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
+  res.json({
+    total_visits:   stats.total_visits,
+    total_bookings: stats.total_bookings,
+    milestones:     MILESTONES,
+    claimed,
+    next_milestone: next,
+  });
 });
 
 // ─── Waitlist (Brevo) ─────────────────────────────────────────────────────────
