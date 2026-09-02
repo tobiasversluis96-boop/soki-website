@@ -22,9 +22,17 @@ function formatDate(dateStr) {
 }
 
 async function send(templateId, to, name, params) {
+  const id = Number(templateId);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`Brevo template id is missing or invalid (got: ${JSON.stringify(templateId)})`);
+  }
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: to, name }],
-    templateId: Number(templateId),
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    templateId: id,
     params,
   });
 }
