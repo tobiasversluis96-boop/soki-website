@@ -6,6 +6,7 @@ sanity/node_modules/
 # Environment variables — never commit these
 .env
 booking-system/.env
+booking-system/.env.local-test
 sanity/.env
 
 # macOS
