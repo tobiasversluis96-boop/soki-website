@@ -181,18 +181,46 @@ function closeLightbox() {
 
 
 /* ===== NEWSLETTER: form submit ===== */
-function handleSignup(e) {
+async function handleSignup(e) {
   e.preventDefault();
 
-  const form        = e.target;
-  const formState   = document.getElementById('formState');
+  const form         = e.target;
+  const formState    = document.getElementById('formState');
   const successState = document.getElementById('successState');
+  const email        = form.querySelector('[name="email"]')?.value?.trim();
+  const button       = form.querySelector('button[type="submit"]');
 
-  // In production, replace this with your actual API call or form service
-  console.log('Newsletter signup:', {
-    name:  form.querySelector('[name="name"], [name="firstname"]')?.value,
-    email: form.querySelector('[name="email"]')?.value,
-  });
+  let errorEl = form.querySelector('.signup-error');
+  if (!errorEl) {
+    errorEl = document.createElement('p');
+    errorEl.className = 'signup-error';
+    errorEl.style.cssText = 'color:#e2725b; font-size:0.85rem; margin:0.5rem 0 0; display:none;';
+    form.appendChild(errorEl);
+  }
+  errorEl.style.display = 'none';
+
+  if (button) button.disabled = true;
+
+  let ok = false, errorMsg = '';
+  try {
+    const res  = await fetch('/api/waitlist', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    ok = res.ok && data.ok;
+    errorMsg = data.error || '';
+  } catch {
+    ok = false;
+  }
+
+  if (!ok) {
+    if (button) button.disabled = false;
+    errorEl.textContent = errorMsg || 'Something went wrong — please try again.';
+    errorEl.style.display = 'block';
+    return;
+  }
 
   // Show success state
   if (formState && successState) {
