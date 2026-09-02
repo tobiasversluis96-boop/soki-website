@@ -706,11 +706,12 @@ p {
 }
 
 .hero .lead {
-  color: rgba(255, 236, 211, 0.72);
+  color: rgba(255, 241, 225, 0.95);
   max-width: 44ch;
   margin-bottom: var(--space-xl);
   font-size: 0.93rem;
   line-height: 1.7;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
 
 .hero__actions {
@@ -1815,7 +1816,7 @@ p {
     justify-content: center;
     text-align: center;
   }
-  .hero .lead { max-width: 100%; }
+  .hero .lead { max-width: 100%; font-size: 1rem; }
 
   /* Intro grid — compact image */
   .intro-grid__image {
@@ -1837,6 +1838,14 @@ p {
     aspect-ratio: auto;
     min-height: 160px;
     border-radius: 16px 0 0 16px;
+  }
+  /* Pill moet op één regel passen binnen de smalle afbeelding (130px) */
+  .type-card__label {
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    padding: 3px 9px;
+    top: 8px;
+    left: 8px;
   }
   .type-card__body {
     padding: 1rem;

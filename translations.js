@@ -103,7 +103,6 @@ var SOKI_I18N = {
     'home.hero.story':'Our story',
 
     /* --- Homepage intro --- */
-    'home.intro.eyebrow': 'A hidden oasis just beyond the city limits',
     'home.intro.h2':      'Reshaping the sauna experience',
     'home.intro.p1':      'Step inside and leave the noise behind. This is a space to slow down, reconnect with yourself, meet others and break free from everyday constraints.',
     'home.intro.p2':      "Instead of a silent, anonymous spa, we're building a living, breathing venue where you can sweat, relax and also discover art, talks, DJ sets or small performances.",
@@ -587,8 +586,7 @@ var SOKI_I18N = {
     'home.hero.story':'Ons verhaal',
 
     /* --- Homepage intro --- */
-    'home.intro.eyebrow': 'Een verborgen oase net buiten de stadsgrens',
-    'home.intro.h2':      'De saunaervaring opnieuw uitgevonden',
+    'home.intro.h2':      'De sauna opnieuw uitgevonden',
     'home.intro.p1':      'Stap naar binnen en laat de drukte achter je. Dit is een plek om te vertragen, jezelf te herverbinden, anderen te ontmoeten en te ontsnappen aan de dagelijkse druk.',
     'home.intro.p2':      'In plaats van een stille, anonieme spa, bouwen we een levend, bruisend podium waar je kunt zweten, ontspannen én kunst, talks, DJ-sets of kleine optredens kunt ontdekken.',
     'home.intro.p3':      'Ons doel is een echt alternatief te bieden voor de gebruikelijke sociale ruimtes zoals bars en clubs: een warme, inspirerende plek waar welzijn, creativiteit en echte verbinding centraal staan.',
