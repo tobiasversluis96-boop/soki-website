@@ -529,17 +529,8 @@
       return;
     }
 
-    // Fetch waitlist counts in parallel
-    const waitlistCounts = {};
-    await Promise.all(slots.map(async s => {
-      try {
-        const list = await api('/waitlist/' + s.id);
-        waitlistCounts[s.id] = Array.isArray(list) ? list.length : 0;
-      } catch { waitlistCounts[s.id] = 0; }
-    }));
-
     tbody.innerHTML = slots.map(s => {
-      const wCount = waitlistCounts[s.id] || 0;
+      const wCount = s.waitlist_count || 0;
       const wBadge = wCount > 0
         ? `<span title="Op wachtlijst" style="display:inline-flex;align-items:center;gap:3px;background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">⏳ ${wCount}</span>`
         : '';
@@ -641,10 +632,17 @@
     );
   };
 
+  // Datum in NL-tijdzone (toISOString geeft UTC: tussen 00:00–02:00 NL de vorige dag)
+  function nlDateStr(offsetDays = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  }
+
   // ─── Schedule ─────────────────────────────────────────────────────────────
   (function initSchedule() {
     const input = document.getElementById('schedule-date');
-    input.value = new Date().toISOString().slice(0, 10);
+    input.value = nlDateStr();
 
     document.getElementById('schedule-prev').addEventListener('click', () => {
       const d = new Date(input.value + 'T12:00:00');
@@ -965,10 +963,8 @@
     const sel = document.getElementById('gen-session-type');
     sel.innerHTML = sessionTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     // Default date range: tomorrow → 8 weeks from now
-    const from = new Date(); from.setDate(from.getDate() + 1);
-    const to   = new Date(); to.setDate(to.getDate() + 56);
-    document.getElementById('gen-from').value = from.toISOString().slice(0, 10);
-    document.getElementById('gen-to').value   = to.toISOString().slice(0, 10);
+    document.getElementById('gen-from').value = nlDateStr(1);
+    document.getElementById('gen-to').value   = nlDateStr(56);
     document.getElementById('gen-preview').style.display = 'none';
   }
 

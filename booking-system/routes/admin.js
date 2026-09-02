@@ -576,6 +576,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
 // DELETE /api/admin/customers/:id — anonymise user PII (GDPR erasure)
 router.delete('/customers/:id', requireAdmin, async (req, res) => {
   await queries.deleteUser(req.params.id);
+  queries.auditLog({ ...actorOf(req), action: 'customer_deleted', target: `user:${req.params.id}`, detail: 'GDPR erasure', ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -597,6 +598,8 @@ router.post('/staff', requireAdmin, async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password)
     return res.status(400).json({ error: 'name, email, and password are required' });
+  if (String(password).length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
   const existing = await queries.getStaffByEmail(email);
   if (existing) return res.status(409).json({ error: 'Email already in use' });
@@ -619,6 +622,8 @@ router.patch('/staff/:id', requireAdmin, async (req, res) => {
 router.post('/staff/:id/reset-password', requireAdmin, async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'password is required' });
+  if (String(password).length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
   const passwordHash = await bcrypt.hash(password, 12);
   await queries.updateStaffPassword(req.params.id, passwordHash);
@@ -632,6 +637,8 @@ router.post('/staff/change-own-password', requireStaff(null), async (req, res) =
   const { old_password, new_password } = req.body;
   if (!old_password || !new_password)
     return res.status(400).json({ error: 'old_password and new_password are required' });
+  if (String(new_password).length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
   const staff = await queries.getStaffById(req.staff.staffId);
   if (!staff) return res.status(404).json({ error: 'Staff not found' });

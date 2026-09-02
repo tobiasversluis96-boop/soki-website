@@ -702,7 +702,8 @@ const queries = {
     let sql = `
       SELECT ts.*,
              st.name AS session_name, COALESCE(ts.price_cents, st.price_cents) AS price_cents, st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked,
+             (SELECT COUNT(*)::int FROM waitlist w WHERE w.time_slot_id = ts.id) AS waitlist_count
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
