@@ -813,7 +813,9 @@ const queries = {
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE b.status = 'confirmed'
         AND b.reminder_sent = FALSE
-        AND (ts.date::text || ' ' || ts.start_time)::timestamp BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours'
+        AND (ts.date::text || ' ' || ts.start_time)::timestamp
+            BETWEEN (NOW() AT TIME ZONE 'Europe/Amsterdam') + INTERVAL '23 hours'
+                AND (NOW() AT TIME ZONE 'Europe/Amsterdam') + INTERVAL '25 hours'
     `);
     return rows;
   },
@@ -1038,7 +1040,8 @@ const queries = {
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE ts.is_cancelled = FALSE
-        AND (ts.date > CURRENT_DATE OR (ts.date = CURRENT_DATE AND ts.start_time > CURRENT_TIME))
+        -- date/start_time zijn VARCHAR; vergelijk als timestamp in NL-tijd (server draait in UTC)
+        AND (ts.date::text || ' ' || ts.end_time)::timestamp > NOW() AT TIME ZONE 'Europe/Amsterdam'
       ORDER BY ts.date, ts.start_time
     `);
     return rows;
