@@ -771,13 +771,26 @@
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#C62828;padding:24px">Fout bij laden van klanten.</td></tr>';
       return;
     }
+    if (!Array.isArray(allCustomers)) allCustomers = [];
+    applyCustomerSearch();
+  }
 
-    if (!Array.isArray(allCustomers) || !allCustomers.length) {
+  function applyCustomerSearch() {
+    const q = (document.getElementById('customer-search').value || '').trim().toLowerCase();
+    renderCustomers(!q ? allCustomers : allCustomers.filter(c =>
+      (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q)
+    ));
+  }
+  document.getElementById('customer-search').addEventListener('input', applyCustomerSearch);
+
+  function renderCustomers(list) {
+    const tbody = document.getElementById('customers-table-body');
+    if (!list.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Geen klanten gevonden.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = allCustomers.map(c => `
+    tbody.innerHTML = list.map(c => `
       <tr style="cursor:pointer" onclick="openCustomerDetail(${c.id})">
         <td>${c.id}</td>
         <td style="font-weight:600">${escapeHtml(c.name)}</td>
