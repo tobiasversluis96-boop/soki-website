@@ -1,4 +1,4 @@
-const Brevo = require('@getbrevo/brevo');
+const { BrevoClient } = require('@getbrevo/brevo');
 const crypto = require('crypto');
 
 function generateCheckinSig(bookingId) {
@@ -8,10 +8,10 @@ function generateCheckinSig(bookingId) {
     .slice(0, 16);
 }
 
-function getApi() {
-  const client = Brevo.ApiClient.instance;
-  client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-  return new Brevo.TransactionalEmailsApi();
+let client;
+function getClient() {
+  if (!client) client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+  return client;
 }
 
 function formatDate(dateStr) {
@@ -22,7 +22,7 @@ function formatDate(dateStr) {
 }
 
 async function send(templateId, to, name, params) {
-  await getApi().sendTransacEmail({
+  await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: to, name }],
     templateId: Number(templateId),
     params,
@@ -86,7 +86,7 @@ function escapeHtml(s) {
 
 // Geen Brevo-template nodig: de code-mail wordt als kant-en-klare HTML verstuurd
 async function sendVerificationEmail({ name, email, code }) {
-  await getApi().sendTransacEmail({
+  await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email, name }],
     sender: {
       email: process.env.EMAIL_FROM,

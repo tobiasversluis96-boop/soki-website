@@ -40,6 +40,9 @@ const giftCardRoutes      = require('./routes/gift-cards');
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
+// Achter Railway's proxy: nodig zodat express-rate-limit het echte client-IP ziet
+app.set('trust proxy', 1);
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 // Webhook route must come before express.json() — Stripe needs the raw body
 app.use('/api/webhooks', webhookRoutes);
