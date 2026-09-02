@@ -132,8 +132,23 @@ async function seedTimeSlots() {
 }
 
 async function seedAdmin() {
+  const email = process.env.ADMIN_EMAIL || 'admin@sokisocialsauna.nl';
+
   const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM admin_users');
-  if (rows[0].n > 0) return;
+  if (rows[0].n > 0) {
+    // Keep the admin password in sync with ADMIN_PASSWORD so it can be
+    // changed from Railway without direct database access
+    if (process.env.ADMIN_PASSWORD) {
+      const { rows: admins } = await pool.query('SELECT id, password_hash FROM admin_users WHERE email = $1', [email]);
+      const admin = admins[0];
+      if (admin && !(await bcrypt.compare(process.env.ADMIN_PASSWORD, admin.password_hash))) {
+        const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+        await pool.query('UPDATE admin_users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2', [hash, admin.id]);
+        console.log('✓ Admin password updated from ADMIN_PASSWORD env var');
+      }
+    }
+    return;
+  }
 
   // Never seed a guessable default password in production
   if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
@@ -141,7 +156,6 @@ async function seedAdmin() {
     return;
   }
 
-  const email    = process.env.ADMIN_EMAIL    || 'admin@sokisocialsauna.nl';
   const password = process.env.ADMIN_PASSWORD || 'soki_admin_2024';
   const hash     = await bcrypt.hash(password, 12);
   await pool.query('INSERT INTO admin_users (email, password_hash) VALUES ($1, $2)', [email, hash]);
