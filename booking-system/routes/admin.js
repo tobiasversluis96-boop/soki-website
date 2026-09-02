@@ -8,7 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
-const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation } = require('../utils/email');
+const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, sendBookingCancelledEmail } = require('../utils/email');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -208,7 +208,20 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
-  queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${booking.total_cents} cents` : 'no refund', ip: req.ip });
+
+  let creditsRestored = 0;
+  if (Number(booking.credits_used) > 0) {
+    const restored = await queries.restoreCredits(booking.user_id, booking.credits_used);
+    if (restored) creditsRestored = Number(booking.credits_used);
+  }
+
+  queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${booking.total_cents} cents` : (creditsRestored ? `${creditsRestored} credits restored` : 'no refund'), ip: req.ip });
+
+  try {
+    await sendBookingCancelledEmail(booking, { refunded, creditsRestored });
+  } catch (e) {
+    console.error('Cancellation email failed (non-fatal):', e.message);
+  }
 
   // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
   try {
@@ -292,8 +305,55 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
 });
 
 router.delete('/slots/:id', requireAdmin, async (req, res) => {
-  await queries.cancelSlot(req.params.id);
-  res.json({ ok: true });
+  const slotId = req.params.id;
+  await queries.cancelSlot(slotId);
+
+  // Alle actieve boekingen annuleren: betaalde terugstorten + iedereen mailen
+  const bookings = await queries.getActiveBookingsForSlot(slotId);
+  let refunds = 0;
+  for (const b of bookings) {
+    let refunded = false;
+    if (b.stripe_payment_intent_id && b.stripe_payment_status === 'succeeded') {
+      try {
+        await stripe.refunds.create({ payment_intent: b.stripe_payment_intent_id });
+        refunded = true;
+        refunds++;
+      } catch (e) {
+        console.error(`Refund failed for booking #${b.id} (non-fatal):`, e.message);
+      }
+    }
+    await queries.cancelBooking(b.id);
+    let creditsRestored = 0;
+    if (Number(b.credits_used) > 0) {
+      const restored = await queries.restoreCredits(b.user_id, b.credits_used);
+      if (restored) creditsRestored = Number(b.credits_used);
+    }
+    try {
+      await sendBookingCancelledEmail(b, { refunded, creditsRestored });
+    } catch (e) {
+      console.error(`Cancellation email failed for booking #${b.id} (non-fatal):`, e.message);
+    }
+  }
+
+  // Vooruitbetaalde wachtlijst-plekken terugstorten + mailen
+  const waiters = await queries.getUnclaimedPaidWaitlistForSlot(slotId);
+  for (const w of waiters) {
+    try {
+      await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
+      await queries.markWaitlistRefunded(w.id);
+      refunds++;
+      try {
+        await sendBookingCancelledEmail(w, { refunded: true });
+      } catch (e) {
+        console.error(`Cancellation email failed for waitlist #${w.id} (non-fatal):`, e.message);
+      }
+    } catch (e) {
+      console.error(`Waitlist refund failed for entry #${w.id} (non-fatal):`, e.message);
+    }
+  }
+
+  queries.auditLog({ ...actorOf(req), action: 'slot_cancelled', target: `slot:${slotId}`, detail: `${bookings.length} bookings cancelled, ${refunds} refunds`, ip: req.ip });
+  res.json({ ok: true, cancelled_bookings: bookings.length, refunds });
 });
 
 // ─── Session types ────────────────────────────────────────────────────────────

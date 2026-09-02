@@ -743,6 +743,42 @@ const queries = {
     await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [id]);
   },
 
+  getActiveBookingsForSlot: async (slotId) => {
+    const { rows } = await pool.query(`
+      SELECT b.*,
+             u.name AS customer_name, u.email AS customer_email,
+             ts.date, ts.start_time, ts.end_time,
+             st.name AS session_name
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE b.time_slot_id = $1 AND b.status != 'cancelled'
+    `, [slotId]);
+    return rows;
+  },
+
+  getUnclaimedPaidWaitlistForSlot: async (slotId) => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.user_id, w.group_size, w.total_cents, w.stripe_payment_intent_id,
+             u.name AS customer_name, u.email AS customer_email,
+             ts.date, ts.start_time, ts.end_time,
+             st.name AS session_name
+      FROM waitlist w
+      JOIN users u ON u.id = w.user_id
+      JOIN time_slots ts ON ts.id = w.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE w.time_slot_id = $1
+        AND w.stripe_payment_status = 'paid'
+        AND w.claimed_booking_id IS NULL
+    `, [slotId]);
+    return rows;
+  },
+
+  markWaitlistRefunded: async (waitlistId) => {
+    await pool.query("UPDATE waitlist SET stripe_payment_status = 'refunded' WHERE id = $1", [waitlistId]);
+  },
+
   // Password reset
   createPasswordResetToken: async (userId, token, expiresAt) => {
     // Delete any existing tokens for this user first
@@ -940,6 +976,16 @@ const queries = {
       WHERE user_id = $1 AND status IN ('active', 'past_due') AND credits_remaining >= $2
       RETURNING *
     `, [userId, creditsToUse]);
+    return rows[0] || null;
+  },
+
+  restoreCredits: async (userId, credits) => {
+    const { rows } = await pool.query(`
+      UPDATE subscriptions
+      SET credits_remaining = credits_remaining + $2
+      WHERE user_id = $1 AND status IN ('active', 'past_due', 'paused')
+      RETURNING *
+    `, [userId, credits]);
     return rows[0] || null;
   },
 

@@ -221,8 +221,53 @@ async function sendGiftCardEmail(card) {
   });
 }
 
+// Geen Brevo-template nodig: de annuleringsmail wordt als kant-en-klare HTML verstuurd
+async function sendBookingCancelledEmail(booking, { refunded = false, creditsRestored = 0 } = {}) {
+  const [y, m, d] = String(booking.date).split('-').map(Number);
+  const dateNl = new Date(y, m - 1, d).toLocaleDateString('nl-NL', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const dateEn = new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const amount  = `€${((booking.total_cents || 0) / 100).toFixed(2).replace('.', ',')}`;
+  const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
+  const refundBlock = refunded
+    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;">
+         Je betaling van <strong>${amount}</strong> wordt automatisch teruggestort. Het bedrag staat binnen 5&ndash;10 werkdagen op je rekening.<br>
+         <span style="color:#8C7B6B;">Your payment of <strong>${amount}</strong> will be refunded automatically. It will appear on your account within 5&ndash;10 business days.</span></p>`
+    : '';
+  const creditsBlock = creditsRestored > 0
+    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;">
+         Je gebruikte credits (${creditsRestored}) zijn teruggezet op je account.<br>
+         <span style="color:#8C7B6B;">The credits you used (${creditsRestored}) have been returned to your account.</span></p>`
+    : '';
+  await getClient().transactionalEmails.sendTransacEmail({
+    to: [{ email: booking.customer_email, name: booking.customer_name }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    subject: `Je sessie op ${dateNl} is geannuleerd / Your session on ${dateEn} has been cancelled`,
+    htmlContent: `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
+        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
+        <p>Hoi ${escapeHtml(booking.customer_name)},</p>
+        <p>Helaas gaat de sessie <strong>${escapeHtml(booking.session_name)}</strong> op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) niet door. Onze excuses voor het ongemak.<br>
+           <span style="color:#8C7B6B;">Unfortunately, the <strong>${escapeHtml(booking.session_name)}</strong> session on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled. We're sorry for the inconvenience.</span></p>
+        ${refundBlock}
+        ${creditsBlock}
+        <p>We hopen je snel weer te zien &mdash; boek een nieuwe sessie op
+           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
+           <span style="color:#8C7B6B;">We hope to see you again soon &mdash; book a new session at sokisocialsauna.nl.</span></p>
+        <p style="color:#8C7B6B;font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>
+      </div>`,
+  });
+}
+
 module.exports = {
   sendBookingConfirmation,
+  sendBookingCancelledEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendReminderEmail,

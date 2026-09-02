@@ -624,9 +624,12 @@
   window.cancelSlot = function (id) {
     showConfirm(
       'Slot annuleren',
-      'Weet je zeker dat je slot #' + id + ' wilt annuleren? Alle bijhorende boekingen worden NIET automatisch geannuleerd.',
+      'Weet je zeker dat je slot #' + id + ' wilt annuleren? Alle bijbehorende boekingen worden geannuleerd, betaalde boekingen worden automatisch terugbetaald en alle klanten krijgen een annuleringsmail.',
       async () => {
-        await api('/slots/' + id, { method: 'DELETE' });
+        const result = await api('/slots/' + id, { method: 'DELETE' });
+        if (result && result.cancelled_bookings > 0) {
+          alert(`Slot geannuleerd. ${result.cancelled_bookings} boeking(en) geannuleerd, ${result.refunds} terugbetaling(en) gestart. Alle klanten hebben een mail ontvangen.`);
+        }
         loadSlots();
       }
     );
