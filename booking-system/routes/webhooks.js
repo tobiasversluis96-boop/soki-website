@@ -21,6 +21,10 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       console.error('Webhook signature failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    // Never accept unverified payment events in production
+    console.error('Webhook rejected: STRIPE_WEBHOOK_SECRET is not configured');
+    return res.status(500).send('Webhook not configured');
   } else {
     // No webhook secret configured -- accept without verification (dev only)
     try { event = JSON.parse(req.body); } catch { return res.status(400).send('Invalid JSON'); }
@@ -125,6 +129,8 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         // Otherwise confirm regular booking
         const booking = await queries.getBookingByPaymentIntent(intent.id);
         if (!booking) break;
+        // Redeem attached gift card/milestone (idempotent — safe if /confirm already did)
+        await queries.redeemPendingPromo(booking.id);
         if (booking.status === 'confirmed') break; // idempotent
         await queries.updateBookingPayment(booking.id, intent.id, 'succeeded');
         console.log(`✓ Booking #${booking.id} confirmed via webhook`);

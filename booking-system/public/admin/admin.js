@@ -36,6 +36,11 @@
     return '€' + (cents / 100).toFixed(2).replace('.', ',');
   }
 
+  // Escape ALL user-controlled values before interpolating into innerHTML (XSS)
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '–';
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -182,7 +187,7 @@
           return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.05);">
             <div style="width:8px;height:8px;border-radius:50%;background:${s.color||'#D94D1A'};flex-shrink:0;"></div>
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;font-size:14px;">${s.session_name} <span style="font-weight:400;color:var(--text-muted)">${s.start_time}–${s.end_time}</span></div>
+              <div style="font-weight:600;font-size:14px;">${escapeHtml(s.session_name)} <span style="font-weight:400;color:var(--text-muted)">${s.start_time}–${s.end_time}</span></div>
               <div style="font-size:12px;color:var(--text-muted)">${s.date}</div>
             </div>
             <div style="text-align:right;font-size:13px;font-weight:600;">${s.booked}/${s.capacity} <span style="font-weight:400;color:${pct>=90?'#C62828':'var(--text-muted)'}">(${pct}%)</span></div>
@@ -286,7 +291,7 @@
       return `
         <div style="margin-bottom:14px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-            <span style="font-size:13px;font-weight:600;color:var(--brown)">${d.name}</span>
+            <span style="font-size:13px;font-weight:600;color:var(--brown)">${escapeHtml(d.name)}</span>
             <span style="font-size:13px;font-weight:700;color:${pct >= 75 ? '#2E7D32' : pct >= 40 ? '#F57F17' : 'var(--muted)'}">${pct}%</span>
           </div>
           <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
@@ -385,7 +390,7 @@
           <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
             <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0;"></div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:var(--brown);">${s.session_name}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--brown);">${escapeHtml(s.session_name)}</div>
               <div style="font-size:11px;color:var(--muted);">${s.start_time}–${s.end_time}</div>
             </div>
             <div style="text-align:right;">
@@ -410,7 +415,7 @@
       return `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--brown);">${p.plan_name}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--brown);">${escapeHtml(p.plan_name)}</div>
             <div style="font-size:11px;color:var(--muted);">${isUnlimited ? 'Onbeperkt' : '4 credits/maand'} · ${formatEur(p.price_cents)}/maand</div>
           </div>
           <div style="text-align:right;">
@@ -453,10 +458,10 @@
       <tr>
         <td>${b.id}</td>
         <td>
-          <div style="font-weight:600">${b.customer_name}</div>
-          <div style="font-size:12px;color:var(--muted)">${b.customer_email}</div>
+          <div style="font-weight:600">${escapeHtml(b.customer_name)}</div>
+          <div style="font-size:12px;color:var(--muted)">${escapeHtml(b.customer_email)}</div>
         </td>
-        <td>${b.session_name}</td>
+        <td>${escapeHtml(b.session_name)}</td>
         <td>${formatDate(b.date)}</td>
         <td>${b.start_time}–${b.end_time}</td>
         <td>${b.group_size}</td>
@@ -518,7 +523,7 @@
       return `
       <tr>
         <td>${s.id}</td>
-        <td>${s.session_name}</td>
+        <td>${escapeHtml(s.session_name)}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
@@ -702,9 +707,9 @@
         ? sl.bookings.map(b => `
             <div class="checkin-row ${b.checked_in ? 'checkin-row--in' : ''}" id="checkin-row-${b.id}">
               <div class="checkin-row__info">
-                <div class="checkin-row__name">${b.customer_name}</div>
-                <div class="checkin-row__meta">${b.customer_email} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'}</div>
-                ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${b.admin_notes.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+                <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
+                <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'}</div>
+                ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}
               </div>
               <button class="checkin-btn ${b.checked_in ? 'checkin-btn--in' : ''}"
                       onclick="toggleCheckin(${b.id}, ${!b.checked_in})">
@@ -720,7 +725,7 @@
             <div class="slot-card__title">
               <div class="slot-color-dot" style="background:${sl.color}"></div>
               <div>
-                <div class="slot-card__name">${sl.session_name}</div>
+                <div class="slot-card__name">${escapeHtml(sl.session_name)}</div>
                 <div class="slot-card__time">${sl.start_time} – ${sl.end_time}</div>
               </div>
             </div>
@@ -775,12 +780,12 @@
     tbody.innerHTML = allCustomers.map(c => `
       <tr style="cursor:pointer" onclick="openCustomerDetail(${c.id})">
         <td>${c.id}</td>
-        <td style="font-weight:600">${c.name}</td>
-        <td>${c.email}</td>
+        <td style="font-weight:600">${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.email)}</td>
         <td>${formatDate(c.created_at ? c.created_at.slice(0, 10) : '')}</td>
         <td>${c.booking_count}</td>
         <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:13px">
-          ${c.admin_notes ? c.admin_notes : '<em style="opacity:.4">–</em>'}
+          ${c.admin_notes ? escapeHtml(c.admin_notes) : '<em style="opacity:.4">–</em>'}
         </td>
         <td>
           <button class="btn btn--outline btn--sm" onclick="event.stopPropagation();openNotesModal(${c.id})">Notities</button>
@@ -798,7 +803,7 @@
     const waiverBadge = c.waiver_signed_at
       ? `<span style="background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">✓ Waiver</span>`
       : `<span style="background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">⚠ Geen waiver</span>`;
-    document.getElementById('customer-modal-meta').innerHTML = c.email + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '') + waiverBadge;
+    document.getElementById('customer-modal-meta').innerHTML = escapeHtml(c.email) + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '') + waiverBadge;
     document.getElementById('customer-modal-bookings').innerHTML = '<div class="loading">Laden…</div>';
     document.getElementById('customer-modal').classList.add('open');
 
@@ -849,7 +854,7 @@
           ${bookings.map(b => {
             const [label, cls] = statusMap[b.status] || ['–', 'pending'];
             return `<tr>
-              <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${b.session_name}</td>
+              <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${escapeHtml(b.session_name)}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${formatDate(b.date)}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${b.start_time}–${b.end_time}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${b.group_size}</td>
@@ -1086,10 +1091,6 @@
     }).join('');
   }
 
-  function escapeHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
   window.toggleMsg = async function(id) {
     const body    = document.getElementById('msg-body-' + id);
     const chevron = document.getElementById('msg-chevron-' + id);
@@ -1309,10 +1310,6 @@
     listEl.querySelectorAll('[data-sub-resume]').forEach(btn => {
       btn.addEventListener('click', () => resumeSubscription(btn.dataset.subResume));
     });
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   async function pauseSubscription(id) {

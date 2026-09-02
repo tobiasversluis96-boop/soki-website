@@ -888,7 +888,7 @@
         '&text=' + encodeURIComponent('Soki Social Sauna – ' + tp.name) +
         '&dates=' + d + 'T' + st + '/' + d + 'T' + en +
         '&details=' + encodeURIComponent('Booking #' + state.bookingId + '\nGroup: ' + personStr(state.groupSize)) +
-        '&location=' + encodeURIComponent('Gietijzerstraat 3, Utrecht');
+        '&location=' + encodeURIComponent('Europalaan 2B, Utrecht');
       document.getElementById('gcal-btn').href = gcalUrl;
     }
 

@@ -104,6 +104,7 @@ router.post('/', requireAuth, async (req, res) => {
       [booking.id]
     );
     if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
+    if (giftCard) await queries.redeemGiftCard(giftCard.id, discountCents);
     try {
       const fullBooking = await queries.getBookingById(booking.id);
       await sendBookingConfirmation(fullBooking);
@@ -111,9 +112,17 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(201).json({ booking_id: booking.id, total_cents: 0, free: true, slot, group_size });
   }
 
-  // Partial discount: redeem code/gift card and proceed to Stripe
-  if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
-  if (giftCard) await queries.redeemGiftCard(giftCard.id, discountCents);
+  // Partial discount: store the promo on the booking — it is only actually
+  // redeemed once payment succeeds (payments /confirm or the Stripe webhook),
+  // so an abandoned checkout never costs the customer their code/balance.
+  if (milestoneEntry || giftCard) {
+    await queries.setBookingPendingPromo(
+      booking.id,
+      giftCard ? giftCard.id : null,
+      milestoneEntry ? milestoneEntry.id : null,
+      discountCents
+    );
+  }
 
   res.status(201).json({
     booking_id:     booking.id,
@@ -166,8 +175,16 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   //   > 48h before → 100% refund
   //   24-48h before → 50% refund
   //   < 24h before → cancellation blocked
-  const sessionDatetime = new Date(booking.date + 'T' + booking.start_time + ':00');
+  // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' —
+  // normalise both before combining, otherwise this yields Invalid Date/NaN.
+  const dateStr = booking.date instanceof Date
+    ? `${booking.date.getFullYear()}-${String(booking.date.getMonth() + 1).padStart(2, '0')}-${String(booking.date.getDate()).padStart(2, '0')}`
+    : String(booking.date).slice(0, 10);
+  const timeStr = String(booking.start_time).length === 5 ? booking.start_time + ':00' : String(booking.start_time);
+  const sessionDatetime = new Date(`${dateStr}T${timeStr}`);
   const hoursUntil = (sessionDatetime - Date.now()) / 36e5;
+  if (Number.isNaN(hoursUntil))
+    return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
   if (hoursUntil < 24)
     return res.status(400).json({ error: 'Cancellations must be made at least 24 hours in advance', hours_until: Math.round(hoursUntil) });
 
@@ -192,6 +209,10 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
+  queries.auditLog({
+    actor_type: 'customer', actor_id: req.user.userId, action: 'booking_cancelled',
+    target: `booking:${req.params.id}`, detail: `refund ${refundPct}% (${refundAmountCents} cents)`, ip: req.ip,
+  });
 
   // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
   try {
@@ -241,7 +262,6 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 // POST /api/bookings/:id/confirm-member — confirm booking using subscription credits
 router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   const bookingId = parseInt(req.params.id);
-  const { credits_to_use } = req.body;
 
   const booking = await queries.getBookingById(bookingId);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
@@ -252,15 +272,21 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   const sub = await queries.getActiveSubscription(req.user.userId);
   if (!sub) return res.status(403).json({ error: 'No active subscription' });
 
+  // Server determines the credit cost — never trust the client for this
+  const { CREDIT_COST } = require('./subscriptions');
+  const slot = await queries.getSlotById(booking.time_slot_id);
+  if (!slot) return res.status(404).json({ error: 'Slot not found' });
+  const creditsToUse = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 2);
+
   // Deduct credits + confirm booking in a single transaction
   const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    if (sub.credits_per_month !== null && credits_to_use > 0) {
+    if (creditsToUse > 0) {
       const { rows } = await client.query(
         'UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN (\'active\', \'past_due\') AND credits_remaining >= $1 RETURNING *',
-        [credits_to_use, req.user.userId]
+        [creditsToUse, req.user.userId]
       );
       if (!rows[0]) {
         await client.query('ROLLBACK');
@@ -269,7 +295,7 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
     }
     await client.query(
       "UPDATE bookings SET status = 'confirmed', credits_used = $2 WHERE id = $1",
-      [bookingId, credits_to_use]
+      [bookingId, creditsToUse]
     );
     await client.query('COMMIT');
   } catch (err) {
@@ -278,6 +304,9 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   } finally {
     client.release();
   }
+
+  // Redeem any promo attached at booking time (idempotent, no-op if none)
+  await queries.redeemPendingPromo(bookingId);
 
   // Send confirmation email (non-fatal, guarded by confirmation_sent flag)
   if (!booking.confirmation_sent) {

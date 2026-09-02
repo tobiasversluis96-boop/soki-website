@@ -15,42 +15,74 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
 // ─── Admin auth middleware ────────────────────────────────────────────────────
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   const header = req.headers.authorization || '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Admin authentication required' });
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, JWT_SECRET);
     if (payload.type !== 'admin') throw new Error('Not an admin token');
-    req.admin = payload;
-    next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired admin token' });
+  }
+  try {
+    // Revocation check against the DB — bumped token_version kills old tokens
+    const currentVersion = await queries.getAdminTokenVersion(payload.adminId);
+    if (currentVersion === null || (payload.tv || 0) !== currentVersion)
+      return res.status(401).json({ error: 'Session expired — please log in again' });
+    req.admin = payload;
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 
 // ─── Staff auth middleware ─────────────────────────────────────────────────────
 
+const STAFF_PERM_KEYS = ['revenue','bookings','slots','generate','schedule','customers','messages'];
+
 function requireStaff(perm) {
-  return function(req, res, next) {
+  return async function(req, res, next) {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!token) return res.status(401).json({ error: 'Authentication required' });
+    let payload;
     try {
-      const payload = jwt.verify(token, JWT_SECRET);
-      if (payload.type === 'admin') { req.admin = payload; return next(); }
-      if (payload.type === 'staff') {
-        if (!payload.is_active) return res.status(403).json({ error: 'Account deactivated' });
-        if (perm && !payload.permissions.includes(perm))
-          return res.status(403).json({ error: 'Permission denied' });
-        req.staff = payload;
-        return next();
-      }
-      throw new Error('Invalid token type');
+      payload = jwt.verify(token, JWT_SECRET);
+      if (payload.type !== 'admin' && payload.type !== 'staff') throw new Error('Invalid token type');
     } catch {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
+    try {
+      if (payload.type === 'admin') {
+        const currentVersion = await queries.getAdminTokenVersion(payload.adminId);
+        if (currentVersion === null || (payload.tv || 0) !== currentVersion)
+          return res.status(401).json({ error: 'Session expired — please log in again' });
+        req.admin = payload;
+        return next();
+      }
+      // Staff: read is_active and permissions FRESH from the DB (never trust the
+      // token for these) so deactivation and permission changes apply instantly
+      const staff = await queries.getStaffById(payload.staffId);
+      if (!staff || (payload.tv || 0) !== (staff.token_version || 0))
+        return res.status(401).json({ error: 'Session expired — please log in again' });
+      if (!staff.is_active) return res.status(403).json({ error: 'Account deactivated' });
+      const permissions = STAFF_PERM_KEYS.filter(k => staff['perm_' + k]);
+      if (perm && !permissions.includes(perm))
+        return res.status(403).json({ error: 'Permission denied' });
+      req.staff = { ...payload, is_active: staff.is_active, permissions };
+      next();
+    } catch (err) {
+      next(err);
+    }
   };
+}
+
+function actorOf(req) {
+  if (req.admin) return { actor_type: 'admin', actor_id: req.admin.adminId };
+  if (req.staff) return { actor_type: 'staff', actor_id: req.staff.staffId, actor_email: req.staff.email };
+  return {};
 }
 
 // ─── Admin login ──────────────────────────────────────────────────────────────
@@ -63,28 +95,51 @@ router.post('/login', async (req, res) => {
   const admin = await queries.getAdminByEmail(email);
   if (admin) {
     const valid = await bcrypt.compare(password, admin.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!valid) {
+      queries.auditLog({ actor_type: 'admin', actor_email: email, action: 'login_failed', ip: req.ip });
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    const token = jwt.sign({ adminId: admin.id, type: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign(
+      { adminId: admin.id, type: 'admin', tv: admin.token_version || 0 },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+    queries.auditLog({ actor_type: 'admin', actor_id: admin.id, actor_email: email, action: 'login_success', ip: req.ip });
     return res.json({ token, type: 'admin' });
   }
 
   const staff = await queries.getStaffByEmail(email);
-  if (!staff) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!staff) {
+    queries.auditLog({ actor_email: email, action: 'login_failed', detail: 'unknown admin/staff email', ip: req.ip });
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
 
   const valid = await bcrypt.compare(password, staff.password_hash);
-  if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!valid) {
+    queries.auditLog({ actor_type: 'staff', actor_id: staff.id, actor_email: email, action: 'login_failed', ip: req.ip });
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
 
   if (!staff.is_active) return res.status(403).json({ error: 'Account deactivated' });
+  queries.auditLog({ actor_type: 'staff', actor_id: staff.id, actor_email: email, action: 'login_success', ip: req.ip });
 
-  const permKeys = ['revenue','bookings','slots','generate','schedule','customers','messages'];
-  const permissions = permKeys.filter(k => staff['perm_' + k]);
+  const permissions = STAFF_PERM_KEYS.filter(k => staff['perm_' + k]);
+  // is_active/permissions are re-read from the DB on every request (requireStaff);
+  // they're kept in the payload only for the frontend's convenience
   const token = jwt.sign(
-    { staffId: staff.id, type: 'staff', name: staff.name, email: staff.email, is_active: staff.is_active, permissions },
+    { staffId: staff.id, type: 'staff', name: staff.name, email: staff.email, is_active: staff.is_active, permissions, tv: staff.token_version || 0 },
     JWT_SECRET,
     { expiresIn: '12h' }
   );
   res.json({ token, type: 'staff', permissions });
+});
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+router.get('/audit-log', requireAdmin, async (req, res) => {
+  const rows = await queries.getAuditLog(parseInt(req.query.limit) || 200);
+  res.json(rows);
 });
 
 // ─── Bookings ────────────────────────────────────────────────────────────────
@@ -96,23 +151,35 @@ router.get('/bookings', requireStaff('bookings'), async (req, res) => {
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
+// Quote every cell and neutralise spreadsheet formula injection: Excel executes
+// cells starting with = + - @ (or tab/CR) as formulas, so prefix those with '.
+function csvCell(v) {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 router.get('/bookings/export.csv', requireStaff('bookings'), async (req, res) => {
   const bookings = await queries.getAllBookings(req.query);
+  queries.auditLog({ ...actorOf(req), action: 'csv_export', target: 'bookings', detail: `${bookings.length} rows`, ip: req.ip });
 
   const header = 'id,customer_name,customer_email,session_name,date,start_time,end_time,group_size,total_euros,status,created_at\n';
   const rows   = bookings.map(b => [
     b.id,
-    `"${b.customer_name}"`,
+    b.customer_name,
     b.customer_email,
-    `"${b.session_name}"`,
-    b.date,
+    b.session_name,
+    // pg DATE = local midnight; toISOString would shift a day back in UTC
+    b.date instanceof Date
+      ? `${b.date.getFullYear()}-${String(b.date.getMonth() + 1).padStart(2, '0')}-${String(b.date.getDate()).padStart(2, '0')}`
+      : b.date,
     b.start_time,
     b.end_time,
     b.group_size,
     (b.total_cents / 100).toFixed(2),
     b.status,
-    b.created_at,
-  ].join(',')).join('\n');
+    b.created_at instanceof Date ? b.created_at.toISOString() : b.created_at,
+  ].map(csvCell).join(',')).join('\n');
 
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="soki-bookings.csv"');
@@ -140,6 +207,7 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
+  queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${booking.total_cents} cents` : 'no refund', ip: req.ip });
 
   // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
   try {
@@ -534,6 +602,7 @@ router.post('/staff', requireAdmin, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 12);
   const staff = await queries.createStaff(name, email, passwordHash);
+  queries.auditLog({ ...actorOf(req), action: 'staff_created', target: `staff:${staff.id}`, detail: email, ip: req.ip });
   res.status(201).json(staff);
 });
 
@@ -542,6 +611,7 @@ router.patch('/staff/:id', requireAdmin, async (req, res) => {
   await queries.updateStaffPermissions(req.params.id, {
     is_active, perm_revenue, perm_bookings, perm_slots, perm_generate, perm_schedule, perm_customers, perm_messages,
   });
+  queries.auditLog({ ...actorOf(req), action: is_active === false ? 'staff_deactivated' : 'staff_updated', target: `staff:${req.params.id}`, ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -551,6 +621,7 @@ router.post('/staff/:id/reset-password', requireAdmin, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 12);
   await queries.updateStaffPassword(req.params.id, passwordHash);
+  queries.auditLog({ ...actorOf(req), action: 'staff_password_reset', target: `staff:${req.params.id}`, ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -602,6 +673,7 @@ router.patch('/subscriptions/:id/pause', requireAdmin, async (req, res) => {
   try {
     await stripe.subscriptions.update(sub.stripe_subscription_id, pausePayload(req.body.resumes_at));
     await queries.markSubscriptionPaused(sub.id, req.body.resumes_at || null);
+    queries.auditLog({ ...actorOf(req), action: 'subscription_paused', target: `subscription:${sub.id}`, ip: req.ip });
     res.json({ ok: true, id: sub.id });
   } catch (err) {
     console.error('Stripe pause failed:', err.message);
@@ -619,6 +691,7 @@ router.patch('/subscriptions/:id/resume', requireAdmin, async (req, res) => {
   try {
     await stripe.subscriptions.update(sub.stripe_subscription_id, { pause_collection: '' });
     await queries.markSubscriptionResumed(sub.id);
+    queries.auditLog({ ...actorOf(req), action: 'subscription_resumed', target: `subscription:${sub.id}`, ip: req.ip });
     res.json({ ok: true, id: sub.id });
   } catch (err) {
     console.error('Stripe resume failed:', err.message);
@@ -642,6 +715,7 @@ router.post('/subscriptions/pause-all', requireAdmin, async (req, res) => {
       results.failed.push({ id: sub.id, error: err.message });
     }
   }
+  queries.auditLog({ ...actorOf(req), action: 'subscriptions_paused_all', detail: `${results.paused.length} paused, ${results.failed.length} failed`, ip: req.ip });
   res.json({ ok: true, count: results.paused.length, ...results });
 });
 
@@ -660,6 +734,7 @@ router.post('/subscriptions/resume-all', requireAdmin, async (req, res) => {
       results.failed.push({ id: sub.id, error: err.message });
     }
   }
+  queries.auditLog({ ...actorOf(req), action: 'subscriptions_resumed_all', detail: `${results.resumed.length} resumed, ${results.failed.length} failed`, ip: req.ip });
   res.json({ ok: true, count: results.resumed.length, ...results });
 });
 
@@ -707,6 +782,8 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
   } catch (err) {
     return res.status(400).json({ error: err.message, code: err.code });
   }
+
+  queries.auditLog({ ...actorOf(req), action: 'walkin_booking_created', target: `booking:${booking.id}`, detail: `${payment_mode}, ${group_size}p, ${totalCents} cents`, ip: req.ip });
 
   // Free: booking is already confirmed — done
   if (payment_mode === 'free') {

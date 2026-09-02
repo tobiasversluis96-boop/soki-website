@@ -44,6 +44,8 @@ router.post('/purchase', async (req, res) => {
     return res.status(400).json({ error: 'Maximumbedrag is €500.' });
   if (!purchaser_name || !purchaser_email || !recipient_name || !recipient_email)
     return res.status(400).json({ error: 'Alle velden zijn verplicht.' });
+  if (message && String(message).length > 500)
+    return res.status(400).json({ error: 'Persoonlijk bericht mag maximaal 500 tekens zijn.' });
 
   // Generate a unique code
   let code, attempts = 0;

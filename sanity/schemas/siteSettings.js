@@ -5,7 +5,7 @@ export default {
   fields: [
     {
       name: 'address', title: 'Address', type: 'string',
-      description: 'E.g. Gietijzerstraat 3, 3534 AV Utrecht',
+      description: 'E.g. Europalaan 2B, 3526 KS Utrecht',
     },
     {
       name:  'email',

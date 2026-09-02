@@ -8,9 +8,16 @@ const { Pool } = require('pg');
 const bcrypt   = require('bcryptjs');
 const stripe   = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+// TLS: with DATABASE_CA_CERT set (PEM contents) the server certificate is fully
+// verified; without it we still encrypt but can't verify the cert (Railway's
+// internal proxy doesn't present a publicly-trusted certificate).
+const sslConfig = process.env.DATABASE_CA_CERT
+  ? { ca: process.env.DATABASE_CA_CERT, rejectUnauthorized: true }
+  : process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: sslConfig,
 });
 
 function getPool() { return pool; }
@@ -128,6 +135,12 @@ async function seedAdmin() {
   const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM admin_users');
   if (rows[0].n > 0) return;
 
+  // Never seed a guessable default password in production
+  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
+    console.error('✗ Admin NOT seeded: set ADMIN_PASSWORD env var (no default allowed in production)');
+    return;
+  }
+
   const email    = process.env.ADMIN_EMAIL    || 'admin@sokisocialsauna.nl';
   const password = process.env.ADMIN_PASSWORD || 'soki_admin_2024';
   const hash     = await bcrypt.hash(password, 12);
@@ -243,6 +256,26 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_used INTEGER DEFAULT 0');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_walkin BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_gift_card_id INTEGER');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_milestone_id INTEGER');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_discount_cents INTEGER');
+  // token_version makes JWTs revocable: bump it and all outstanding tokens die
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
+  await pool.query('ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
+  await pool.query('ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
+
+  // Append-only security audit log — never UPDATE or DELETE rows in this table
+  await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
+    id          SERIAL      PRIMARY KEY,
+    at          TIMESTAMPTZ DEFAULT NOW(),
+    actor_type  TEXT,
+    actor_id    INTEGER,
+    actor_email TEXT,
+    action      TEXT        NOT NULL,
+    target      TEXT,
+    detail      TEXT,
+    ip          TEXT
+  )`);
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS price_cents INTEGER');
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS pause_resumes_at TIMESTAMPTZ');
@@ -535,6 +568,48 @@ const queries = {
     return rows[0] || null;
   },
 
+  setBookingPendingPromo: async (bookingId, giftCardId, milestoneId, discountCents) => {
+    await pool.query(
+      `UPDATE bookings
+       SET pending_gift_card_id = $2, pending_milestone_id = $3, pending_discount_cents = $4
+       WHERE id = $1`,
+      [bookingId, giftCardId, milestoneId, discountCents]
+    );
+  },
+
+  // Redeem a gift card / milestone code attached to a booking, exactly once.
+  // The atomic clear-and-return makes concurrent calls (webhook + /confirm) safe:
+  // only the first caller gets the pending values back.
+  redeemPendingPromo: async (bookingId) => {
+    const { rows } = await pool.query(
+      `UPDATE bookings b
+       SET pending_gift_card_id = NULL, pending_milestone_id = NULL, pending_discount_cents = NULL
+       FROM (SELECT id, pending_gift_card_id, pending_milestone_id, pending_discount_cents
+             FROM bookings WHERE id = $1 FOR UPDATE) old
+       WHERE b.id = old.id
+         AND (old.pending_gift_card_id IS NOT NULL OR old.pending_milestone_id IS NOT NULL)
+       RETURNING old.pending_gift_card_id AS gift_card_id,
+                 old.pending_milestone_id AS milestone_id,
+                 old.pending_discount_cents AS discount_cents`,
+      [bookingId]
+    );
+    const p = rows[0];
+    if (!p) return null;
+    if (p.milestone_id) {
+      await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [p.milestone_id]);
+    }
+    if (p.gift_card_id) {
+      await pool.query(
+        `UPDATE gift_cards
+         SET remaining_amount_cents = remaining_amount_cents - $2,
+             status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
+         WHERE id = $1 AND remaining_amount_cents >= $2`,
+        [p.gift_card_id, p.discount_cents || 0]
+      );
+    }
+    return p;
+  },
+
   updateBookingPayment: async (bookingId, paymentIntentId, status) => {
     await pool.query(`
       UPDATE bookings
@@ -642,7 +717,39 @@ const queries = {
   },
 
   updateUserPassword: async (userId, passwordHash) => {
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+    // Bump token_version so all existing sessions are logged out after a reset
+    await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2',
+      [passwordHash, userId]
+    );
+  },
+
+  // Fire-and-forget security audit logging — must never break the request flow
+  auditLog: ({ actor_type = null, actor_id = null, actor_email = null, action, target = null, detail = null, ip = null }) => {
+    pool.query(
+      `INSERT INTO audit_log (actor_type, actor_id, actor_email, action, target, detail, ip)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [actor_type, actor_id, actor_email, action, target, detail, ip]
+    ).catch(err => console.error('Audit log write failed:', err.message));
+  },
+
+  getAuditLog: async (limit = 200) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM audit_log ORDER BY id DESC LIMIT $1',
+      [Math.min(limit, 1000)]
+    );
+    return rows;
+  },
+
+  // Token-version lookups for revocable JWTs (one indexed PK query per request)
+  getUserTokenVersion: async (id) => {
+    const { rows } = await pool.query('SELECT token_version FROM users WHERE id = $1', [id]);
+    return rows[0] ? rows[0].token_version : null;
+  },
+
+  getAdminTokenVersion: async (id) => {
+    const { rows } = await pool.query('SELECT token_version FROM admin_users WHERE id = $1', [id]);
+    return rows[0] ? rows[0].token_version : null;
   },
 
   // Reminder emails
@@ -1107,16 +1214,25 @@ const queries = {
   },
 
   deleteUser: async (userId) => {
-    // GDPR: anonymise PII, preserve booking records for financial compliance
+    // GDPR: remove personal content, anonymise the account row.
+    // Bookings stay (anonymised via the users row) for the 7-year fiscal
+    // retention duty; gift cards are financial records and stay too.
+    await pool.query('DELETE FROM messages WHERE user_id = $1', [userId]); // replies cascade
+    await pool.query('DELETE FROM waitlist WHERE user_id = $1 AND claimed_booking_id IS NULL', [userId]);
     await pool.query(
-      "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL WHERE id = $1",
+      "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL, token_version = token_version + 1 WHERE id = $1",
       [userId]
     );
   },
 
   getUserDataExport: async (userId) => {
-    const [user, bookings, sub] = await Promise.all([
-      pool.query('SELECT id, name, email, created_at FROM users WHERE id = $1', [userId]),
+    const { rows: userRows } = await pool.query(
+      'SELECT id, name, email, created_at, waiver_signed_at FROM users WHERE id = $1', [userId]
+    );
+    const user = userRows[0];
+    if (!user) return { user: null };
+
+    const [bookings, sub, messages, waitlist, giftCards, milestones] = await Promise.all([
       pool.query(`
         SELECT b.id, b.group_size, b.total_cents, b.status, b.created_at,
                ts.date, ts.start_time, ts.end_time, st.name AS session_name
@@ -1127,8 +1243,39 @@ const queries = {
         ORDER BY b.created_at DESC
       `, [userId]),
       pool.query('SELECT status, current_period_end FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [userId]),
+      pool.query(`
+        SELECT m.id, m.subject, m.body, m.created_at,
+               COALESCE(json_agg(json_build_object('body', r.body, 'from_admin', r.from_admin, 'created_at', r.created_at))
+                        FILTER (WHERE r.id IS NOT NULL), '[]') AS replies
+        FROM messages m
+        LEFT JOIN message_replies r ON r.message_id = m.id
+        WHERE m.user_id = $1
+        GROUP BY m.id ORDER BY m.created_at DESC
+      `, [userId]),
+      pool.query(`
+        SELECT w.created_at, w.group_size, w.total_cents, ts.date, ts.start_time, st.name AS session_name
+        FROM waitlist w
+        JOIN time_slots ts ON ts.id = w.time_slot_id
+        JOIN session_types st ON st.id = ts.session_type_id
+        WHERE w.user_id = $1 ORDER BY w.created_at DESC
+      `, [userId]),
+      pool.query(`
+        SELECT code, initial_amount_cents, remaining_amount_cents, status, created_at, expires_at,
+               (purchaser_email = $1) AS purchased_by_me
+        FROM gift_cards WHERE purchaser_email = $1 OR recipient_email = $1
+      `, [user.email]),
+      pool.query('SELECT milestone, achieved_at, redeemed_at FROM user_milestones WHERE user_id = $1 ORDER BY milestone', [userId]),
     ]);
-    return { user: user.rows[0], bookings: bookings.rows, subscription: sub.rows[0] || null };
+
+    return {
+      user,
+      bookings:     bookings.rows,
+      subscription: sub.rows[0] || null,
+      messages:     messages.rows,
+      waitlist:     waitlist.rows,
+      gift_cards:   giftCards.rows,
+      milestones:   milestones.rows,
+    };
   },
 
   getAnalytics: async () => {
@@ -1205,7 +1352,11 @@ const queries = {
   },
 
   updateStaffPassword: async (id, passwordHash) => {
-    await pool.query('UPDATE staff_users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+    // Bump token_version so existing staff sessions are logged out
+    await pool.query(
+      'UPDATE staff_users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2',
+      [passwordHash, id]
+    );
   },
 
   // Milestones

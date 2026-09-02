@@ -66,6 +66,10 @@ router.post('/confirm', requireAuth, async (req, res) => {
 
     await queries.updateBookingPayment(booking.id, intent.id, intent.status);
 
+    if (intent.status === 'succeeded') {
+      await queries.redeemPendingPromo(booking.id);
+    }
+
     if (intent.status === 'succeeded' && !booking.confirmation_sent) {
       try {
         await sendBookingConfirmation({ ...booking, group_size: booking.group_size });

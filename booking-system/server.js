@@ -5,6 +5,21 @@
  */
 
 require('dotenv').config();
+
+// ─── Production safety checks ────────────────────────────────────────────────
+// Refuse to boot in production with missing secrets: a silent fallback here
+// means forgeable login tokens or unverified payment webhooks.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+if (IS_PRODUCTION) {
+  const missing = [];
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'dev_secret_change_me') missing.push('JWT_SECRET');
+  if (!process.env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
+  if (missing.length) {
+    console.error(`FATAL: missing required env var(s) in production: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 const express   = require('express');
 const cors      = require('cors');
 const path      = require('path');
@@ -171,11 +186,17 @@ function checkinSig(bookingId) {
   return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
     .update(String(bookingId)).digest('hex').slice(0, 16);
 }
+function validCheckinSig(sig, bookingId) {
+  const expected = checkinSig(bookingId);
+  const provided = String(sig || '');
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
 
 app.get('/api/checkin/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const { sig } = req.query;
-  if (!sig || sig !== checkinSig(bookingId))
+  if (!validCheckinSig(sig, bookingId))
     return res.status(403).json({ error: 'Invalid check-in link' });
 
   const booking = await queries.getBookingById(bookingId);
@@ -206,7 +227,7 @@ app.get('/api/checkin/:bookingId', async (req, res) => {
 app.post('/api/checkin/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const { sig } = req.query;
-  if (!sig || sig !== checkinSig(bookingId))
+  if (!validCheckinSig(sig, bookingId))
     return res.status(403).json({ error: 'Invalid check-in link' });
 
   const booking = await queries.getBookingById(bookingId);

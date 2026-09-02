@@ -16,16 +16,34 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
+  let payload;
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
+  try {
+    // Revocation check: a password reset bumps token_version and kills old tokens
+    const currentVersion = await queries.getUserTokenVersion(payload.userId);
+    if (currentVersion === null || (payload.tv || 0) !== currentVersion)
+      return res.status(401).json({ error: 'Session expired — please log in again' });
+    req.user = payload;
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+function signCustomerToken(user) {
+  return jwt.sign(
+    { userId: user.id, type: 'customer', tv: user.token_version || 0 },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -43,7 +61,7 @@ router.post('/register', async (req, res) => {
 
   const hash  = await bcrypt.hash(password, 12);
   const user  = await queries.createUser(name, email, hash);
-  const token = jwt.sign({ userId: user.id, type: 'customer' }, JWT_SECRET, { expiresIn: '30d' });
+  const token = signCustomerToken(user);
 
   res.status(201).json({ token, user: { id: user.id, name, email } });
 });
@@ -55,12 +73,18 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
 
   const user = await queries.getUserByEmail(email);
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  if (!user) {
+    queries.auditLog({ actor_type: 'customer', actor_email: email, action: 'login_failed', detail: 'unknown email', ip: req.ip });
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
 
   const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+  if (!valid) {
+    queries.auditLog({ actor_type: 'customer', actor_id: user.id, actor_email: email, action: 'login_failed', ip: req.ip });
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
 
-  const token = jwt.sign({ userId: user.id, type: 'customer' }, JWT_SECRET, { expiresIn: '30d' });
+  const token = signCustomerToken(user);
   res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
 });
 
@@ -83,7 +107,7 @@ router.post('/google', async (req, res) => {
     const { sub: googleId, email, name } = payload;
 
     const user  = await queries.findOrCreateUserByGoogle(googleId, email, name);
-    const token = jwt.sign({ userId: user.id, type: 'customer' }, JWT_SECRET, { expiresIn: '30d' });
+    const token = signCustomerToken(user);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (err) {
     console.error('Google auth error:', err.message);
@@ -127,6 +151,7 @@ router.post('/reset-password', async (req, res) => {
   const hash = await bcrypt.hash(password, 12);
   await queries.updateUserPassword(record.user_id, hash);
   await queries.deletePasswordResetToken(token);
+  queries.auditLog({ actor_type: 'customer', actor_id: record.user_id, action: 'password_reset', ip: req.ip });
 
   res.json({ ok: true });
 });
@@ -134,12 +159,14 @@ router.post('/reset-password', async (req, res) => {
 // DELETE /api/auth/me — GDPR: delete own account (anonymises PII)
 router.delete('/me', requireAuth, async (req, res) => {
   await queries.deleteUser(req.user.userId);
+  queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'account_deleted', ip: req.ip });
   res.json({ ok: true });
 });
 
 // GET /api/auth/me/export — GDPR: export own data
 router.get('/me/export', requireAuth, async (req, res) => {
   const data = await queries.getUserDataExport(req.user.userId);
+  queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'data_export', ip: req.ip });
   res.setHeader('Content-Disposition', 'attachment; filename="my-soki-data.json"');
   res.json(data);
 });
