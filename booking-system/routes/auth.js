@@ -9,7 +9,7 @@ const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const { queries } = require('../db/database');
-const { sendPasswordResetEmail } = require('../utils/email');
+const { sendPasswordResetEmail, sendVerificationEmail } = require('../utils/email');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -63,7 +63,48 @@ router.post('/register', async (req, res) => {
   const user  = await queries.createUser(name, email, hash);
   const token = signCustomerToken(user);
 
+  // Verificatiecode versturen mag registratie of boeken nooit blokkeren
+  try {
+    await startEmailVerification(user.id, name, email);
+  } catch (err) {
+    console.error('Verification email failed (non-fatal):', err.message);
+  }
+
   res.status(201).json({ token, user: { id: user.id, name, email } });
+});
+
+async function startEmailVerification(userId, name, email) {
+  const code      = String(crypto.randomInt(100000, 1000000));
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  await queries.setVerifyCode(userId, code, expiresAt);
+  await sendVerificationEmail({ name, email, code });
+}
+
+// POST /api/auth/verify-email — bevestig e-mailadres met 6-cijferige code
+router.post('/verify-email', requireAuth, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'code is required' });
+
+  const ok = await queries.verifyEmailCode(req.user.userId, String(code).trim());
+  if (!ok) return res.status(400).json({ error: 'Invalid or expired code' });
+
+  queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'email_verified', ip: req.ip });
+  res.json({ ok: true });
+});
+
+// POST /api/auth/resend-verification
+router.post('/resend-verification', requireAuth, async (req, res) => {
+  const user = await queries.getUserById(req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.email_verified_at) return res.json({ ok: true, already_verified: true });
+
+  try {
+    await startEmailVerification(user.id, user.name, user.email);
+  } catch (err) {
+    console.error('Verification email failed:', err.message);
+    return res.status(502).json({ error: 'Could not send email — please try again later' });
+  }
+  res.json({ ok: true });
 });
 
 // POST /api/auth/login
@@ -107,6 +148,8 @@ router.post('/google', async (req, res) => {
     const { sub: googleId, email, name } = payload;
 
     const user  = await queries.findOrCreateUserByGoogle(googleId, email, name);
+    // Google heeft het e-mailadres al geverifieerd
+    await queries.markEmailVerified(user.id);
     const token = signCustomerToken(user);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (err) {

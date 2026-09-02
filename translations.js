@@ -343,6 +343,13 @@ var SOKI_I18N = {
     'account.past.h2':           'Previous sessions',
     'account.new':               'New booking',
     'account.logout':            'Log out',
+    'account.verify.title':      'Confirm your email address',
+    'account.verify.text':       'We emailed you a 6-digit code. Enter it below so we know booking confirmations will reach you.',
+    'account.verify.btn':        'Confirm',
+    'account.verify.resend':     'Send new code',
+    'account.verify.sent':       'New code sent — check your inbox!',
+    'account.verify.err':        'Invalid or expired code. Request a new one if needed.',
+    'account.verify.done':       'Email address confirmed!',
 
     /* --- Account JS dynamic --- */
     'account.status.confirmed':  'Confirmed',
@@ -820,6 +827,13 @@ var SOKI_I18N = {
     'account.past.h2':           'Eerdere sessies',
     'account.new':               'Nieuwe boeking',
     'account.logout':            'Uitloggen',
+    'account.verify.title':      'Bevestig je e-mailadres',
+    'account.verify.text':       'We hebben je een 6-cijferige code gemaild. Vul hem hieronder in, zodat we zeker weten dat boekingsbevestigingen aankomen.',
+    'account.verify.btn':        'Bevestigen',
+    'account.verify.resend':     'Stuur nieuwe code',
+    'account.verify.sent':       'Nieuwe code verstuurd — check je inbox!',
+    'account.verify.err':        'Ongeldige of verlopen code. Vraag zo nodig een nieuwe aan.',
+    'account.verify.done':       'E-mailadres bevestigd!',
 
     /* --- Account JS dynamic --- */
     'account.status.confirmed':  'Bevestigd',

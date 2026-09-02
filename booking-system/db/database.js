@@ -224,6 +224,18 @@ async function initializeDB() {
   )`);
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS waiver_signed_at TIMESTAMPTZ');
 
+  // E-mailverificatie; bestaande accounts worden eenmalig als geverifieerd
+  // gemarkeerd zodat alleen nieuwe registraties de code-flow doorlopen
+  const { rows: evCol } = await pool.query(
+    "SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email_verified_at'"
+  );
+  if (!evCol[0]) {
+    await pool.query('ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMPTZ');
+    await pool.query('UPDATE users SET email_verified_at = NOW()');
+  }
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code TEXT');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_expires TIMESTAMPTZ');
+
   await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (
     id           SERIAL      PRIMARY KEY,
     user_id      INTEGER     NOT NULL REFERENCES users(id),
@@ -412,7 +424,7 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at FROM users WHERE id = $1', [id]);
     return rows[0] || null;
   },
 
@@ -442,6 +454,25 @@ const queries = {
       [name, email, googleId]
     ));
     return rows[0];
+  },
+
+  setVerifyCode: async (userId, code, expiresAt) => {
+    await pool.query('UPDATE users SET verify_code = $2, verify_code_expires = $3 WHERE id = $1', [userId, code, expiresAt]);
+  },
+
+  verifyEmailCode: async (userId, code) => {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET email_verified_at = NOW(), verify_code = NULL, verify_code_expires = NULL
+       WHERE id = $1 AND verify_code = $2 AND verify_code_expires > NOW()
+       RETURNING id`,
+      [userId, code]
+    );
+    return !!rows[0];
+  },
+
+  markEmailVerified: async (userId) => {
+    await pool.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = $1', [userId]);
   },
 
   getAllUsers: async () => {

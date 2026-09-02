@@ -73,9 +73,38 @@ async function sendPasswordResetEmail({ name, email, token }) {
     name,
     {
       CUSTOMER_NAME: name,
-      RESET_URL:     `${process.env.APP_URL || 'http://localhost:3001'}/reset-password?token=${token}`,
+      RESET_URL:     `${process.env.BASE_URL || 'http://localhost:3001'}/reset-password?token=${token}`,
     }
   );
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Geen Brevo-template nodig: de code-mail wordt als kant-en-klare HTML verstuurd
+async function sendVerificationEmail({ name, email, code }) {
+  await getApi().sendTransacEmail({
+    to: [{ email, name }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    subject: `${code} — bevestig je e-mailadres / confirm your email`,
+    htmlContent: `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
+        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
+        <p>Hoi ${escapeHtml(name)},</p>
+        <p>Bevestig je e-mailadres met deze code:<br>
+           <span style="color:#8C7B6B;">Confirm your email address with this code:</span></p>
+        <p style="font-size:32px;font-weight:bold;letter-spacing:6px;background:#FBEFE3;padding:16px 24px;border-radius:12px;text-align:center;">${escapeHtml(code)}</p>
+        <p>De code is 15 minuten geldig. / This code is valid for 15 minutes.</p>
+        <p style="color:#8C7B6B;font-size:13px;">Heb je geen account aangemaakt bij SOKI? Dan kun je deze mail negeren.<br>
+           Didn't create a SOKI account? You can safely ignore this email.</p>
+      </div>`,
+  });
 }
 
 async function sendWaitlistNotification({ customer_name, customer_email, session_name, date, start_time, end_time }) {
@@ -166,6 +195,7 @@ async function sendGiftCardEmail(card) {
 module.exports = {
   sendBookingConfirmation,
   sendPasswordResetEmail,
+  sendVerificationEmail,
   sendReminderEmail,
   sendWaitlistNotification,
   sendAutoBookedEmail,

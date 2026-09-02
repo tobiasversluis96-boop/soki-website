@@ -68,6 +68,18 @@
   <div class="section">
     <div class="container" style="max-width:800px">
 
+      <!-- E-mailverificatie -->
+      <div id="verify-banner" style="display:none;background:#FFF7ED;border:1.5px solid #F2C299;border-radius:16px;padding:20px 24px;margin-bottom:var(--space-2xl);">
+        <h3 data-i18n="account.verify.title" style="margin:0 0 6px;font-size:1.05rem;color:var(--brown,#4A1C0C);">Confirm your email address</h3>
+        <p data-i18n="account.verify.text" style="margin:0 0 12px;font-size:0.9rem;color:var(--text-muted,#8C7B6B);">We emailed you a 6-digit code. Enter it below so we know booking confirmations will reach you.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <input id="verify-code" inputmode="numeric" maxlength="6" placeholder="123456" style="width:120px;padding:10px 12px;border:2px solid var(--border-color,#E8D5BF);border-radius:10px;font-size:18px;letter-spacing:4px;text-align:center;font-family:inherit;outline:none;">
+          <button id="verify-btn" class="btn btn--primary" data-i18n="account.verify.btn" style="padding:10px 22px;">Confirm</button>
+          <a href="#" id="verify-resend" data-i18n="account.verify.resend" style="font-size:0.85rem;color:var(--terra,#D94D1A);">Send new code</a>
+        </div>
+        <p id="verify-msg" style="margin:10px 0 0;font-size:0.85rem;"></p>
+      </div>
+
       <!-- Subscription -->
       <div id="subscription-section" style="margin-bottom:var(--space-2xl)">
       </div>

@@ -85,6 +85,39 @@
       '</div>';
   }
 
+  function postApi(path, body) {
+    return fetch('/api' + path, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    }).then(function (r) { return r.json(); });
+  }
+
+  function initVerifyBanner() {
+    var banner = document.getElementById('verify-banner');
+    var msg    = document.getElementById('verify-msg');
+    banner.style.display = 'block';
+
+    document.getElementById('verify-btn').addEventListener('click', function () {
+      var code = document.getElementById('verify-code').value.trim();
+      if (!code) return;
+      postApi('/auth/verify-email', { code: code }).then(function (res) {
+        if (res.error) { msg.style.color = '#C0392B'; msg.textContent = t('account.verify.err'); return; }
+        msg.style.color = '#2E7D32';
+        msg.textContent = t('account.verify.done');
+        setTimeout(function () { banner.style.display = 'none'; }, 2500);
+      });
+    });
+
+    document.getElementById('verify-resend').addEventListener('click', function (e) {
+      e.preventDefault();
+      postApi('/auth/resend-verification').then(function (res) {
+        msg.style.color = res.error ? '#C0392B' : '#2E7D32';
+        msg.textContent = res.error ? res.error : t('account.verify.sent');
+      });
+    });
+  }
+
   function init() {
     if (!token) {
       document.getElementById('auth-gate').style.display = 'block';
@@ -101,6 +134,8 @@
       document.getElementById('account-app').style.display = 'block';
       document.getElementById('account-name').textContent  = user.name;
       document.getElementById('account-email').textContent = user.email;
+
+      if (!user.email_verified_at) initVerifyBanner();
 
       // Update nav with first name
       var navEl = document.getElementById('navAccount');
