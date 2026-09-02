@@ -180,24 +180,45 @@ async function sendMilestoneEmail({ customer_name, customer_email, milestone, la
   );
 }
 
+// Geen Brevo-template nodig: de cadeaubon-mail wordt als kant-en-klare HTML verstuurd
 async function sendGiftCardEmail(card) {
-  const expires = new Date(card.expires_at).toLocaleDateString('nl-NL', {
+  const expiresNl = new Date(card.expires_at).toLocaleDateString('nl-NL', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
-  await send(
-    process.env.BREVO_TEMPLATE_GIFT_CARD,
-    card.recipient_email,
-    card.recipient_name,
-    {
-      RECIPIENT_NAME:  card.recipient_name,
-      PURCHASER_NAME:  card.purchaser_name,
-      AMOUNT:          `€${(card.initial_amount_cents / 100).toFixed(2).replace('.', ',')}`,
-      CODE:            card.code,
-      EXPIRES:         expires,
-      MESSAGE:         card.message || '',
-      BOOK_URL:        `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`,
-    }
-  );
+  const expiresEn = new Date(card.expires_at).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const amount  = `€${(card.initial_amount_cents / 100).toFixed(2).replace('.', ',')}`;
+  const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
+  const messageBlock = card.message
+    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;font-style:italic;">&ldquo;${escapeHtml(card.message)}&rdquo;<br>
+         <span style="color:#8C7B6B;font-style:normal;font-size:13px;">&mdash; ${escapeHtml(card.purchaser_name)}</span></p>`
+    : '';
+  await getClient().transactionalEmails.sendTransacEmail({
+    to: [{ email: card.recipient_email, name: card.recipient_name }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    subject: `Je hebt een cadeaubon van ${amount} gekregen! / You've received a ${amount} gift card!`,
+    htmlContent: `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
+        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
+        <p>Hoi ${escapeHtml(card.recipient_name)},</p>
+        <p><strong>${escapeHtml(card.purchaser_name)}</strong> heeft een cadeaubon voor je gekocht!<br>
+           <span style="color:#8C7B6B;">${escapeHtml(card.purchaser_name)} bought you a gift card!</span></p>
+        ${messageBlock}
+        <div style="background:#FBEFE3;padding:24px;border-radius:12px;text-align:center;margin:16px 0;">
+          <div style="font-size:36px;font-weight:bold;color:#D94D1A;">${amount}</div>
+          <div style="color:#8C7B6B;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
+          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;">${escapeHtml(card.code)}</div>
+        </div>
+        <p>Vul de code in bij het afrekenen van je boeking op
+           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
+           <span style="color:#8C7B6B;">Enter the code at checkout when booking your session.</span></p>
+        <p style="color:#8C7B6B;font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>
+      </div>`,
+  });
 }
 
 module.exports = {
