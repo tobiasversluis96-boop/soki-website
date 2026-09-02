@@ -589,12 +589,15 @@
   // ─── Google Sign-In ────────────────────────────────────────────────────────
   var googleClientId = null;
 
+  var gsiRendered = false;
+
   fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
     googleClientId = cfg.googleClientId;
+    initGoogleSignIn();
   });
 
   function initGoogleSignIn() {
-    if (!googleClientId) return;
+    if (!googleClientId || gsiRendered) return;
     if (typeof google === 'undefined' || !google.accounts) {
       var script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
@@ -606,13 +609,28 @@
   }
 
   function setupGSI() {
+    if (gsiRendered) return;
+    gsiRendered = true;
     google.accounts.id.initialize({
       client_id: googleClientId,
       callback: function(response) {
         handleGoogleCredential(response.credential);
       },
     });
-    google.accounts.id.prompt();
+    // One Tap (prompt) wordt vaak stil geblokkeerd; render de officiële knop
+    var customBtn = document.getElementById('google-signin-btn');
+    var holder = document.createElement('div');
+    holder.style.display = 'flex';
+    holder.style.justifyContent = 'center';
+    customBtn.parentNode.insertBefore(holder, customBtn);
+    google.accounts.id.renderButton(holder, {
+      theme: 'outline',
+      size: 'large',
+      shape: 'pill',
+      text: 'continue_with',
+      width: 320,
+    });
+    customBtn.style.display = 'none';
   }
 
   function handleGoogleCredential(credential) {

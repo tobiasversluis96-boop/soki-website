@@ -160,7 +160,7 @@
 
       loadSubscription();
       loadWaitlist();
-      loadMilestones();
+      // loadMilestones();  // Milestones tijdelijk uit — sectie staat verborgen in account.html
       renderMessages();
     });
   }

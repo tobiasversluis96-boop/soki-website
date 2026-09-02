@@ -259,7 +259,7 @@ async function initializeDB() {
     user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     plan_id                 INTEGER NOT NULL REFERENCES subscription_plans(id),
     status                  TEXT NOT NULL DEFAULT 'active',
-    credits_remaining       INTEGER,
+    credits_remaining       NUMERIC(6,1),
     credits_reset_at        TIMESTAMPTZ,
     stripe_subscription_id  TEXT UNIQUE,
     stripe_customer_id      TEXT,
@@ -268,6 +268,9 @@ async function initializeDB() {
     created_at              TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_used INTEGER DEFAULT 0');
+  // Halve credits (Ambient/Aufguss = 1,5) vereisen decimale kolommen
+  await pool.query('ALTER TABLE subscriptions ALTER COLUMN credits_remaining TYPE NUMERIC(6,1)');
+  await pool.query('ALTER TABLE bookings ALTER COLUMN credits_used TYPE NUMERIC(6,1)');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hold_until TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_walkin BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_gift_card_id INTEGER');
@@ -887,9 +890,11 @@ const queries = {
   },
 
   resetSubscriptionCredits: async (stripeSubId, creditsPerMonth, periodEnd) => {
+    // Een overgebleven halve credit gaat mee naar de nieuwe maand
     await pool.query(`
       UPDATE subscriptions
-      SET credits_remaining = $2, credits_reset_at = $3, current_period_end = $3, status = 'active'
+      SET credits_remaining = $2 + (COALESCE(credits_remaining, 0) - floor(COALESCE(credits_remaining, 0))),
+          credits_reset_at = $3, current_period_end = $3, status = 'active'
       WHERE stripe_subscription_id = $1
     `, [stripeSubId, creditsPerMonth, periodEnd]);
   },

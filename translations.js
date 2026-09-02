@@ -43,7 +43,7 @@ var SOKI_I18N = {
     'faq.a.bring.note':   'We provide complimentary water and maté tea during your session.',
     'faq.cat.groups':     'Groups',
     'faq.q.groups':       'Can I book for a group?',
-    'faq.a.groups':       'Yes! You can book for up to 20 people. For larger groups or private events, reach out to hello@sokisocialsauna.nl.',
+    'faq.a.groups':       'Yes! You can book for up to 15 people. For larger groups or private events, reach out to hello@sokisocialsauna.nl.',
     'faq.cat.etiquette':  'Sauna etiquette',
     'faq.q.etiquette':    'What are the house rules?',
     'faq.a.etiquette':    '<li>Always sit or lie on a towel for hygiene</li><li>Limit sauna time to 15 minutes per turn</li><li>Maximum 3 sauna turns per session</li><li>No oils or fragrances on the sauna rocks</li><li>No alcohol before or during your visit</li><li>Smoking only at the front entrance</li>',
@@ -98,7 +98,7 @@ var SOKI_I18N = {
 
     /* --- Homepage hero --- */
     'home.hero.h1':   'Sweat, relax, connect',
-    'home.hero.lead': 'SOKI is a new kind of sauna space that fuses wellness with culture, music and community. A warm, inspiring place where wellbeing, creativity and genuine human connection come first.',
+    'home.hero.lead': 'SOKI is a new kind of sauna space coming to Utrecht, fusing wellness with culture, music and community. A warm, inspiring place where wellbeing, creativity and genuine human connection come first. We will open soon.',
     'home.hero.book': 'Book a session',
     'home.hero.story':'Our story',
 
@@ -520,7 +520,7 @@ var SOKI_I18N = {
     'faq.a.bring.note':   'We bieden gratis water en maté thee aan tijdens je sessie.',
     'faq.cat.groups':     'Groepen',
     'faq.q.groups':       'Kan ik boeken voor een groep?',
-    'faq.a.groups':       'Ja! Je kunt boeken voor maximaal 20 personen. Voor grotere groepen of privé-evenementen, neem contact op via hello@sokisocialsauna.nl.',
+    'faq.a.groups':       'Ja! Je kunt boeken voor maximaal 15 personen. Voor grotere groepen of privé-evenementen, neem contact op via hello@sokisocialsauna.nl.',
     'faq.cat.etiquette':  'Sauna-etiquette',
     'faq.q.etiquette':    'Wat zijn de huisregels?',
     'faq.a.etiquette':    '<li>Zit of lig altijd op een handdoek voor de hygiëne</li><li>Blijf maximaal 15 minuten per ronde in de sauna</li><li>Maximaal 3 saunarondes per sessie</li><li>Geen oliën of geuren op de saunastenen</li><li>Geen alcohol voor of tijdens je bezoek</li><li>Roken alleen bij de hoofdingang</li>',
@@ -575,7 +575,7 @@ var SOKI_I18N = {
 
     /* --- Homepage hero --- */
     'home.hero.h1':   'Zweet, ontspan, verbind',
-    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan.',
+    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte die binnenkort opent in Utrecht: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan. We openen binnenkort.',
     'home.hero.book': 'Boek een sessie',
     'home.hero.story':'Ons verhaal',
 

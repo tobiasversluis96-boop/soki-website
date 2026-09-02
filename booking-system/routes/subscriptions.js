@@ -10,7 +10,7 @@ const { requireAuth } = require('./auth');
 const router = express.Router();
 
 // Credit cost per session type (session_type_id -> credits)
-const CREDIT_COST = { 1: 1, 2: 2, 3: 2, 4: 2 };  // 1=Everyday, 2=Social, 3=Ambient, 4=Aufguss
+const CREDIT_COST = { 1: 1, 2: 1, 3: 1.5, 4: 1.5 };  // 1=Everyday, 2=Social, 3=Ambient, 4=Aufguss
 
 // GET /api/subscriptions/plans
 router.get('/plans', async (req, res) => {
@@ -77,7 +77,7 @@ router.post('/cancel', requireAuth, async (req, res) => {
 // POST /api/subscriptions/credit-cost  -- returns cost for a slot
 router.post('/credit-cost', requireAuth, async (req, res) => {
   const { session_type_id } = req.body;
-  const cost = CREDIT_COST[session_type_id] || 2;
+  const cost = CREDIT_COST[session_type_id] || 1.5;
   const sub  = await queries.getActiveSubscription(req.user.userId);
   res.json({
     has_subscription: !!sub,

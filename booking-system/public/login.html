@@ -203,6 +203,7 @@
     </svg>
     <span data-i18n="login.google">Continue with Google</span>
   </button>
+  <div id="google-btn-official" style="display:none;justify-content:center;margin-bottom:1rem;"></div>
 
   <div class="divider"><span data-i18n="login.or">or</span></div>
 
@@ -321,34 +322,56 @@
   }
 
   // ── Google sign-in ──────────────────────────────────────────────────────────
+  // One Tap (google.accounts.id.prompt) wordt door browsers vaak stil
+  // onderdrukt; daarom renderen we direct de officiële Google-knop.
+  var googleReady = false;
+
+  function handleGoogleCredential(response) {
+    fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { alert(data.error); return; }
+      onAuthSuccess(data);
+    });
+  }
+
+  function initGoogle(cfg) {
+    if (!cfg.googleClientId || googleReady) return;
+    var script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = function() {
+      google.accounts.id.initialize({
+        client_id: cfg.googleClientId,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+      });
+      var holder = document.getElementById('google-btn-official');
+      google.accounts.id.renderButton(holder, {
+        theme: 'outline',
+        size: 'large',
+        shape: 'pill',
+        text: 'continue_with',
+        width: 320,
+      });
+      googleReady = true;
+      holder.style.display = 'flex';
+      document.getElementById('google-btn').style.display = 'none';
+    };
+    document.head.appendChild(script);
+  }
+
+  fetch('/api/config').then(function(r) { return r.json(); }).then(initGoogle).catch(function() {});
+
+  // Fallback: eigen knop blijft zichtbaar zolang de Google-knop niet gerenderd is
   document.getElementById('google-btn').addEventListener('click', function() {
     fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
       if (!cfg.googleClientId) { alert(t('login.err.google')); return; }
-
-      // Load GSI script dynamically then trigger One Tap / popup
-      var script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.onload = function() {
-        google.accounts.id.initialize({
-          client_id: cfg.googleClientId,
-          callback: function(response) {
-            fetch('/api/auth/google', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ credential: response.credential }),
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-              if (data.error) { alert(data.error); return; }
-              onAuthSuccess(data);
-            });
-          },
-          ux_mode: 'popup',
-        });
-        google.accounts.id.prompt();
-      };
-      document.head.appendChild(script);
-    });
+      initGoogle(cfg);
+    }).catch(function() { alert(t('login.err.google')); });
   });
 
   // ── Login ───────────────────────────────────────────────────────────────────

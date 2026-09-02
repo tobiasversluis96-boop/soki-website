@@ -800,6 +800,8 @@ p {
 }
 
 .type-card {
+  display: flex;
+  flex-direction: column;
   border-radius: 20px;
   overflow: hidden;
   background-color: var(--white);
@@ -841,10 +843,14 @@ p {
   padding: 4px 12px;
   border-radius: 100px;
   backdrop-filter: blur(4px);
+  white-space: nowrap;
 }
 
 .type-card__body {
   padding: var(--space-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .type-card__body h3 {
@@ -855,6 +861,7 @@ p {
 .type-card__body p {
   font-size: 0.88rem;
   line-height: 1.6;
+  flex: 1;
 }
 
 /* ============================================
@@ -1772,10 +1779,11 @@ p {
 
   .section-header { margin-bottom: var(--space-lg); }
 
-  /* Page hero — tighter on mobile */
+  /* Page hero — tighter on mobile; extra bottom padding so the white
+     curve (::after, 64px hoog) de tekst niet overlapt */
   .page-hero {
     padding-top: calc(var(--nav-height) + 1.5rem);
-    padding-bottom: 2rem;
+    padding-bottom: calc(2rem + 64px);
   }
   .page-hero h1 { margin-bottom: 0.5rem; }
 

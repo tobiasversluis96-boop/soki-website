@@ -236,7 +236,10 @@ app.post('/api/checkin/:bookingId', async (req, res) => {
   await queries.checkInBooking(bookingId, true);
 
   // Check for milestone after check-in
-  try {
+  // Milestones staan tijdelijk uit; bezoeken tellen gewoon door via bookings.
+  // Zet MILESTONES_ENABLED op true om het weer aan te zetten.
+  const MILESTONES_ENABLED = false;
+  if (MILESTONES_ENABLED) try {
     const { getMilestoneForVisit, generatePromoCode } = require('./utils/milestones');
     const { sendMilestoneEmail } = require('./utils/email');
 

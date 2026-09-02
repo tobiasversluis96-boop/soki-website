@@ -15,8 +15,8 @@ router.post('/', requireAuth, async (req, res) => {
   const { slot_id, group_size, promo_code } = req.body;
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
-  if (group_size < 1 || group_size > 20)
-    return res.status(400).json({ error: 'group_size must be between 1 and 20' });
+  if (group_size < 1 || group_size > 15)
+    return res.status(400).json({ error: 'group_size must be between 1 and 15' });
 
   const slot = await queries.getSlotById(slot_id);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
@@ -276,7 +276,7 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   const { CREDIT_COST } = require('./subscriptions');
   const slot = await queries.getSlotById(booking.time_slot_id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
-  const creditsToUse = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 2);
+  const creditsToUse = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
 
   // Deduct credits + confirm booking in a single transaction
   const pool = getPool();
