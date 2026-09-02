@@ -8,7 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
-const { sendWaitlistNotification, sendAutoBookedEmail } = require('../utils/email');
+const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation } = require('../utils/email');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -195,6 +195,7 @@ router.get('/bookings/:id', requireAdmin, async (req, res) => {
 router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   const booking = await queries.getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.status === 'cancelled') return res.status(400).json({ error: 'Booking is already cancelled' });
 
   let refunded = false;
   if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
@@ -787,6 +788,13 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
 
   // Free: booking is already confirmed — done
   if (payment_mode === 'free') {
+    try {
+      const fullBooking = await queries.getBookingById(booking.id);
+      await sendBookingConfirmation(fullBooking);
+      await queries.markConfirmationSent(booking.id);
+    } catch (e) {
+      console.error('Walk-in confirmation email failed (non-fatal):', e.message);
+    }
     return res.json({ ok: true, booking_id: booking.id, status: 'confirmed', payment_mode: 'free' });
   }
 

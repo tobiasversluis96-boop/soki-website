@@ -42,6 +42,16 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           if (bookingId && session.payment_status === 'paid') {
             await queries.confirmWalkinBooking(bookingId, session.payment_intent);
             console.log(`✓ Walk-in booking #${bookingId} confirmed via QR checkout`);
+            try {
+              const fullBooking = await queries.getBookingById(bookingId);
+              if (fullBooking && !fullBooking.confirmation_sent) {
+                const { sendBookingConfirmation } = require('../utils/email');
+                await sendBookingConfirmation(fullBooking);
+                await queries.markConfirmationSent(bookingId);
+              }
+            } catch (e) {
+              console.error('Walk-in confirmation email failed (non-fatal):', e.message);
+            }
           }
           break;
         }

@@ -712,7 +712,7 @@ const queries = {
     let p = 1;
     if (filters.from) { sql += ` AND ts.date >= $${p++}`; params.push(filters.from); }
     if (filters.to)   { sql += ` AND ts.date <= $${p++}`; params.push(filters.to); }
-    sql += ' GROUP BY ts.id, st.name, st.price_cents, st.max_capacity ORDER BY ts.date ASC, ts.start_time ASC';
+    sql += ' GROUP BY ts.id, st.name, st.price_cents, st.max_capacity ORDER BY ts.date DESC, ts.start_time DESC';
     const { rows } = await pool.query(sql, params);
     return rows;
   },
@@ -1106,6 +1106,10 @@ const queries = {
         AND ts.price_cents = 0
     `, [userId]);
     return rows[0].n;
+  },
+
+  markConfirmationSent: async (bookingId) => {
+    await pool.query('UPDATE bookings SET confirmation_sent = TRUE WHERE id = $1', [bookingId]);
   },
 
   confirmWalkinBooking: async (bookingId, paymentIntentId) => {

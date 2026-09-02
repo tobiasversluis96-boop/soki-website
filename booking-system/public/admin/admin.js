@@ -416,7 +416,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--brown);">${escapeHtml(p.plan_name)}</div>
-            <div style="font-size:11px;color:var(--muted);">${isUnlimited ? 'Onbeperkt' : '4 credits/maand'} · ${formatEur(p.price_cents)}/maand</div>
+            <div style="font-size:11px;color:var(--muted);">${isUnlimited ? 'Onbeperkt' : `${p.credits_per_month} credits/maand`} · ${formatEur(p.price_cents)}/maand</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:18px;font-weight:700;color:var(--brown);font-family:'Barlow Condensed',Arial,sans-serif;">${p.active_count}</div>
@@ -442,9 +442,32 @@
     if (status) qs += '&status=' + status;
     qs = qs ? '?' + qs.slice(1) : '';
 
-    // Update export link
-    document.getElementById('export-btn').href = '/api/admin/bookings/export.csv' + qs +
-      (adminToken ? (qs ? '&' : '?') + '_token=' + encodeURIComponent(adminToken) : '');
+    // Export via fetch met Authorization-header (token hoort niet in de URL)
+    const exportBtn = document.getElementById('export-btn');
+    exportBtn.dataset.qs = qs;
+    if (!exportBtn.dataset.bound) {
+      exportBtn.dataset.bound = '1';
+      exportBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          const res = await fetch('/api/admin/bookings/export.csv' + (exportBtn.dataset.qs || ''), {
+            headers: { 'Authorization': 'Bearer ' + adminToken },
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'boekingen.csv';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert('CSV-export mislukt: ' + err.message);
+        }
+      });
+    }
 
     const bookings = await api('/bookings' + qs);
     const tbody = document.getElementById('bookings-table-body');
