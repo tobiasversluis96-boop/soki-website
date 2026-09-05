@@ -75,7 +75,7 @@ app.use('/api/auth/resend-verification', rateLimit({ windowMs: 15 * 60 * 1000, m
 app.use('/api/admin/login',        rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/bookings', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method !== 'POST',
