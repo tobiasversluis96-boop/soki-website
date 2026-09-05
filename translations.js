@@ -103,7 +103,7 @@ var SOKI_I18N = {
     'home.hero.story':'Our story',
 
     /* --- Homepage intro --- */
-    'home.intro.h2':      'Reshaping the sauna experience',
+    'home.intro.h2':      'The sauna, reinvented',
     'home.intro.p1':      'Step inside and leave the noise behind. This is a space to slow down, reconnect with yourself, meet others and break free from everyday constraints.',
     'home.intro.p2':      "Instead of a silent, anonymous spa, we're building a living, breathing venue where you can sweat, relax and also discover art, talks, DJ sets or small performances.",
     'home.intro.p3':      'Our aim is to offer a true alternative to the usual social spaces like bars and clubs: a warm, inspiring place where wellbeing, creativity and genuine human connection come first.',
@@ -168,7 +168,7 @@ var SOKI_I18N = {
     'sessions.getting.p':   'Europalaan 2B, 3526 KS Utrecht (just outside Vechtclub XL). Easily accessible by bike or bus. Free parking available on site.',
     'sessions.hours.h4':    'Opening hours',
     'sessions.booking.h4':  'Booking & cancellation',
-    'sessions.booking.p':   'Online booking recommended. Cancel up to 48 hours ahead for full credit. 24–48 hours: 50% refund. Under 24 hours: no refund.',
+    'sessions.booking.p':   'Online booking recommended. Cancel up to 48 hours ahead for a full refund. 24–48 hours: 50% refund. Under 24 hours: no refund.',
     'sessions.groups.h4':   'Groups & solo visits',
     'sessions.groups.p':    'Solo visits are very welcome. Groups of up to 15 people per time slot. For larger bookings, reach out to us directly.',
 
@@ -502,12 +502,12 @@ var SOKI_I18N = {
     'faq.sub':            'Alles wat je wilt weten voor je bezoek. Staat je vraag er niet bij? Stuur ons een e-mail.',
     'faq.cat.about':      'Over SOKI',
     'faq.q.unique':       'Wat maakt SOKI uniek?',
-    'faq.a.unique':       'SOKI is een nieuwe soort saunaruimte die wellness combineert met cultuur, muziek en gemeenschap. In plaats van een stille spa combineren we ontspanning met livemuziek, DJ-sets, talks en optredens.',
+    'faq.a.unique':       'SOKI is een nieuwe soort saunaruimte die wellness combineert met cultuur, muziek en gemeenschap. In plaats van een stille spa combineren we ontspanning met livemuziek, DJ-sets, talks en optredens. Denk: diepe rust ontmoet sociale energie.',
     'faq.q.facilities':   'Welke faciliteiten zijn er?',
-    'faq.a.facilities':   'We hebben een traditionele Finse sauna, ijsbadkuipen, relaxruimtes, regendouches, kleedkamers en een buitterras.',
+    'faq.a.facilities':   'We hebben een traditionele Finse sauna, ijsbadkuipen, relaxruimtes, regendouches, kleedkamers en een buitenterras.',
     'faq.cat.location':   'Locatie & bereikbaarheid',
     'faq.q.where':        'Waar is SOKI gevestigd?',
-    'faq.a.where':        'We zijn gevestigd op Europalaan 2B, 3526 KS Utrecht (in Vechtclub XL). Je kunt ons bereiken per fiets, openbaar vervoer of auto. Gratis parkeren op het terrein.',
+    'faq.a.where':        'We zijn gevestigd op Europalaan 2B, 3526 KS Utrecht (net buiten Vechtclub XL). Je kunt ons bereiken per fiets, openbaar vervoer of auto. Gratis parkeren op het terrein.',
     'faq.q.hours':        'Wat zijn de openingstijden?',
     'faq.a.hours':        '<li>Woensdag – donderdag: 16:00 – 21:00</li><li>Vrijdag: 16:00 – 23:00</li><li>Zaterdag: 10:00 – 23:00</li><li>Zondag: 10:00 – 20:00</li><li>Maandag – dinsdag: gesloten</li>',
     'faq.a.hours.note':   'Sessies starten op vaste tijden. Bekijk de boekingspagina voor de beschikbaarheid van vandaag.',
@@ -522,7 +522,7 @@ var SOKI_I18N = {
     'faq.a.giftcard':     'Ja! Je kunt een SOKI cadeaubon kopen voor elk bedrag. De code wordt direct naar de ontvanger gemaild en is een jaar geldig.',
     'faq.cat.bring':      'Wat moet ik meenemen?',
     'faq.q.bring':        'Wat moet ik meenemen?',
-    'faq.a.bring':        '<li>Badkleding (verplicht)</li><li>Twee handdoeken (één voor op de saunabank, één om af te drogen)</li><li>Slippers of badslippers</li><li>Een waterfles</li>',
+    'faq.a.bring':        '<li>Zwemkleding (verplicht)</li><li>Twee handdoeken (één voor op de saunabank, één om af te drogen)</li><li>Slippers of badslippers</li><li>Een waterfles</li>',
     'faq.a.bring.note':   'We bieden gratis water en maté thee aan tijdens je sessie.',
     'faq.cat.groups':     'Groepen',
     'faq.q.groups':       'Kan ik boeken voor een groep?',
@@ -581,7 +581,7 @@ var SOKI_I18N = {
 
     /* --- Homepage hero --- */
     'home.hero.h1':   'Zweet, ontspan, verbind',
-    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte die binnenkort opent in Utrecht: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan. We openen binnenkort.',
+    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte die binnenkort opent in Utrecht: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan.',
     'home.hero.book': 'Boek een sessie',
     'home.hero.story':'Ons verhaal',
 
@@ -598,9 +598,9 @@ var SOKI_I18N = {
 
     /* --- Session type descriptions --- */
     'type.everyday.desc': '50 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge. Een vrije ervaring: geen vast programma, beweeg op jouw eigen tempo.',
-    'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, bij met vrienden of ontmoet iemand nieuw.',
-    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. 70 minuten saunatoegang, blijf voor het volledige 4-uur durende evenement met livemuziek van 19:00–23:00.',
-    'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie en een zelfgemaakt zoutschrobsel.',
+    'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, praat bij met vrienden of ontmoet iemand nieuw.',
+    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. 70 minuten saunatoegang, blijf voor het volledige vier uur durende evenement met livemuziek van 19:00–23:00.',
+    'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie en een zelfgemaakte zoutscrub.',
 
     /* --- Homepage values --- */
     'home.values.eyebrow':       'Waar wij voor staan',
@@ -613,7 +613,7 @@ var SOKI_I18N = {
     'home.values.connection.p':  'In de digitale wereld van vandaag creëren we ruimte voor echte ontmoetingen. Een alternatief voor bars en clubs waar je jezelf werkelijk kunt zijn.',
 
     /* --- Homepage upcoming --- */
-    'home.upcoming.eyebrow': 'Wat staat er op',
+    'home.upcoming.eyebrow': 'Op het programma',
     'home.upcoming.h2':      'Aankomende sessies',
     'home.upcoming.lead':    'Reserveer je plek. Live beschikbaarheid wordt in real time bijgewerkt.',
     'home.upcoming.viewfull':'Bekijk het volledige programma',
@@ -628,13 +628,13 @@ var SOKI_I18N = {
     'sessions.lead': 'Sauna, ijsbaden en nog een beetje meer. Elke sessie omvat gratis water en (maté)thee.',
 
     'sessions.everyday.p1': 'Geniet van 50 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge om te luisteren naar muziek, een boek te lezen of te socialiseren.',
-    'sessions.everyday.p2': 'Vrije-stroom ervaring: geen vast programma, beweeg gewoon op jouw eigen tempo.',
+    'sessions.everyday.p2': 'Vrije invulling: geen vast programma, beweeg gewoon op je eigen tempo.',
     'sessions.social.p1':   'Geniet van 1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge om te luisteren naar muziek, een boek te lezen of gewoon te socialiseren.',
-    'sessions.social.p2':   'Vrije-stroom ervaring: geen vast programma, beweeg gewoon op jouw eigen tempo.',
+    'sessions.social.p2':   'Vrije invulling: geen vast programma, beweeg gewoon op je eigen tempo.',
     'sessions.ambient.p1':  'Vrijdag- en zaterdagavond, en elke andere zondag: een gecureerde DJ-line-up transformeert de sauna in een meeslepende luisterlounge.',
-    'sessions.ambient.p2':  '70 minuten sauna- en ijsbadtoegang, met de vrijheid om het volledige 4-uur durende evenement met livemuziek van 19:00–23:00 bij te wonen.',
+    'sessions.ambient.p2':  '70 minuten sauna- en ijsbadtoegang, met de vrijheid om het volledige vier uur durende evenement met livemuziek van 19:00–23:00 bij te wonen.',
     'sessions.aufguss.p1':  'Een traditioneel ritueel geleid door onze saunameesters: essentiële oliën over hete stenen creëren een stoomstoot die je meeneemt op een begeleide, zintuiglijke reis.',
-    'sessions.aufguss.p2':  'Inclusief een visualisatie en zelfgemaakt zoutschrobsel, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
+    'sessions.aufguss.p2':  'Inclusief een visualisatie en zelfgemaakte zoutscrub, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
 
     'sessions.programme.eyebrow': 'Dit staat er op het programma',
     'sessions.programme.h2':      'Programma',
@@ -651,7 +651,7 @@ var SOKI_I18N = {
     'sessions.getting.p':   'Europalaan 2B, 3526 KS Utrecht (net buiten Vechtclub XL). Goed bereikbaar per fiets of bus. Gratis parkeren op het terrein.',
     'sessions.hours.h4':    'Openingstijden',
     'sessions.booking.h4':  'Reserveren & annuleren',
-    'sessions.booking.p':   'Online reserveren aanbevolen. Annuleer tot 48 uur van tevoren voor volledig tegoed. 24–48 uur: 50% terugbetaling. Onder 24 uur: geen terugbetaling.',
+    'sessions.booking.p':   'Online reserveren aanbevolen. Annuleer tot 48 uur van tevoren voor volledige terugbetaling. 24–48 uur: 50% terugbetaling. Onder 24 uur: geen terugbetaling.',
     'sessions.groups.h4':   'Groepen & solo bezoeken',
     'sessions.groups.p':    'Solo bezoeken zijn van harte welkom. Groepen van maximaal 15 personen per tijdslot. Neem voor grotere boekingen direct contact met ons op.',
 
@@ -723,7 +723,7 @@ var SOKI_I18N = {
     'nl.eyebrow':     'Blijf op de hoogte',
     'nl.h2':          'Schrijf je in voor onze nieuwsbrief',
     'nl.lead':        'Meld je aan met je e-mailadres voor nieuws en updates over aankomende sessies en evenementen bij SOKI.',
-    'nl.perk1':       'Vroege toegang tot nieuwe sessies voor het algemene publiek',
+    'nl.perk1':       'Vroege toegang tot nieuwe sessies, nog vóór het grote publiek',
     'nl.perk2':       'Aankomende evenementen, DJ-aankondigingen en Aufguss-data',
     'nl.perk3':       'Nieuws uit de SOKI-gemeenschap',
     'nl.perk4':       'Geen spam, op elk moment uitschrijven',
@@ -768,7 +768,7 @@ var SOKI_I18N = {
     'booking.s4.sub':          'Log in of maak een gratis account aan.',
     'booking.s4.loggedin':     'Ingelogd als',
     'booking.s4.tab.login':    'Inloggen',
-    'booking.s4.tab.register': 'Aanmelden',
+    'booking.s4.tab.register': 'Registreren',
     'booking.s4.label.email':  'E-mailadres',
     'booking.s4.label.pass':   'Wachtwoord',
     'booking.s4.label.name':   'Naam',
@@ -872,7 +872,7 @@ var SOKI_I18N = {
     'payment.error.msg':        'Neem contact met ons op via hello@sokisocialsauna.nl als je geld is afgeschreven.',
     'payment.error.btn':        'Terug naar home',
     'payment.expired.title':    'Sessie verlopen',
-    'payment.expired.msg':      'Log opnieuw in en probeer het opnieuw.',
+    'payment.expired.msg':      'Log opnieuw in en probeer het nog eens.',
     'payment.expired.btn':      'Inloggen',
 
     /* --- Login forgot password --- */
@@ -930,7 +930,7 @@ var SOKI_I18N = {
     'login.err.fill':           'Vul je e-mail en wachtwoord in.',
     'login.err.fill.all':       'Vul alle velden in.',
     'login.err.password.short': 'Wachtwoord moet minimaal 8 tekens zijn.',
-    'login.err.google':         'Google aanmelden is niet ingesteld.',
+    'login.err.google':         'Inloggen met Google is niet ingesteld.',
     'login.forgot.sent':        'Als dit e-mailadres bekend is, ontvang je een link.',
     'login.forgot.email':       'Vul je e-mailadres in.',
 

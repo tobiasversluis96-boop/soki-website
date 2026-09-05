@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mijn ticket — Soki Social Sauna</title>
+  <title>Mijn ticket — SOKI Social Sauna</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
     body { background: var(--cream, #F9F4EF); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
@@ -37,7 +37,7 @@
   var card    = document.getElementById('card');
 
   if (!bid || !sig) {
-    card.innerHTML = '<div class="error">Ongeldig ticket-link.</div>';
+    card.innerHTML = '<div class="error">Ongeldige ticketlink.</div>';
     return;
   }
 
@@ -59,7 +59,7 @@
       } catch(e) {}
 
       card.innerHTML =
-        '<div class="ticket-logo">Soki</div>' +
+        '<div class="ticket-logo">SOKI</div>' +
         '<div class="ticket-tagline">sauna van de stad</div>' +
         '<div class="ticket-name">' + escHtml(b.customer_name) + '</div>' +
         '<div class="ticket-session">' + escHtml(b.session_name) + '</div>' +
