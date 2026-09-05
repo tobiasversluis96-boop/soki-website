@@ -813,6 +813,10 @@
         });
         document.getElementById('stripe-element').innerHTML = '';
         paymentElement.mount('#stripe-element');
+        // Surface async load failures (e.g. invalid publishable key) instead of hanging.
+        paymentElement.on('loaderror', function (ev) {
+          showPaymentError((ev && ev.error && ev.error.message) || t('booking.error.load'));
+        });
 
         // ── Payment Request Button (Apple Pay / Google Pay) ──
         var paymentRequest = state.stripe.paymentRequest({
