@@ -766,13 +766,22 @@
     });
   }
 
+  var stripeWaitTries = 0;
   function initStripePayment() {
     var doInit = function () {
+      // js.stripe.com loads deferred (or may be blocked by an ad blocker):
+      // wait up to 10s for it instead of crashing on "Stripe is not defined".
+      if (typeof Stripe === 'undefined') {
+        if (stripeWaitTries++ < 20) { setTimeout(doInit, 500); return; }
+        showPaymentError(t('booking.error.load'));
+        return;
+      }
       api('/payments/create-intent', {
         method: 'POST',
         body: JSON.stringify({ booking_id: state.bookingId }),
       }).then(function (pRes) {
         if (pRes.error) { showPaymentError(pRes.error); return; }
+        try {
         state.clientSecret    = pRes.client_secret;
         state.paymentIntentId = pRes.payment_intent_id;
         state.totalCents      = pRes.amount;
@@ -870,6 +879,9 @@
 
         // Reset pay button to use Stripe flow
         document.getElementById('pay-btn').onclick = null;
+        } catch (e) {
+          showPaymentError(t('booking.error.load'));
+        }
       });
     };
 
