@@ -483,6 +483,8 @@ var SOKI_I18N = {
     'booking.member.credits': 'Use {n} credits',
     'booking.member.unlimited': 'Confirm booking',
     'booking.error.load':     'Could not load payment form. Please try again.',
+    'booking.error.server':   'Something went wrong. Please try again.',
+    'booking.error.ratelimit':'Too many attempts — please wait 15 minutes and try again.',
     'booking.gdpr':           'Please accept the Privacy Policy to continue.',
   },
 
@@ -966,6 +968,8 @@ var SOKI_I18N = {
     'booking.member.credits': 'Gebruik {n} credits',
     'booking.member.unlimited': 'Bevestig boeking',
     'booking.error.load':     'Kon betalingsformulier niet laden. Probeer opnieuw.',
+    'booking.error.server':   'Er ging iets mis. Probeer het opnieuw.',
+    'booking.error.ratelimit':'Te veel pogingen — wacht 15 minuten en probeer het opnieuw.',
     'booking.gdpr':           'Accepteer het privacybeleid om verder te gaan.',
   }
 };

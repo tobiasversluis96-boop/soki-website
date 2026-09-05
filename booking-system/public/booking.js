@@ -40,7 +40,13 @@
     opts = opts || {};
     var headers = { 'Content-Type': 'application/json' };
     if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
-    return fetch('/api' + path, Object.assign({ headers: headers }, opts)).then(function (r) { return r.json(); });
+    return fetch('/api' + path, Object.assign({ headers: headers }, opts)).then(function (r) {
+      return r.json().catch(function () {
+        return { error: t(r.status === 429 ? 'booking.error.ratelimit' : 'booking.error.server') };
+      });
+    }).catch(function () {
+      return { error: t('booking.error.server') };
+    });
   }
 
   function eur(cents) {
@@ -766,7 +772,7 @@
         method: 'POST',
         body: JSON.stringify({ booking_id: state.bookingId }),
       }).then(function (pRes) {
-        if (pRes.error) { document.getElementById('stripe-errors').textContent = pRes.error; return; }
+        if (pRes.error) { showPaymentError(pRes.error); return; }
         state.clientSecret    = pRes.client_secret;
         state.paymentIntentId = pRes.payment_intent_id;
         state.totalCents      = pRes.amount;
@@ -876,11 +882,25 @@
       method: 'POST',
       body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
     }).then(function (bRes) {
-      if (bRes.error) { document.getElementById('stripe-errors').textContent = bRes.error; return; }
+      if (bRes.error) { showPaymentError(bRes.error); return; }
       state.bookingId  = bRes.booking_id;
       state.totalCents = bRes.total_cents;
       doInit();
     });
+  }
+
+  function showPaymentError(message) {
+    document.getElementById('stripe-errors').textContent = message;
+    var payBtn = document.getElementById('pay-btn');
+    payBtn.disabled = false;
+    payBtn.querySelector('#pay-label').textContent = t('booking.retry');
+    payBtn.onclick = function () {
+      document.getElementById('stripe-errors').textContent = '';
+      payBtn.disabled = true;
+      payBtn.querySelector('#pay-label').innerHTML = '<span class="btn-spinner"></span>';
+      payBtn.onclick = null;
+      initStripePayment();
+    };
   }
 
   // ─── Step 6: Confirmation ─────────────────────────────────────────────────

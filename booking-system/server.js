@@ -73,7 +73,14 @@ app.use('/api/auth/reset-password', rateLimit({ windowMs: 15 * 60 * 1000, max: 1
 app.use('/api/auth/verify-email',        rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/auth/resend-verification', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/admin/login',        rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
-app.use('/api/bookings', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/bookings', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method !== 'POST',
+  message: { error: 'Te veel pogingen — wacht 15 minuten en probeer het opnieuw. / Too many requests — please wait 15 minutes and try again.' },
+}));
 
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
