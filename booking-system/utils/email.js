@@ -221,6 +221,43 @@ async function sendGiftCardEmail(card) {
   });
 }
 
+// Geen Brevo-template nodig: de aankoopbevestiging voor de koper wordt als kant-en-klare HTML verstuurd
+async function sendGiftCardPurchaseEmail(card) {
+  const expiresNl = new Date(card.expires_at).toLocaleDateString('nl-NL', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const expiresEn = new Date(card.expires_at).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const amount  = `€${(card.initial_amount_cents / 100).toFixed(2).replace('.', ',')}`;
+  const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
+  await getClient().transactionalEmails.sendTransacEmail({
+    to: [{ email: card.purchaser_email, name: card.purchaser_name }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    subject: `Bevestiging van je cadeaubon van ${amount} / Your ${amount} gift card confirmation`,
+    htmlContent: `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
+        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
+        <p>Hoi ${escapeHtml(card.purchaser_name)},</p>
+        <p>Bedankt voor je aankoop! Je cadeaubon voor <strong>${escapeHtml(card.recipient_name)}</strong> is betaald en de code is naar ${escapeHtml(card.recipient_email)} gestuurd.<br>
+           <span style="color:#8C7B6B;">Thanks for your purchase! Your gift card for <strong>${escapeHtml(card.recipient_name)}</strong> has been paid and the code has been sent to ${escapeHtml(card.recipient_email)}.</span></p>
+        <div style="background:#FBEFE3;padding:24px;border-radius:12px;text-align:center;margin:16px 0;">
+          <div style="font-size:36px;font-weight:bold;color:#D94D1A;">${amount}</div>
+          <div style="color:#8C7B6B;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
+          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;">${escapeHtml(card.code)}</div>
+        </div>
+        <p>De code is in te wisselen bij het afrekenen van een boeking op
+           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
+           <span style="color:#8C7B6B;">The code can be redeemed at checkout when booking a session.</span></p>
+        <p style="color:#8C7B6B;font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>
+        <p style="color:#8C7B6B;font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>
+      </div>`,
+  });
+}
+
 // Geen Brevo-template nodig: de annuleringsmail wordt als kant-en-klare HTML verstuurd
 async function sendBookingCancelledEmail(booking, { refunded = false, creditsRestored = 0 } = {}) {
   const [y, m, d] = String(booking.date).split('-').map(Number);
@@ -276,5 +313,6 @@ module.exports = {
   sendMessageReply,
   sendMilestoneEmail,
   sendGiftCardEmail,
+  sendGiftCardPurchaseEmail,
   generateCheckinSig,
 };

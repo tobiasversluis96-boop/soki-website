@@ -8,7 +8,7 @@ const crypto  = require('crypto');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
-const { sendGiftCardEmail } = require('../utils/email');
+const { sendGiftCardEmail, sendGiftCardPurchaseEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -98,6 +98,12 @@ router.post('/confirm', async (req, res) => {
     await sendGiftCardEmail(activated);
   } catch (e) {
     console.error('Gift card email error:', e.message);
+  }
+
+  try {
+    await sendGiftCardPurchaseEmail(activated);
+  } catch (e) {
+    console.error('Gift card purchase email error:', e.message);
   }
 
   res.json({ ok: true, code: activated.code });
