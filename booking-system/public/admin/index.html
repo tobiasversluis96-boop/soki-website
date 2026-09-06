@@ -1039,7 +1039,7 @@
           <input class="form-input" type="time" id="slot-end" required>
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="slot-capacity-group">
         <label class="form-label">Max. capaciteit (leeg = type standaard)</label>
         <input class="form-input" type="number" id="slot-capacity" min="1" max="100" placeholder="Standaard">
       </div>
@@ -1052,13 +1052,21 @@
         <label for="slot-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessie (klant hoeft niet te betalen — bv. try-out)</label>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="slot-private" style="width:auto;" />
+        <input type="checkbox" id="slot-private" style="width:auto;" onchange="document.getElementById('slot-private-fields').style.display = this.checked ? 'block' : 'none'; document.getElementById('slot-capacity-group').style.display = this.checked ? 'none' : 'block'; document.getElementById('slot-private-persons').required = this.checked; document.getElementById('slot-private-price').required = this.checked;" />
         <label for="slot-private" style="margin:0;cursor:pointer;font-size:13px;">Privéverhuur (niet zichtbaar op de site, alleen via directe link)</label>
       </div>
-      <div class="form-group" id="slot-private-price-group" style="display:none;">
-        <label class="form-label">Totaalprijs voor de hele groep (€)</label>
-        <input class="form-input" type="number" id="slot-private-price" min="0" step="0.01" placeholder="bijv. 250">
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Vul bij "Max. capaciteit" hierboven het aantal personen in.</div>
+      <div id="slot-private-fields" style="display:none;background:#EDE7F6;border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="slot-private-persons">Aantal personen</label>
+            <input class="form-input" type="number" id="slot-private-persons" min="1" max="100" placeholder="bijv. 12">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="slot-private-price">Totaalprijs (€)</label>
+            <input class="form-input" type="number" id="slot-private-price" min="1" step="0.01" placeholder="bijv. 250">
+          </div>
+        </div>
+        <div style="font-size:12px;color:#4527A0;margin-top:8px;">Eén totaalbedrag voor de hele groep — de klant kan het aantal personen niet aanpassen.</div>
       </div>
       <div class="form-error" id="slot-error"></div>
       <div class="modal-footer">

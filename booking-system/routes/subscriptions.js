@@ -77,7 +77,9 @@ router.post('/cancel', requireAuth, async (req, res) => {
 // POST /api/subscriptions/credit-cost  -- returns cost for a slot
 router.post('/credit-cost', requireAuth, async (req, res) => {
   const { session_type_id } = req.body;
-  const cost = CREDIT_COST[session_type_id] || 1.5;
+  // Credits gelden per persoon — zelfde rekensom als confirm-member
+  const groupSize = Math.min(Math.max(parseInt(req.body.group_size) || 1, 1), 20);
+  const cost = (CREDIT_COST[session_type_id] || 1.5) * groupSize;
   const sub  = await queries.getActiveSubscription(req.user.userId);
   res.json({
     has_subscription: !!sub,

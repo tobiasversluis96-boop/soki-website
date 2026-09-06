@@ -40,7 +40,17 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (session.mode === 'payment' && session.metadata && session.metadata.walkin === '1') {
           const bookingId = parseInt(session.metadata.booking_id);
           if (bookingId && session.payment_status === 'paid') {
-            await queries.confirmWalkinBooking(bookingId, session.payment_intent);
+            const confirmed = await queries.confirmWalkinBooking(bookingId, session.payment_intent);
+            if (!confirmed) {
+              // Boeking was al verlopen/geannuleerd toen de betaling binnenkwam:
+              // niet heractiveren (plek kan opnieuw verkocht zijn) maar terugbetalen.
+              console.error(`Walk-in booking #${bookingId}: late betaling op niet-pending boeking — refund gestart`);
+              if (session.payment_intent) {
+                try { await stripe.refunds.create({ payment_intent: session.payment_intent }); }
+                catch (e) { console.error('Walk-in late-payment refund failed:', e.message); }
+              }
+              break;
+            }
             console.log(`✓ Walk-in booking #${bookingId} confirmed via QR checkout`);
             try {
               const fullBooking = await queries.getBookingById(bookingId);
@@ -139,11 +149,30 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         // Otherwise confirm regular booking
         const booking = await queries.getBookingByPaymentIntent(intent.id);
         if (!booking) break;
+        if (booking.status === 'cancelled') {
+          // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
+          console.error(`Booking #${booking.id}: late betaling op geannuleerde boeking — refund gestart`);
+          try { await stripe.refunds.create({ payment_intent: intent.id }); }
+          catch (e) { console.error('Late-payment refund failed:', e.message); }
+          break;
+        }
         // Redeem attached gift card/milestone (idempotent — safe if /confirm already did)
         await queries.redeemPendingPromo(booking.id);
-        if (booking.status === 'confirmed') break; // idempotent
-        await queries.updateBookingPayment(booking.id, intent.id, 'succeeded');
-        console.log(`✓ Booking #${booking.id} confirmed via webhook`);
+        if (booking.status !== 'confirmed') {
+          await queries.updateBookingPayment(booking.id, intent.id, 'succeeded');
+          console.log(`✓ Booking #${booking.id} confirmed via webhook`);
+        }
+        // Bevestigingsmail als /confirm die (nog) niet heeft gestuurd
+        try {
+          const fresh = await queries.getBookingById(booking.id);
+          if (fresh && fresh.status === 'confirmed' && !fresh.confirmation_sent) {
+            const { sendBookingConfirmation } = require('../utils/email');
+            await sendBookingConfirmation(fresh);
+            await queries.markConfirmationSent(booking.id);
+          }
+        } catch (e) {
+          console.error('Webhook confirmation email failed (non-fatal):', e.message);
+        }
         break;
       }
 
@@ -155,7 +184,9 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       }
     }
   } catch (err) {
+    // 500 zodat Stripe het event opnieuw aanbiedt; handlers zijn idempotent
     console.error('Webhook handler error:', err.message);
+    return res.status(500).json({ error: 'Webhook handler failed' });
   }
 
   res.json({ received: true });

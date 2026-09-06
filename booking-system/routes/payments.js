@@ -63,6 +63,8 @@ router.post('/confirm', requireAuth, async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.user_id !== req.user.userId)
       return res.status(403).json({ error: 'Access denied' });
+    if (booking.status === 'cancelled')
+      return res.status(400).json({ error: 'Deze boeking is geannuleerd. Neem contact op als je toch betaald hebt.' });
 
     await queries.updateBookingPayment(booking.id, intent.id, intent.status);
 
@@ -73,6 +75,7 @@ router.post('/confirm', requireAuth, async (req, res) => {
     if (intent.status === 'succeeded' && !booking.confirmation_sent) {
       try {
         await sendBookingConfirmation({ ...booking, group_size: booking.group_size });
+        await queries.markConfirmationSent(booking.id);
       } catch (emailErr) {
         console.error('Email failed (non-fatal):', emailErr.message);
       }

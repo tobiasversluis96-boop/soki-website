@@ -215,6 +215,9 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
     if (restored) creditsRestored = Number(booking.credits_used);
   }
 
+  const giftRestored = await queries.restoreGiftCardForBooking(booking.id, 100);
+  if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (admin cancel booking #${booking.id})`);
+
   queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${booking.total_cents} cents` : (creditsRestored ? `${creditsRestored} credits restored` : 'no refund'), ip: req.ip });
 
   try {
@@ -290,8 +293,8 @@ router.post('/slots', requireAdmin, async (req, res) => {
   const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
   if (!session_type_id || !date || !start_time || !end_time)
     return res.status(400).json({ error: 'session_type_id, date, start_time, end_time are required' });
-  if (is_private && (!max_capacity || price_cents === null || price_cents === undefined))
-    return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en totaalprijs.' });
+  if (is_private && (!max_capacity || !price_cents || price_cents <= 0))
+    return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
 
   const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private);
   res.status(201).json({ id: slot.id });
@@ -301,6 +304,8 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
   const { date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
   if (!date || !start_time || !end_time)
     return res.status(400).json({ error: 'date, start_time, end_time are required' });
+  if (is_private && (!max_capacity || !price_cents || price_cents <= 0))
+    return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
 
   await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents, is_private });
   res.json({ ok: true });
@@ -331,6 +336,8 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
       const restored = await queries.restoreCredits(b.user_id, b.credits_used);
       if (restored) creditsRestored = Number(b.credits_used);
     }
+    const giftRestored = await queries.restoreGiftCardForBooking(b.id, 100);
+    if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (slot delete, booking #${b.id})`);
     try {
       if (!mailedTo.has(b.customer_email)) {
         mailedTo.add(b.customer_email);
@@ -477,7 +484,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       FROM (
         SELECT
           TO_CHAR(ts.date::date, 'IYYY-"W"IW') AS week,
-          b.total_cents AS revenue_cents,
+          CASE WHEN b.stripe_payment_intent_id IS NOT NULL THEN b.total_cents ELSE 0 END AS revenue_cents,
           1 AS bookings
         FROM bookings b
         JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -613,7 +620,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       FROM (
         SELECT
           TO_CHAR(DATE_TRUNC('month', ts.date::date), 'YYYY-MM') AS month,
-          b.total_cents AS revenue_cents,
+          CASE WHEN b.stripe_payment_intent_id IS NOT NULL THEN b.total_cents ELSE 0 END AS revenue_cents,
           1 AS bookings
         FROM bookings b
         JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -875,7 +882,8 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
   const slot = await queries.getSlotById(slot_id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
 
-  const totalCents = payment_mode === 'free' ? 0 : slot.price_cents * group_size;
+  // Privéverhuur: price_cents is de totaalprijs, niet per persoon
+  const totalCents = payment_mode === 'free' ? 0 : (slot.is_private ? slot.price_cents : slot.price_cents * group_size);
   const holdMinutes = payment_mode === 'stripe_qr' ? 15 : 0;
 
   let booking;
@@ -909,7 +917,7 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
           product_data: { name: `Soki – ${slot.session_name || 'Session'}` },
           unit_amount: slot.price_cents,
         },
-        quantity: group_size,
+        quantity: slot.is_private ? 1 : group_size,
       }],
       success_url: (process.env.BASE_URL || 'http://localhost:3001') + '/payment-return?session_id={CHECKOUT_SESSION_ID}',
       cancel_url:  (process.env.BASE_URL || 'http://localhost:3001') + '/payment-return?cancelled=1',

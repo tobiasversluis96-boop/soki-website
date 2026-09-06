@@ -316,6 +316,10 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_gift_card_id INTEGER');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_milestone_id INTEGER');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_discount_cents INTEGER');
+  // Permanent record van ingewisselde cadeaubon per boeking, zodat het saldo
+  // teruggestort kan worden bij annulering
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS applied_gift_card_id INTEGER');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS applied_gift_discount_cents INTEGER');
   // token_version makes JWTs revocable: bump it and all outstanding tokens die
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
@@ -677,24 +681,66 @@ const queries = {
       await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [p.milestone_id]);
     }
     if (p.gift_card_id) {
-      await pool.query(
+      const { rows: debited } = await pool.query(
         `UPDATE gift_cards
          SET remaining_amount_cents = remaining_amount_cents - $2,
              status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
-         WHERE id = $1 AND remaining_amount_cents >= $2`,
+         WHERE id = $1 AND remaining_amount_cents >= $2
+         RETURNING id`,
         [p.gift_card_id, p.discount_cents || 0]
+      );
+      if (!debited[0]) {
+        // Saldo intussen elders gebruikt: rest afboeken en luid loggen — de
+        // reserveringscheck bij het aanmaken hoort dit normaal te voorkomen.
+        console.error(`Gift card ${p.gift_card_id}: onvoldoende saldo bij inwisselen voor boeking ${bookingId}; rest afgeboekt`);
+        await pool.query(
+          `UPDATE gift_cards SET remaining_amount_cents = 0, status = 'depleted' WHERE id = $1`,
+          [p.gift_card_id]
+        );
+      }
+      await pool.query(
+        'UPDATE bookings SET applied_gift_card_id = $2, applied_gift_discount_cents = $3 WHERE id = $1',
+        [bookingId, p.gift_card_id, p.discount_cents || 0]
       );
     }
     return p;
   },
 
+  // Stort de ingewisselde cadeaubon-portie van een boeking terug (pct = deel in %).
+  // Atomic clear-and-return: dubbel aanroepen stort nooit dubbel terug.
+  restoreGiftCardForBooking: async (bookingId, pct = 100) => {
+    const { rows } = await pool.query(
+      `UPDATE bookings b
+       SET applied_gift_card_id = NULL, applied_gift_discount_cents = NULL
+       FROM (SELECT id, applied_gift_card_id AS gid, applied_gift_discount_cents AS amt
+             FROM bookings WHERE id = $1 FOR UPDATE) old
+       WHERE b.id = old.id AND old.gid IS NOT NULL AND COALESCE(old.amt, 0) > 0
+       RETURNING old.gid, old.amt`,
+      [bookingId]
+    );
+    const r = rows[0];
+    if (!r) return null;
+    const restoreCents = Math.floor(r.amt * pct / 100);
+    if (restoreCents <= 0) return null;
+    await pool.query(
+      `UPDATE gift_cards
+       SET remaining_amount_cents = remaining_amount_cents + $2,
+           status = CASE WHEN status = 'depleted' THEN 'active' ELSE status END
+       WHERE id = $1`,
+      [r.gid, restoreCents]
+    );
+    return { gift_card_id: r.gid, restored_cents: restoreCents };
+  },
+
   updateBookingPayment: async (bookingId, paymentIntentId, status) => {
+    // Alleen pending → confirmed: een geannuleerde boeking mag door een late
+    // betaling nooit heractiveerd worden (de plek kan al opnieuw verkocht zijn).
+    // De bevestigingsmail wordt door de aanroeper gestuurd + gemarkeerd.
     await pool.query(`
       UPDATE bookings
       SET stripe_payment_intent_id = $1,
           stripe_payment_status    = $2,
-          status                   = CASE WHEN $2 = 'succeeded' THEN 'confirmed' ELSE status END,
-          confirmation_sent        = ($2 = 'succeeded')
+          status                   = CASE WHEN $2 = 'succeeded' AND status = 'pending' THEN 'confirmed' ELSE status END
       WHERE id = $3
     `, [paymentIntentId, status, bookingId]);
   },
@@ -1118,6 +1164,7 @@ const queries = {
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE ts.is_cancelled = FALSE
+        AND ts.is_private = FALSE
         -- date/start_time zijn VARCHAR; vergelijk als timestamp in NL-tijd (server draait in UTC)
         AND (ts.date::text || ' ' || ts.end_time)::timestamp > NOW() AT TIME ZONE 'Europe/Amsterdam'
       ORDER BY ts.date, ts.start_time
@@ -1191,10 +1238,13 @@ const queries = {
   },
 
   confirmWalkinBooking: async (bookingId, paymentIntentId) => {
-    await pool.query(
-      "UPDATE bookings SET status = 'confirmed', hold_until = NULL, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($2, stripe_payment_intent_id) WHERE id = $1",
+    // Guard op status: een verlopen/geannuleerde walk-in mag niet alsnog
+    // bevestigd worden door een late betaling. Retourneert of het gelukt is.
+    const { rows } = await pool.query(
+      "UPDATE bookings SET status = 'confirmed', hold_until = NULL, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($2, stripe_payment_intent_id) WHERE id = $1 AND status = 'pending' RETURNING id",
       [bookingId, paymentIntentId || null]
     );
+    return !!rows[0];
   },
 
   getBookingBasic: async (id) => {
@@ -1417,7 +1467,8 @@ const queries = {
     const [total, confirmed, revenue, giftRevenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status = 'confirmed'"),
-      pool.query("SELECT COALESCE(SUM(total_cents),0)::int AS n FROM bookings WHERE status = 'confirmed'"),
+      // Alleen echt via Stripe betaalde boekingen; credits/cadeaubon-boekingen zijn geen kasomzet
+      pool.query("SELECT COALESCE(SUM(total_cents),0)::int AS n FROM bookings WHERE status = 'confirmed' AND stripe_payment_intent_id IS NOT NULL"),
       pool.query('SELECT COALESCE(SUM(initial_amount_cents),0)::int AS n FROM gift_cards WHERE stripe_payment_intent_id IS NOT NULL'),
       pool.query(`
         SELECT st.name, COUNT(b.id)::int AS count

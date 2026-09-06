@@ -12,11 +12,10 @@ const router = express.Router();
 
 // POST /api/bookings — create a pending booking
 router.post('/', requireAuth, async (req, res) => {
-  const { slot_id, group_size, promo_code } = req.body;
+  const { slot_id, promo_code } = req.body;
+  let { group_size } = req.body;
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
-  if (group_size < 1 || group_size > 15)
-    return res.status(400).json({ error: 'group_size must be between 1 and 15' });
 
   const slot = await queries.getSlotById(slot_id);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
@@ -24,6 +23,17 @@ router.post('/', requireAuth, async (req, res) => {
 
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
+
+  if (slot.is_private) {
+    // Privéverhuur: één boeking claimt het hele slot voor de afgesproken totaalprijs;
+    // group_size van de client wordt genegeerd zodat de prijs niet te manipuleren is.
+    if (spotsLeft <= 0)
+      return res.status(409).json({ error: 'Dit privéslot is al geboekt.', spots_left: 0 });
+    group_size = spotsLeft;
+  } else if (group_size < 1 || group_size > 15) {
+    return res.status(400).json({ error: 'group_size must be between 1 and 15' });
+  }
+
   if (group_size > spotsLeft)
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
@@ -68,14 +78,27 @@ router.post('/', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Deze cadeaubon is volledig gebruikt.' });
       if (giftCard.status === 'expired' || new Date(giftCard.expires_at) < new Date())
         return res.status(400).json({ error: 'Deze cadeaubon is verlopen.' });
-      // Apply up to full booking total
-      discountCents = Math.min(giftCard.remaining_amount_cents, bookingTotal);
+      // Saldo dat al gereserveerd is op andere lopende (pending) boekingen telt niet
+      // mee als beschikbaar — voorkomt dubbel besteden van dezelfde bon.
+      const { rows: reservedRows } = await getPool().query(
+        `SELECT COALESCE(SUM(pending_discount_cents), 0)::int AS reserved
+         FROM bookings
+         WHERE pending_gift_card_id = $1 AND status = 'pending'
+           AND (hold_until IS NULL OR hold_until > NOW())`,
+        [giftCard.id]
+      );
+      const available = giftCard.remaining_amount_cents - reservedRows[0].reserved;
+      if (available <= 0)
+        return res.status(400).json({ error: 'Het saldo van deze cadeaubon is al in gebruik voor een andere boeking.' });
+      discountCents = Math.min(available, bookingTotal);
     } else {
       // Try milestone code
       milestoneEntry = await queries.getMilestoneByCode(promo_code.trim());
       if (!milestoneEntry) {
         return res.status(400).json({ error: 'Ongeldige promotiecode.' });
       }
+      if (slot.is_private)
+        return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
       const { MILESTONES } = require('../utils/milestones');
       const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
       if (milestoneDef) {
@@ -100,15 +123,23 @@ router.post('/', requireAuth, async (req, res) => {
     throw err;
   }
 
-  // Fully free: confirm immediately without Stripe
+  // Fully free: confirm immediately without Stripe.
+  // Inwisselen gebeurt VÓÓR het bevestigen: als het bonsaldo intussen op is
+  // (parallelle boeking), wordt deze boeking geannuleerd i.p.v. gratis bevestigd.
   if (isFree || totalCents === 0) {
     const pool = getPool();
+    if (giftCard && discountCents > 0) {
+      const redeemed = await queries.redeemGiftCard(giftCard.id, discountCents);
+      if (!redeemed) {
+        await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
+        return res.status(409).json({ error: 'Het saldo van deze cadeaubon is net gebruikt voor een andere boeking. Probeer opnieuw.' });
+      }
+    }
+    if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
     await pool.query(
       "UPDATE bookings SET status = 'confirmed', stripe_payment_status = 'free', confirmation_sent = TRUE WHERE id = $1",
       [booking.id]
     );
-    if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
-    if (giftCard) await queries.redeemGiftCard(giftCard.id, discountCents);
     try {
       const fullBooking = await queries.getBookingById(booking.id);
       await sendBookingConfirmation(fullBooking);
@@ -213,6 +244,16 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   }
 
   await queries.cancelBooking(req.params.id);
+
+  // Membercredits terug (zelfde beleid als admin-annulering)
+  if (booking.credits_used > 0) {
+    const restored = await queries.restoreCredits(booking.user_id, booking.credits_used);
+    if (restored) console.log(`✓ ${booking.credits_used} credits teruggestort voor user ${booking.user_id}`);
+  }
+  // Ingewisselde cadeaubon-portie terug (naar rato van het refundpercentage)
+  const giftRestored = await queries.restoreGiftCardForBooking(booking.id, refundPct);
+  if (giftRestored) console.log(`✓ Cadeaubon ${giftRestored.gift_card_id}: €${(giftRestored.restored_cents / 100).toFixed(2)} teruggestort`);
+
   queries.auditLog({
     actor_type: 'customer', actor_id: req.user.userId, action: 'booking_cancelled',
     target: `booking:${req.params.id}`, detail: `refund ${refundPct}% (${refundAmountCents} cents)`, ip: req.ip,
@@ -280,7 +321,11 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   const { CREDIT_COST } = require('./subscriptions');
   const slot = await queries.getSlotById(booking.time_slot_id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
-  const creditsToUse = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+  if (slot.is_private)
+    return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
+  // Credits gelden per persoon, niet per boeking
+  const perPerson = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+  const creditsToUse = perPerson * (booking.group_size || 1);
 
   // Deduct credits + confirm booking in a single transaction
   const pool = getPool();

@@ -566,7 +566,7 @@
     sessionTypes = await api('/session-types');
     const sel = document.getElementById('slot-session-type');
     sel.innerHTML = sessionTypes.map(t =>
-      `<option value="${t.id}">${t.name}</option>`
+      `<option value="${t.id}">${escapeHtml(t.name)}</option>`
     ).join('');
   }
 
@@ -584,21 +584,17 @@
     document.getElementById('slot-notes').value    = slot ? (slot.notes || '') : '';
     const isPrivate = !!(slot && slot.is_private);
     document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0 && !isPrivate);
-    document.getElementById('slot-private').checked = isPrivate;
+    const privBox = document.getElementById('slot-private');
+    privBox.checked = isPrivate;
+    document.getElementById('slot-private-persons').value =
+      isPrivate && slot.max_capacity ? slot.max_capacity : '';
     document.getElementById('slot-private-price').value =
       isPrivate && slot.price_cents != null ? (slot.price_cents / 100) : '';
-    togglePrivateFields();
+    privBox.onchange.call(privBox);
     if (slot) document.getElementById('slot-session-type').value = slot.session_type_id;
     document.getElementById('slot-error').textContent = '';
     document.getElementById('slot-modal').classList.add('open');
   }
-
-  function togglePrivateFields() {
-    const on = document.getElementById('slot-private').checked;
-    document.getElementById('slot-private-price-group').style.display = on ? '' : 'none';
-    document.getElementById('slot-private-price').required = on;
-  }
-  document.getElementById('slot-private').addEventListener('change', togglePrivateFields);
 
   function closeSlotModal() {
     document.getElementById('slot-modal').classList.remove('open');
@@ -608,13 +604,16 @@
     e.preventDefault();
     const id        = document.getElementById('slot-id').value;
     const isPrivate = document.getElementById('slot-private').checked;
-    const privatePrice = parseFloat(document.getElementById('slot-private-price').value);
+    const privatePersons = parseInt(document.getElementById('slot-private-persons').value, 10);
+    const privatePrice   = parseFloat(document.getElementById('slot-private-price').value);
     const body = {
       session_type_id: +document.getElementById('slot-session-type').value,
       date:       document.getElementById('slot-date').value,
       start_time: document.getElementById('slot-start').value,
       end_time:   document.getElementById('slot-end').value,
-      max_capacity: document.getElementById('slot-capacity').value || null,
+      max_capacity: isPrivate
+        ? (isNaN(privatePersons) ? null : privatePersons)
+        : (document.getElementById('slot-capacity').value || null),
       notes:      document.getElementById('slot-notes').value || null,
       is_private: isPrivate,
       price_cents: isPrivate
@@ -622,9 +621,9 @@
         : (document.getElementById('slot-free').checked ? 0 : null),
     };
 
-    if (isPrivate && (body.price_cents === null || !body.max_capacity)) {
+    if (isPrivate && (!body.price_cents || body.price_cents <= 0 || !body.max_capacity)) {
       document.getElementById('slot-error').textContent =
-        'Privéverhuur: vul zowel het aantal personen (max. capaciteit) als de totaalprijs in.';
+        'Privéverhuur: vul zowel het aantal personen als de totaalprijs (meer dan €0) in.';
       return;
     }
 
@@ -1004,7 +1003,7 @@
 
   function loadGenerate() {
     const sel = document.getElementById('gen-session-type');
-    sel.innerHTML = sessionTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    sel.innerHTML = sessionTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
     // Default date range: tomorrow → 8 weeks from now
     document.getElementById('gen-from').value = nlDateStr(1);
     document.getElementById('gen-to').value   = nlDateStr(56);
@@ -1250,13 +1249,18 @@
               </label>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button class="btn btn--outline btn--sm" onclick="resetStaffPassword(${s.id}, '${escapeHtml(s.name)}')">Wachtwoord resetten</button>
+              <button class="btn btn--outline btn--sm" data-staff-reset="${s.id}" data-staff-name="${escapeHtml(s.name)}">Wachtwoord resetten</button>
             </div>
             <div id="staff-msg-${s.id}" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
           </div>
         </div>
       `;
     }).join('');
+
+    // Naam via data-attribuut i.p.v. inline onclick-string (quote in naam = JS-injectie)
+    container.querySelectorAll('[data-staff-reset]').forEach(btn => {
+      btn.addEventListener('click', () => window.resetStaffPassword(parseInt(btn.dataset.staffReset), btn.dataset.staffName));
+    });
   }
 
   window.toggleStaffRow = function(id) {

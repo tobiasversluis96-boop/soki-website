@@ -32,6 +32,7 @@ router.post('/:slotId', requireAuth, async (req, res) => {
   const slot = await queries.getSlotById(slotId);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_cancelled) return res.status(400).json({ error: 'Slot is cancelled' });
+  if (slot.is_private)   return res.status(400).json({ error: 'Voor privéverhuur is geen wachtlijst beschikbaar.' });
 
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
