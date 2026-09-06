@@ -499,15 +499,21 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       SELECT
         st.name,
         st.color,
-        COUNT(DISTINCT ts.id)::int AS total_slots,
+        COUNT(ts.id)::int AS total_slots,
         COALESCE(SUM(COALESCE(ts.max_capacity, st.max_capacity)), 0)::int AS total_capacity,
-        COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+        COALESCE(SUM(bk.booked), 0)::int AS booked
       FROM session_types st
       LEFT JOIN time_slots ts ON ts.session_type_id = st.id
         AND ts.date >= TO_CHAR(CURRENT_DATE - INTERVAL '30 days', 'YYYY-MM-DD')
         AND ts.date <= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
         AND ts.is_cancelled = FALSE
-      LEFT JOIN bookings b ON b.time_slot_id = ts.id
+      LEFT JOIN (
+        SELECT time_slot_id, SUM(group_size)::int AS booked
+        FROM bookings
+        WHERE status != 'cancelled'
+          AND (status != 'pending' OR hold_until IS NULL OR hold_until > NOW())
+        GROUP BY time_slot_id
+      ) bk ON bk.time_slot_id = ts.id
       WHERE st.is_active = TRUE
       GROUP BY st.id, st.name, st.color
       ORDER BY st.price_cents
@@ -563,7 +569,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
         st.name AS session_name,
         st.color,
         COALESCE(ts.max_capacity, st.max_capacity) AS capacity,
-        COALESCE(SUM(CASE WHEN b.status != 'cancelled' THEN b.group_size ELSE 0 END), 0)::int AS booked
+        COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.status != 'pending' OR b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
