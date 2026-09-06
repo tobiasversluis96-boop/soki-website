@@ -195,6 +195,33 @@ async function seedSubscriptionPlans() {
   console.log('✓ Subscription plans seeded');
 }
 
+// Eenmalige migratie: Unlimited ging van €89 naar €99. Stripe-prijzen zijn
+// onveranderlijk, dus we maken een nieuwe prijs aan op hetzelfde product en
+// koppelen die aan het plan. Draait alleen zolang de oude prijs nog actief is.
+async function migrateUnlimitedPrice() {
+  const { rows } = await pool.query(
+    "SELECT id, stripe_price_id FROM subscription_plans WHERE name = 'Unlimited' AND price_cents = 8900"
+  );
+  for (const plan of rows) {
+    try {
+      const oldPrice = await stripe.prices.retrieve(plan.stripe_price_id);
+      const newPrice = await stripe.prices.create({
+        product: typeof oldPrice.product === 'string' ? oldPrice.product : oldPrice.product.id,
+        unit_amount: 9900,
+        currency: 'eur',
+        recurring: { interval: 'month' },
+      });
+      await pool.query(
+        'UPDATE subscription_plans SET price_cents = 9900, stripe_price_id = $2 WHERE id = $1',
+        [plan.id, newPrice.id]
+      );
+      console.log('✓ Unlimited plan price migrated to €99');
+    } catch (e) {
+      console.error('Unlimited price migration failed (non-fatal):', e.message);
+    }
+  }
+}
+
 // ─── Public init ──────────────────────────────────────────────────────────────
 
 async function initializeDB() {
@@ -356,6 +383,7 @@ async function initializeDB() {
   await seedTimeSlots();
   await seedAdmin();
   await seedSubscriptionPlans();
+  await migrateUnlimitedPrice();
   console.log('✓ Database ready (PostgreSQL)');
 }
 
