@@ -169,7 +169,7 @@ app.get('/api/upcoming-slots', async (req, res) => {
     FROM time_slots ts
     JOIN session_types st ON st.id = ts.session_type_id
     LEFT JOIN bookings b ON b.time_slot_id = ts.id
-    WHERE ts.date >= $1 AND ts.is_cancelled = FALSE
+    WHERE ts.date >= $1 AND ts.is_cancelled = FALSE AND ts.is_private = FALSE
     GROUP BY ts.id, st.name, st.price_cents, st.color, st.duration_min, st.id, st.max_capacity
     ${havingClause}
     ORDER BY ts.date ASC, ts.start_time ASC

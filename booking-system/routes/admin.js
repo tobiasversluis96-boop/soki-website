@@ -287,20 +287,22 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
 });
 
 router.post('/slots', requireAdmin, async (req, res) => {
-  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents } = req.body;
+  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
   if (!session_type_id || !date || !start_time || !end_time)
     return res.status(400).json({ error: 'session_type_id, date, start_time, end_time are required' });
+  if (is_private && (!max_capacity || price_cents === null || price_cents === undefined))
+    return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en totaalprijs.' });
 
-  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null);
+  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private);
   res.status(201).json({ id: slot.id });
 });
 
 router.put('/slots/:id', requireAdmin, async (req, res) => {
-  const { date, start_time, end_time, max_capacity, notes, price_cents } = req.body;
+  const { date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
   if (!date || !start_time || !end_time)
     return res.status(400).json({ error: 'date, start_time, end_time are required' });
 
-  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents });
+  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents, is_private });
   res.json({ ok: true });
 });
 

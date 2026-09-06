@@ -96,7 +96,7 @@
     ];
     if (includeTotal !== false) {
       var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
-      var computedTotal = perPerson * state.groupSize;
+      var computedTotal = (state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize;
       var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
       rows.push([t('booking.summary.total'), finalTotal === 0 ? 'Gratis' : eur(finalTotal)]);
     }
@@ -553,6 +553,16 @@
 
   // ─── Step 3: Group size ───────────────────────────────────────────────────
   function updateGroup() {
+    // Privéverhuur: vast aantal personen en één totaalprijs, afgesproken met SOKI
+    if (state.slot && state.slot.is_private) {
+      state.groupSize = state.slot.capacity || state.slot.spots_left || 1;
+      document.getElementById('group-count').textContent = state.groupSize;
+      document.getElementById('group-total').textContent = state.slot.price_cents === 0 ? 'Gratis' : eur(state.slot.price_cents);
+      document.getElementById('group-caption').textContent = personStr(state.groupSize);
+      document.getElementById('group-minus').disabled = true;
+      document.getElementById('group-plus').disabled  = true;
+      return;
+    }
     var spotsLeft = state.slot ? state.slot.spots_left : 15;
     if (state.groupSize > spotsLeft) state.groupSize = spotsLeft;
     document.getElementById('group-count').textContent = state.groupSize;
@@ -686,8 +696,8 @@
     document.getElementById('payment-summary').innerHTML = summaryHTML();
     document.getElementById('stripe-errors').textContent = '';
 
-    // Check subscription first
-    if (state.token) {
+    // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken totaalprijs)
+    if (state.token && !(state.slot && state.slot.is_private)) {
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },

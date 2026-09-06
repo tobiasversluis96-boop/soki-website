@@ -534,10 +534,13 @@
       const wBadge = wCount > 0
         ? `<span title="Op wachtlijst" style="display:inline-flex;align-items:center;gap:3px;background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">⏳ ${wCount}</span>`
         : '';
+      const pBadge = s.is_private
+        ? '<span title="Privéverhuur — alleen via directe link" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#4527A0;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Privé</span>'
+        : '';
       return `
       <tr>
         <td>${s.id}</td>
-        <td>${escapeHtml(s.session_name)}</td>
+        <td>${escapeHtml(s.session_name)}${pBadge}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
@@ -545,6 +548,9 @@
         <td>${s.booked}${wBadge}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn--outline btn--sm" onclick="editSlot(${s.id})">Bewerken</button>
+          ${s.is_private && !s.is_cancelled
+            ? `<button class="btn btn--outline btn--sm" onclick="copySlotLink(${s.id}, this)">Kopieer link</button>`
+            : ''}
           ${s.is_cancelled
             ? '<span style="font-size:12px;color:var(--muted)">Geannuleerd</span>'
             : `<button class="btn btn--danger btn--sm" onclick="cancelSlot(${s.id})">Annuleren</button>`}
@@ -576,11 +582,23 @@
     document.getElementById('slot-end').value      = slot ? slot.end_time : '';
     document.getElementById('slot-capacity').value = slot && slot.max_capacity ? slot.max_capacity : '';
     document.getElementById('slot-notes').value    = slot ? (slot.notes || '') : '';
-    document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0);
+    const isPrivate = !!(slot && slot.is_private);
+    document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0 && !isPrivate);
+    document.getElementById('slot-private').checked = isPrivate;
+    document.getElementById('slot-private-price').value =
+      isPrivate && slot.price_cents != null ? (slot.price_cents / 100) : '';
+    togglePrivateFields();
     if (slot) document.getElementById('slot-session-type').value = slot.session_type_id;
     document.getElementById('slot-error').textContent = '';
     document.getElementById('slot-modal').classList.add('open');
   }
+
+  function togglePrivateFields() {
+    const on = document.getElementById('slot-private').checked;
+    document.getElementById('slot-private-price-group').style.display = on ? '' : 'none';
+    document.getElementById('slot-private-price').required = on;
+  }
+  document.getElementById('slot-private').addEventListener('change', togglePrivateFields);
 
   function closeSlotModal() {
     document.getElementById('slot-modal').classList.remove('open');
@@ -588,7 +606,9 @@
 
   document.getElementById('slot-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const id       = document.getElementById('slot-id').value;
+    const id        = document.getElementById('slot-id').value;
+    const isPrivate = document.getElementById('slot-private').checked;
+    const privatePrice = parseFloat(document.getElementById('slot-private-price').value);
     const body = {
       session_type_id: +document.getElementById('slot-session-type').value,
       date:       document.getElementById('slot-date').value,
@@ -596,8 +616,17 @@
       end_time:   document.getElementById('slot-end').value,
       max_capacity: document.getElementById('slot-capacity').value || null,
       notes:      document.getElementById('slot-notes').value || null,
-      price_cents: document.getElementById('slot-free').checked ? 0 : null,
+      is_private: isPrivate,
+      price_cents: isPrivate
+        ? (isNaN(privatePrice) ? null : Math.round(privatePrice * 100))
+        : (document.getElementById('slot-free').checked ? 0 : null),
     };
+
+    if (isPrivate && (body.price_cents === null || !body.max_capacity)) {
+      document.getElementById('slot-error').textContent =
+        'Privéverhuur: vul zowel het aantal personen (max. capaciteit) als de totaalprijs in.';
+      return;
+    }
 
     const btn = document.getElementById('slot-modal-submit');
     btn.disabled = true;
@@ -619,6 +648,17 @@
     const slots = await api('/slots?from=2000-01-01');
     const slot  = slots.find(s => s.id === id);
     if (slot) openSlotModal(slot);
+  };
+
+  window.copySlotLink = function (id, btn) {
+    const link = location.origin + '/booking?slot=' + id;
+    navigator.clipboard.writeText(link).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Gekopieerd!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }).catch(() => {
+      prompt('Kopieer de link handmatig:', link);
+    });
   };
 
   window.cancelSlot = function (id) {

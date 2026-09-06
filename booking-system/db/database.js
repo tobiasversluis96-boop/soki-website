@@ -232,6 +232,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
+  await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
@@ -423,6 +424,7 @@ const queries = {
       WHERE ts.session_type_id = $1
         AND ts.date BETWEEN $2 AND $3
         AND ts.is_cancelled = FALSE
+        AND ts.is_private = FALSE
       GROUP BY ts.id, st.name, st.price_cents, st.max_capacity
       ORDER BY ts.date, ts.start_time
     `, [sessionTypeId, from, to]);
@@ -746,21 +748,21 @@ const queries = {
     return rows;
   },
 
-  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents) => {
+  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate) => {
     const price = (priceCents === null || priceCents === undefined) ? null : parseInt(priceCents);
     const { rows } = await pool.query(`
-      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents)
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price]);
+      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price, !!isPrivate]);
     return rows[0]; // { id }
   },
 
   updateSlot: async (id, data) => {
     const price = (data.price_cents === null || data.price_cents === undefined) ? null : parseInt(data.price_cents);
     await pool.query(`
-      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6
-      WHERE id = $7
-    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, id]);
+      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7
+      WHERE id = $8
+    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, id]);
   },
 
   cancelSlot: async (id) => {

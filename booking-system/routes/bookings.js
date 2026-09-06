@@ -28,7 +28,8 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
   // Free-slot rule: each account may book only ONE free (price_cents=0) session
-  if (slot.price_cents === 0) {
+  // (geldt niet voor privéverhuur — daar bepaalt SOKI zelf de prijs/groep)
+  if (slot.price_cents === 0 && !slot.is_private) {
     const used = await queries.countUserFreeSlotBookings(req.user.userId);
     if (used > 0) {
       return res.status(409).json({
@@ -52,8 +53,11 @@ router.post('/', requireAuth, async (req, res) => {
   let milestoneEntry = null;
   let giftCard       = null;
   let discountCents  = 0;
+  // Privéverhuur: price_cents is de totaalprijs voor de hele groep, niet per persoon
+  const grossTotal = slot.is_private ? slot.price_cents : slot.price_cents * group_size;
+
   if (!isFree && promo_code) {
-    const bookingTotal = slot.price_cents * group_size;
+    const bookingTotal = grossTotal;
 
     // Check gift card first
     giftCard = await queries.getGiftCardByCode(promo_code.trim());
@@ -80,13 +84,13 @@ router.post('/', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
           discountCents = slot.price_cents;
         } else if (milestoneEntry.milestone === 25) {
-          discountCents = slot.price_cents * group_size;
+          discountCents = grossTotal;
         }
       }
     }
   }
 
-  const totalCents = isFree ? 0 : Math.max(0, slot.price_cents * group_size - discountCents);
+  const totalCents = isFree ? 0 : Math.max(0, grossTotal - discountCents);
   let booking;
   try {
     booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents);
