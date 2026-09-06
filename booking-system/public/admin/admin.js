@@ -537,10 +537,13 @@
       const pBadge = s.is_private
         ? '<span title="Privéverhuur — alleen via directe link" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#4527A0;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Privé</span>'
         : '';
+      const fBadge = !s.is_private && s.price_cents === 0
+        ? '<span title="Gratis sessie" style="display:inline-flex;align-items:center;background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Gratis</span>'
+        : '';
       return `
       <tr>
         <td>${s.id}</td>
-        <td>${escapeHtml(s.session_name)}${pBadge}</td>
+        <td>${escapeHtml(s.session_name)}${pBadge}${fBadge}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
