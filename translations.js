@@ -225,7 +225,7 @@ var SOKI_I18N = {
     'about.plan.s3.p':      'Come back whenever the world gets loud. Membership optional, always welcome.',
     'about.softcta.eyebrow':'Not ready to book?',
     'about.softcta.h2':     'Start with a slow email.',
-    'about.softcta.p':      "Join the SOKI list. Get a short first-visit guide, opening news and the occasional invite to something we've cooked up — nothing else, no noise.",
+    'about.softcta.p':      "Join the SOKI list. Get opening news and the occasional invite to something we've cooked up — nothing else, no noise.",
     'about.softcta.btn':    'Join the list',
     'about.softcta.btn2':   'Or see the sessions →',
 
@@ -725,7 +725,7 @@ var SOKI_I18N = {
     'about.plan.s3.p':      'Kom terug wanneer de wereld te luid wordt. Lidmaatschap optioneel, altijd welkom.',
     'about.softcta.eyebrow':'Nog niet klaar om te boeken?',
     'about.softcta.h2':     'Begin met een rustige e-mail.',
-    'about.softcta.p':      'Schrijf je in voor de SOKI-lijst. Je krijgt een korte gids voor je eerste bezoek, nieuws over de opening en af en toe een uitnodiging voor iets wat we hebben bedacht — verder niets, geen ruis.',
+    'about.softcta.p':      'Schrijf je in voor de SOKI-lijst. Je krijgt nieuws over de opening en af en toe een uitnodiging voor iets wat we hebben bedacht — verder niets, geen ruis.',
     'about.softcta.btn':    'Schrijf je in',
     'about.softcta.btn2':   'Of bekijk de sessies →',
 
