@@ -754,6 +754,7 @@ const queries = {
       JOIN time_slots ts ON ts.id = b.time_slot_id
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE b.time_slot_id = $1 AND b.status != 'cancelled'
+        AND (b.status != 'pending' OR b.hold_until IS NULL OR b.hold_until > NOW())
     `, [slotId]);
     return rows;
   },

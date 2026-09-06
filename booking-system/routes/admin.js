@@ -311,6 +311,7 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
   // Alle actieve boekingen annuleren: betaalde terugstorten + iedereen mailen
   const bookings = await queries.getActiveBookingsForSlot(slotId);
   let refunds = 0;
+  const mailedTo = new Set();
   for (const b of bookings) {
     let refunded = false;
     if (b.stripe_payment_intent_id && b.stripe_payment_status === 'succeeded') {
@@ -329,7 +330,10 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
       if (restored) creditsRestored = Number(b.credits_used);
     }
     try {
-      await sendBookingCancelledEmail(b, { refunded, creditsRestored });
+      if (!mailedTo.has(b.customer_email)) {
+        mailedTo.add(b.customer_email);
+        await sendBookingCancelledEmail(b, { refunded, creditsRestored });
+      }
     } catch (e) {
       console.error(`Cancellation email failed for booking #${b.id} (non-fatal):`, e.message);
     }
