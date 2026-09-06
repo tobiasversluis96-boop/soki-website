@@ -290,24 +290,28 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
 });
 
 router.post('/slots', requireAdmin, async (req, res) => {
-  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
+  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist } = req.body;
   if (!session_type_id || !date || !start_time || !end_time)
     return res.status(400).json({ error: 'session_type_id, date, start_time, end_time are required' });
   if (is_private && (!max_capacity || !price_cents || price_cents <= 0))
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
+  if (artist && String(artist).length > 100)
+    return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
-  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private);
+  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private, artist ? String(artist).trim() : null);
   res.status(201).json({ id: slot.id });
 });
 
 router.put('/slots/:id', requireAdmin, async (req, res) => {
-  const { date, start_time, end_time, max_capacity, notes, price_cents, is_private } = req.body;
+  const { date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist } = req.body;
   if (!date || !start_time || !end_time)
     return res.status(400).json({ error: 'date, start_time, end_time are required' });
   if (is_private && (!max_capacity || !price_cents || price_cents <= 0))
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
+  if (artist && String(artist).length > 100)
+    return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
-  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents, is_private });
+  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
   res.json({ ok: true });
 });
 

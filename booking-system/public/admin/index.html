@@ -1044,8 +1044,12 @@
         <input class="form-input" type="number" id="slot-capacity" min="1" max="100" placeholder="Standaard">
       </div>
       <div class="form-group">
-        <label class="form-label">Notities (optioneel)</label>
-        <input class="form-input" type="text" id="slot-notes" placeholder="bijv. DJ set of speciale aankondiging">
+        <label class="form-label">Artiest (optioneel — zichtbaar op de site als "with: …")</label>
+        <input class="form-input" type="text" id="slot-artist" maxlength="100" placeholder="bijv. August">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notities (optioneel, alleen intern)</label>
+        <input class="form-input" type="text" id="slot-notes" placeholder="bijv. speciale aankondiging">
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="slot-free" style="width:auto;" />
@@ -1128,7 +1132,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/admin/admin.js?v=20260906-4"></script>
+<script src="/admin/admin.js?v=20260906-5"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

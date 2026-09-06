@@ -233,6 +233,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
@@ -794,21 +795,21 @@ const queries = {
     return rows;
   },
 
-  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate) => {
+  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate, artist) => {
     const price = (priceCents === null || priceCents === undefined) ? null : parseInt(priceCents);
     const { rows } = await pool.query(`
-      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
-    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price, !!isPrivate]);
+      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
+    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price, !!isPrivate, artist || null]);
     return rows[0]; // { id }
   },
 
   updateSlot: async (id, data) => {
     const price = (data.price_cents === null || data.price_cents === undefined) ? null : parseInt(data.price_cents);
     await pool.query(`
-      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7
-      WHERE id = $8
-    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, id]);
+      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7, artist = $8
+      WHERE id = $9
+    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, data.artist || null, id]);
   },
 
   cancelSlot: async (id) => {

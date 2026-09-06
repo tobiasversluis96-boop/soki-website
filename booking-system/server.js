@@ -213,6 +213,7 @@ app.get('/api/slots/:id', async (req, res) => {
     duration_min:    slot.duration_min,
     color:           slot.color,
     price_cents:     slot.price_cents,
+    artist:          slot.artist || null,
     is_private:      slot.is_private,
     is_cancelled:    slot.is_cancelled,
     capacity,

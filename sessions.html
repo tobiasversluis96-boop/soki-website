@@ -263,7 +263,11 @@
           sauna:        'sauna',
           musicDur:     isNL ? '4u muziek'                                         : '4h music',
           location:     'Europalaan 2B, Utrecht',
+          withLabel:    isNL ? 'met'                                               : 'with',
         };
+        function escText(s) {
+          return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
         var MONTHS      = isNL ? MONTH_NL      : MONTH_EN;
         var MONTH_ABBR  = isNL ? MONTH_ABBR_NL : MONTH_ABBR_EN;
 
@@ -343,7 +347,9 @@
                   '</div>' +
                   '<div class="session-card__sep"></div>' +
                   '<div class="session-card__info">' +
-                    '<h4>' + (isFree ? (s.session_name + STR.tryOut) : typeLabel) + '</h4>' +
+                    '<h4>' + (isFree ? (s.session_name + STR.tryOut) : typeLabel) +
+                      (s.artist ? ' <span style="font-weight:400;color:var(--terra);font-size:0.85em;">' + STR.withLabel + ': ' + escText(s.artist) + '</span>' : '') +
+                    '</h4>' +
                     '<div class="session-card__meta">' +
                       '<span class="time">' + timeShort(s.start_time) + ' \u2013 ' + timeShort(s.end_time) + '</span>' +
                       '<span class="location">' + STR.location + '</span>' +
@@ -470,6 +476,6 @@
 
   <script src="translations.js?v=20260906-5"></script>
   <script src="sanity-content.js"></script>
-  <script src="main.js?v=20260906-2"></script>
+  <script src="main.js?v=20260906-5"></script>
 </body>
 </html>

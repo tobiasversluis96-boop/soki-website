@@ -475,6 +475,7 @@ var SOKI_I18N = {
     'account.milestones.locked':  'visits to go',
 
     /* --- Booking JS --- */
+    'booking.slot.with':      'with',
     'booking.slot.full':      'Full',
     'booking.slot.waitlist':  'Waitlist',
     'booking.waitlist.login': 'Please log in first to join the waitlist.',
@@ -975,6 +976,7 @@ var SOKI_I18N = {
     'account.milestones.locked':  'bezoeken te gaan',
 
     /* --- Booking JS --- */
+    'booking.slot.with':      'met',
     'booking.slot.full':      'Volgeboekt',
     'booking.slot.waitlist':  'Wachtlijst',
     'booking.waitlist.login': 'Log eerst in om je op de wachtlijst te zetten.',

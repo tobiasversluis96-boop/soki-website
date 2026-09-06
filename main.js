@@ -319,6 +319,10 @@ document.head.appendChild(revealStyle);
     return '€' + (cents / 100).toFixed(2).replace('.', ',');
   }
 
+  function escText(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function spotsClass(n) {
     if (n <= 0) return 'spots-badge--full';
     if (n <= 3) return 'spots-badge--low';
@@ -354,7 +358,9 @@ document.head.appendChild(revealStyle);
       '</div>' +
       '<div class="session-card__sep"></div>' +
       '<div class="session-card__info">' +
-        '<h4>' + (isFree ? (s.session_name + tryOutSuffix) : s.session_name) + '</h4>' +
+        '<h4>' + (isFree ? (s.session_name + tryOutSuffix) : s.session_name) +
+          (s.artist ? ' <span style="font-weight:400;color:var(--terra);font-size:0.85em;">' + (isNL ? 'met' : 'with') + ': ' + escText(s.artist) + '</span>' : '') +
+        '</h4>' +
         '<div class="session-card__meta">' +
           '<span class="time">' + s.start_time + ' – ' + s.end_time + '</span>' +
           '<span class="location">Europalaan 2B, Utrecht</span>' +

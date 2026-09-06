@@ -105,7 +105,7 @@
   function summaryHTML(includeTotal) {
     if (!state.slot || !state.sessionType) return '';
     var rows = [
-      [t('booking.summary.session'), state.sessionType.name],
+      [t('booking.summary.session'), state.sessionType.name + (state.slot.artist ? ' — ' + t('booking.slot.with') + ': ' + state.slot.artist : '')],
       [t('booking.summary.date'),    fmtDate(state.slot.date)],
       [t('booking.summary.time'),    state.slot.start_time + ' – ' + state.slot.end_time],
       [t('booking.summary.group'),   personStr(state.groupSize)],
@@ -391,17 +391,25 @@
       var spotsLeft  = s.spots_left;
       var spotsClass = spotsLeft > 3 ? 'spots--green' : spotsLeft > 1 ? 'spots--orange' : 'spots--red';
       var spotsLabel = spotsLeft === 1 ? t('booking.spots.last') : spotsLeft + ' ' + t('booking.spots.left');
+      var artistLine = s.artist
+        ? '<div class="slot-item__info" style="color:#D94D1A;font-weight:600;">' + t('booking.slot.with') + ': ' + esc(s.artist) + '</div>'
+        : '';
       return '<div class="slot-item" data-slot-id="' + s.id + '">' +
         '<div>' +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+          artistLine +
           '<div class="slot-item__info ' + spotsClass + '">' + spotsLabel + '</div>' +
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
       '</div>';
     }).join('') + fullSlots.map(function (s) {
+      var artistLine = s.artist
+        ? '<div class="slot-item__info" style="color:#D94D1A;font-weight:600;">' + t('booking.slot.with') + ': ' + esc(s.artist) + '</div>'
+        : '';
       return '<div class="slot-item slot-item--full" data-slot-id="' + s.id + '" style="opacity:0.7;cursor:default;">' +
         '<div>' +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+          artistLine +
           '<div class="slot-item__info spots--red">' + t('booking.slot.full') + '</div>' +
         '</div>' +
         '<div>' +

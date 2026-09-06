@@ -585,6 +585,7 @@
     document.getElementById('slot-end').value      = slot ? slot.end_time : '';
     document.getElementById('slot-capacity').value = slot && slot.max_capacity ? slot.max_capacity : '';
     document.getElementById('slot-notes').value    = slot ? (slot.notes || '') : '';
+    document.getElementById('slot-artist').value   = slot ? (slot.artist || '') : '';
     const isPrivate = !!(slot && slot.is_private);
     document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0 && !isPrivate);
     const privBox = document.getElementById('slot-private');
@@ -618,6 +619,7 @@
         ? (isNaN(privatePersons) ? null : privatePersons)
         : (document.getElementById('slot-capacity').value || null),
       notes:      document.getElementById('slot-notes').value || null,
+      artist:     document.getElementById('slot-artist').value.trim() || null,
       is_private: isPrivate,
       price_cents: isPrivate
         ? (isNaN(privatePrice) ? null : Math.round(privatePrice * 100))
