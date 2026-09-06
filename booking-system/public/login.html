@@ -266,18 +266,18 @@
   </div>
 </div>
 
-<script src="/translations.js?v=20260905-2"></script>
+<script src="/translations.js?v=20260906-2"></script>
 <script>
   // i18n helper for inline script
   function t(key) {
-    var lang = localStorage.getItem('SOKI_LANG') || 'en';
+    var lang = localStorage.getItem('soki_lang') || 'en';
     var dict = (typeof SOKI_I18N !== 'undefined') ? (SOKI_I18N[lang] || SOKI_I18N['en']) : {};
     return (dict[key] !== undefined) ? dict[key] : key;
   }
 
   // Apply translations on load
   function applyLoginTranslations() {
-    var lang = localStorage.getItem('SOKI_LANG') || 'en';
+    var lang = localStorage.getItem('soki_lang') || 'en';
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       var key = el.getAttribute('data-i18n');
       var val = t(key);
@@ -293,13 +293,15 @@
   }
 
   function toggleLoginLang() {
-    var lang = localStorage.getItem('SOKI_LANG') || 'en';
-    localStorage.setItem('SOKI_LANG', lang === 'nl' ? 'en' : 'nl');
+    var lang = localStorage.getItem('soki_lang') || 'en';
+    localStorage.setItem('soki_lang', lang === 'nl' ? 'en' : 'nl');
     applyLoginTranslations();
   }
 
   // Read redirect target from query string (e.g. /login?redirect=/booking)
-  var redirectTo = new URLSearchParams(location.search).get('redirect') || '/account';
+  // Alleen relatieve paden toestaan (voorkomt open redirect naar externe sites)
+  var rawRedirect = new URLSearchParams(location.search).get('redirect') || '/account';
+  var redirectTo = (rawRedirect.charAt(0) === '/' && rawRedirect.charAt(1) !== '/') ? rawRedirect : '/account';
 
   // If already logged in, redirect immediately
   var existingToken = localStorage.getItem('soki_token');

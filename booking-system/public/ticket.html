@@ -45,7 +45,7 @@
     .then(function(r) { return r.json(); })
     .then(function(b) {
       if (b.error) {
-        card.innerHTML = '<div class="error">' + b.error + '</div>';
+        card.innerHTML = '<div class="error">' + escHtml(b.error) + '</div>';
         return;
       }
 
@@ -65,7 +65,7 @@
         '<div class="ticket-session">' + escHtml(b.session_name) + '</div>' +
         '<div class="ticket-detail">' +
           '<div class="ticket-row"><span>Datum</span><span>' + dateFormatted + '</span></div>' +
-          '<div class="ticket-row"><span>Tijd</span><span>' + b.start_time + ' – ' + b.end_time + '</span></div>' +
+          '<div class="ticket-row"><span>Tijd</span><span>' + escHtml(b.start_time) + ' – ' + escHtml(b.end_time) + '</span></div>' +
           '<div class="ticket-row"><span>Groep</span><span>' + b.group_size + ' persoon' + (b.group_size > 1 ? 'en' : '') + '</span></div>' +
           '<div class="ticket-row"><span>Boeking</span><span>#' + b.id + '</span></div>' +
         '</div>' +

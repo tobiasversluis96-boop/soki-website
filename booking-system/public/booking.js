@@ -53,6 +53,22 @@
     return '€' + (cents / 100).toFixed(2).replace('.', ',');
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // Slot, groepsgrootte of promo gewijzigd → oude boeking/intent is ongeldig,
+  // anders wordt straks het verkeerde bedrag afgerekend.
+  function resetBookingState() {
+    state.bookingId       = null;
+    state.totalCents      = null;
+    state.clientSecret    = null;
+    state.paymentIntentId = null;
+    state.promoCode       = null;
+  }
+
   function fmtDate(dateStr) {
     var parts = dateStr.split('-').map(Number);
     var dt = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -98,12 +114,12 @@
       var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
       var computedTotal = (state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize;
       var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
-      rows.push([t('booking.summary.total'), finalTotal === 0 ? 'Gratis' : eur(finalTotal)]);
+      rows.push([t('booking.summary.total'), finalTotal === 0 ? t('booking.free') : eur(finalTotal)]);
     }
     var html = '<div class="booking-summary-box__label">' + t('booking.summary.title') + '</div>';
     rows.forEach(function (r) {
       html += '<div class="booking-summary-row' + (r[0] === t('booking.summary.total') ? ' total' : '') + '">' +
-        '<span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+        '<span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>';
     });
     return html;
   }
@@ -112,6 +128,7 @@
     if (state.user && !state.user.waiver_signed_at) {
       document.querySelectorAll('.booking-step').forEach(function (el) { el.style.display = 'none'; });
       document.getElementById('step-4b').style.display = 'block';
+      setProgress(4);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -124,10 +141,10 @@
       var container = document.getElementById('session-cards');
       container.innerHTML = types.map(function (t_) {
         return '<div class="pick-card" data-id="' + t_.id + '">' +
-          '<div class="pick-card__name"><span class="pick-card__dot" style="background:' + t_.color + '"></span>' + t_.name + '</div>' +
-          '<div class="pick-card__duration">' + t_.duration_min + ' ' + t('booking.minutes') + '</div>' +
+          '<div class="pick-card__name"><span class="pick-card__dot" style="background:' + esc(t_.color) + '"></span>' + esc(t_.name) + '</div>' +
+          '<div class="pick-card__duration">' + esc(t_.duration_min) + ' ' + t('booking.minutes') + '</div>' +
           '<div class="pick-card__price">' + eur(t_.price_cents) + ' <span>p.p.</span></div>' +
-          '<div class="pick-card__desc">' + (t_.description || '') + '</div>' +
+          '<div class="pick-card__desc">' + esc(t_.description || '') + '</div>' +
           '<div class="pick-card__next-date" id="next-date-' + t_.id + '"></div>' +
           '</div>';
       }).join('');
@@ -169,7 +186,16 @@
           var matchType = types.find(function (t_) { return t_.id === slot.session_type_id || t_.id === slot.type_id; });
           if (!matchType) return;
           state.sessionType = matchType;
-          state.slot = slot;
+          var typeCard = container.querySelector('[data-id="' + matchType.id + '"]');
+          if (typeCard) typeCard.classList.add('selected');
+          // Kalender altijd laden zodat "terug" en volle/verleden slots niet doodlopen
+          loadCalendar();
+          var todayStr = new Date().toISOString().slice(0, 10);
+          if (slot.is_cancelled || slot.is_full || slot.date < todayStr) {
+            showStep(2);
+            return;
+          }
+          state.slot = slot; // ná loadCalendar (die wist state.slot)
           var saved = parseInt(localStorage.getItem('soki_last_group_size'));
           state.groupSize = (saved && saved >= 1 && saved <= (slot.spots_left || 15)) ? saved : 1;
           updateGroup();
@@ -241,6 +267,7 @@
 
   function loadCalendar() {
     state.slot = null;
+    resetBookingState();
 
     document.getElementById('step2-sub').textContent =
       state.sessionType.name + ' · ' + eur(state.sessionType.price_cents) + ' p.p.';
@@ -434,11 +461,11 @@
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px;';
     modal.innerHTML =
       '<div style="background:#fff;border-radius:16px;padding:32px;max-width:440px;width:100%;">' +
-        '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:22px;color:#4A1C0C;margin:0 0 8px;">Wachtlijst</h3>' +
-        '<p style="color:#666;font-size:14px;margin:0 0 20px;">Betaal nu. Als er een plek vrijkomt wordt je automatisch ingeboekt. Als er geen plek vrijkomt, storten we je bedrag terug.</p>' +
-        (slot ? '<p style="font-weight:600;color:#4A1C0C;margin:0 0 20px;">' + slot.start_time + ' – ' + slot.end_time + ' · ' + eur(pricePerPerson) + ' p.p.</p>' : '') +
+        '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:22px;color:#4A1C0C;margin:0 0 8px;">' + t('booking.waitlist.title') + '</h3>' +
+        '<p style="color:#666;font-size:14px;margin:0 0 20px;">' + t('booking.waitlist.info') + '</p>' +
+        (slot ? '<p style="font-weight:600;color:#4A1C0C;margin:0 0 20px;">' + esc(slot.start_time) + ' – ' + esc(slot.end_time) + ' · ' + eur(pricePerPerson) + ' p.p.</p>' : '') +
         '<div style="margin-bottom:16px;">' +
-          '<label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8C7B6B;margin-bottom:6px;">Groepsgrootte</label>' +
+          '<label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8C7B6B;margin-bottom:6px;">' + t('booking.waitlist.group') + '</label>' +
           '<div style="display:flex;align-items:center;gap:12px;">' +
             '<button id="wl-minus" style="width:36px;height:36px;border-radius:50%;border:2px solid #E8D5BF;background:#fff;font-size:20px;cursor:pointer;line-height:1;">−</button>' +
             '<span id="wl-count" style="font-size:20px;font-weight:700;min-width:24px;text-align:center;">1</span>' +
@@ -449,8 +476,8 @@
         '<div id="wl-stripe-container" style="margin-bottom:16px;"></div>' +
         '<div id="wl-error" style="color:#C62828;font-size:13px;margin-bottom:12px;display:none;"></div>' +
         '<div style="display:flex;gap:10px;">' +
-          '<button id="wl-cancel-btn" class="btn btn--outline" style="flex:1;">Annuleren</button>' +
-          '<button id="wl-pay-btn" class="btn btn--primary" style="flex:2;">' + t('booking.waitlist.pay') + '</button>' +
+          '<button id="wl-cancel-btn" class="btn btn--outline" style="flex:1;">' + t('booking.waitlist.cancel') + '</button>' +
+          '<button id="wl-pay-btn" class="btn btn--primary" style="flex:2;">' + t('booking.waitlist.continue') + '</button>' +
         '</div>' +
       '</div>';
 
@@ -467,55 +494,68 @@
     }
 
     document.getElementById('wl-minus').addEventListener('click', function () {
-      if (wlGroupSize > 1) { wlGroupSize--; updateWlTotal(); }
+      if (!wlClientSecret && wlGroupSize > 1) { wlGroupSize--; updateWlTotal(); }
     });
     document.getElementById('wl-plus').addEventListener('click', function () {
-      if (wlGroupSize < 20) { wlGroupSize++; updateWlTotal(); }
-    });
-
-    // Create PaymentIntent and mount Stripe Elements
-    var token = localStorage.getItem('soki_token');
-    fetch('/api/waitlist/' + slotId, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ group_size: wlGroupSize }),
-    }).then(function (r) { return r.json(); }).then(function (res) {
-      if (res.error) {
-        document.getElementById('wl-error').textContent = res.error;
-        document.getElementById('wl-error').style.display = 'block';
-        document.getElementById('wl-pay-btn').disabled = true;
-        return;
-      }
-      wlClientSecret = res.client_secret;
-      if (!wlStripe) wlStripe = Stripe(res.publishable_key);
-
-      wlElements = wlStripe.elements({
-        clientSecret: res.client_secret,
-        appearance: {
-          theme: 'stripe',
-          variables: { colorPrimary: '#D94D1A', colorText: '#4A1C0C', borderRadius: '10px', fontFamily: "'DM Sans','Helvetica Neue',sans-serif" },
-        },
-      });
-      var el = wlElements.create('payment', { layout: 'tabs', defaultValues: { billingDetails: { address: { country: 'NL' } } }, wallets: { link: 'never' } });
-      document.getElementById('wl-stripe-container').innerHTML = '';
-      el.mount('#wl-stripe-container');
-    }).catch(function () {
-      document.getElementById('wl-error').textContent = t('booking.error.load');
-      document.getElementById('wl-error').style.display = 'block';
+      if (!wlClientSecret && wlGroupSize < 20) { wlGroupSize++; updateWlTotal(); }
     });
 
     document.getElementById('wl-cancel-btn').addEventListener('click', function () {
       modal.remove();
-      if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.textContent = 'Wachtlijst'; }
+      if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.textContent = t('booking.slot.waitlist'); }
     });
 
     document.getElementById('wl-pay-btn').addEventListener('click', function () {
-      if (!wlElements || !wlClientSecret) return;
       var payBtn = document.getElementById('wl-pay-btn');
       var errEl  = document.getElementById('wl-error');
+      errEl.style.display = 'none';
+
+      // Fase 1: intent pas aanmaken bij doorgaan \u2014 met de d\u00e1n gekozen groepsgrootte
+      if (!wlClientSecret) {
+        payBtn.disabled = true;
+        payBtn.textContent = '\u2026';
+        var token = localStorage.getItem('soki_token');
+        fetch('/api/waitlist/' + slotId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ group_size: wlGroupSize }),
+        }).then(function (r) { return r.json(); }).then(function (res) {
+          if (res.error) {
+            errEl.textContent = res.error;
+            errEl.style.display = 'block';
+            payBtn.disabled = false;
+            payBtn.textContent = t('booking.waitlist.continue');
+            return;
+          }
+          wlClientSecret = res.client_secret;
+          if (!wlStripe) wlStripe = Stripe(res.publishable_key);
+          wlElements = wlStripe.elements({
+            clientSecret: res.client_secret,
+            appearance: {
+              theme: 'stripe',
+              variables: { colorPrimary: '#D94D1A', colorText: '#4A1C0C', borderRadius: '10px', fontFamily: "'DM Sans','Helvetica Neue',sans-serif" },
+            },
+          });
+          var el = wlElements.create('payment', { layout: 'tabs', defaultValues: { billingDetails: { address: { country: 'NL' } } }, wallets: { link: 'never' } });
+          document.getElementById('wl-stripe-container').innerHTML = '';
+          el.mount('#wl-stripe-container');
+          document.getElementById('wl-minus').disabled = true;
+          document.getElementById('wl-plus').disabled  = true;
+          payBtn.disabled = false;
+          payBtn.textContent = t('booking.waitlist.pay');
+        }).catch(function () {
+          errEl.textContent = t('booking.error.load');
+          errEl.style.display = 'block';
+          payBtn.disabled = false;
+          payBtn.textContent = t('booking.waitlist.continue');
+        });
+        return;
+      }
+
+      // Fase 2: betalen
+      if (!wlElements) return;
       payBtn.disabled = true;
       payBtn.textContent = '\u2026';
-      errEl.style.display = 'none';
 
       wlStripe.confirmPayment({
         elements: wlElements,
@@ -530,7 +570,7 @@
         } else {
           modal.remove();
           if (triggerBtn) {
-            triggerBtn.textContent = '\u2713 Op wachtlijst (betaald)';
+            triggerBtn.textContent = t('booking.waitlist.joined');
             triggerBtn.style.color = '#2E7D32';
             triggerBtn.style.borderColor = '#2E7D32';
           }
@@ -540,6 +580,7 @@
   }
 
   function selectSlot() {
+    resetBookingState();
     // Load saved group size preference
     var saved = parseInt(localStorage.getItem('soki_last_group_size'));
     if (saved && saved >= 1 && saved <= (state.slot ? state.slot.spots_left : 15)) {
@@ -557,7 +598,7 @@
     if (state.slot && state.slot.is_private) {
       state.groupSize = state.slot.capacity || state.slot.spots_left || 1;
       document.getElementById('group-count').textContent = state.groupSize;
-      document.getElementById('group-total').textContent = state.slot.price_cents === 0 ? 'Gratis' : eur(state.slot.price_cents);
+      document.getElementById('group-total').textContent = state.slot.price_cents === 0 ? t('booking.free') : eur(state.slot.price_cents);
       document.getElementById('group-caption').textContent = personStr(state.groupSize);
       document.getElementById('group-minus').disabled = true;
       document.getElementById('group-plus').disabled  = true;
@@ -567,7 +608,7 @@
     if (state.groupSize > spotsLeft) state.groupSize = spotsLeft;
     document.getElementById('group-count').textContent = state.groupSize;
     var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
-    document.getElementById('group-total').textContent = perPerson === 0 ? 'Gratis' : eur(perPerson * state.groupSize);
+    document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize);
     document.getElementById('group-caption').textContent =
       personStr(state.groupSize) + ' · ' + spotsLeft + ' ' + t('booking.spots.left');
     document.getElementById('group-minus').disabled = state.groupSize <= 1;
@@ -675,6 +716,8 @@
       ? state.slot.price_cents
       : state.sessionType.price_cents;
     if (slotPrice === 0) {
+      // Al geboekt (bv. terug en weer verder): geen tweede boeking aanmaken
+      if (state.bookingId) { showConfirmation(); return; }
       api('/bookings', {
         method: 'POST',
         body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
@@ -701,14 +744,14 @@
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
-        body: JSON.stringify({ session_type_id: state.sessionType.id }),
+        body: JSON.stringify({ session_type_id: state.sessionType.id, group_size: state.groupSize }),
       }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
         } else if (data.has_subscription && !data.is_unlimited) {
           document.getElementById('stripe-errors').textContent =
-            'Je hebt ' + data.credits_remaining + ' credits over, maar hebt er ' + data.credits_cost + ' nodig. Je kunt gewoon betalen via iDEAL of kaart.';
+            t('booking.member.insufficient').replace('{r}', data.credits_remaining).replace('{n}', data.credits_cost);
           initStripePayment();
         } else {
           initStripePayment();
@@ -736,13 +779,13 @@
 
   function showMemberPayment(data) {
     var creditsText = data.is_unlimited
-      ? 'Your Unlimited membership covers this session.'
-      : 'This will use ' + data.credits_cost + ' of your ' + data.credits_remaining + ' remaining credits.';
+      ? t('booking.member.unlimited.note')
+      : t('booking.member.credits.note').replace('{n}', data.credits_cost).replace('{r}', data.credits_remaining);
 
     document.getElementById('stripe-element').innerHTML =
       '<div style="background:rgba(46,125,50,0.06);border:1.5px solid rgba(46,125,50,0.3);border-radius:14px;padding:20px;text-align:center;">' +
         '<div style="font-size:1.5rem;margin-bottom:8px;">&#10003;</div>' +
-        '<div style="font-weight:700;color:#2E7D32;margin-bottom:6px;">Member booking</div>' +
+        '<div style="font-weight:700;color:#2E7D32;margin-bottom:6px;">' + t('booking.member.title') + '</div>' +
         '<div style="font-size:14px;color:var(--text-muted,#8C7B6B);">' + creditsText + '</div>' +
       '</div>';
 
@@ -893,7 +936,7 @@
 
         // Reset pay button to use Stripe flow
         document.getElementById('pay-btn').disabled = false;
-        document.getElementById('pay-btn').onclick = null;
+        document.getElementById('pay-btn').onclick = payWithStripe;
         } catch (e) {
           showPaymentError(t('booking.error.load'));
         }
@@ -916,6 +959,43 @@
     });
   }
 
+  // Enige Stripe-afrekenhandler; altijd via pay-btn.onclick toegewezen zodat
+  // gratis/member-paden hem volledig kunnen vervangen (geen dubbele dispatch).
+  function payWithStripe() {
+    var btn = document.getElementById('pay-btn');
+    var errEl = document.getElementById('stripe-errors');
+    btn.disabled = true;
+    document.getElementById('pay-label').innerHTML = '<span class="btn-spinner"></span>';
+    errEl.textContent = '';
+
+    state.stripe.confirmPayment({
+      elements: state.stripeElements,
+      confirmParams: {
+        return_url: window.location.origin + '/payment-return',
+      },
+      redirect: 'if_required',
+    }).then(function (result) {
+      if (result.error) {
+        errEl.textContent = result.error.message;
+        btn.disabled = false;
+        document.getElementById('pay-label').textContent = t('booking.retry');
+        return;
+      }
+      api('/payments/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ payment_intent_id: result.paymentIntent.id }),
+      }).then(function (conf) {
+        if (conf.confirmed) {
+          showConfirmation();
+        } else {
+          errEl.textContent = t('booking.error.payment');
+          btn.disabled = false;
+          document.getElementById('pay-label').textContent = t('booking.retry');
+        }
+      });
+    });
+  }
+
   function showPaymentError(message) {
     document.getElementById('stripe-errors').textContent = message;
     var payBtn = document.getElementById('pay-btn');
@@ -934,11 +1014,13 @@
   function showConfirmation() {
     showStep(6);
 
-    // Save group size preference
-    localStorage.setItem('soki_last_group_size', String(state.groupSize));
+    // Save group size preference — behalve bij privéverhuur (vast, vaak groot aantal)
+    if (!(state.slot && state.slot.is_private)) {
+      localStorage.setItem('soki_last_group_size', String(state.groupSize));
+    }
 
     document.getElementById('confirm-email-note').innerHTML =
-      t('booking.confirm.sent') + ' <strong>' + (state.user ? state.user.email : '') + '</strong>' + t('booking.confirm.see');
+      t('booking.confirm.sent') + ' <strong>' + esc(state.user ? state.user.email : '') + '</strong>' + t('booking.confirm.see');
 
     document.getElementById('confirm-summary').innerHTML = summaryHTML();
 
@@ -960,7 +1042,7 @@
     // QR link on confirmation
     var qrNote = document.getElementById('confirm-qr-note');
     if (qrNote && state.bookingId) {
-      qrNote.innerHTML = '<a href="/account#qr-' + state.bookingId + '" style="color:var(--terra);font-size:0.875rem;">\u2192 Bekijk QR-code voor inchecken in je account</a>';
+      qrNote.innerHTML = '<a href="/account#qr-' + state.bookingId + '" style="color:var(--terra);font-size:0.875rem;">' + t('booking.qr.note') + '</a>';
     }
   }
 
@@ -973,11 +1055,12 @@
     document.getElementById('back-2').addEventListener('click', function () { showStep(2); });
     document.getElementById('next-3').addEventListener('click', showStep4);
     document.getElementById('group-minus').addEventListener('click', function () {
-      if (state.groupSize > 1) { state.groupSize--; updateGroup(); }
+      if (state.groupSize > 1) { state.groupSize--; resetBookingState(); updateGroup(); }
     });
     document.getElementById('group-plus').addEventListener('click', function () {
       if (state.groupSize < (state.slot ? state.slot.spots_left : 15)) {
         state.groupSize++;
+        resetBookingState();
         updateGroup();
       }
     });
@@ -1003,12 +1086,14 @@
       fetch('/api/auth/me/waiver', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      }).then(function() {
+      }).then(function(r) {
+        if (!r.ok) throw new Error('waiver failed');
         if (state.user) state.user.waiver_signed_at = new Date().toISOString();
         btn.disabled = false;
         initPayment();
       }).catch(function() {
         btn.disabled = false;
+        document.getElementById('waiver-error').textContent = t('booking.error.server');
       });
     });
 
@@ -1123,10 +1208,10 @@
           state.promoCode  = code;
           msgEl.style.color = '#2E7D32';
           var saved = (res.discount_cents / 100).toFixed(2).replace('.', ',');
-          var msg = '✓ Code geaccepteerd! Je bespaart €' + saved + '.';
+          var msg = t('promo.saved').replace('{amt}', saved);
           if (res.gift_card_remaining !== undefined) {
             var rem = (res.gift_card_remaining / 100).toFixed(2).replace('.', ',');
-            msg += ' Resterend saldo: €' + rem + '.';
+            msg += t('promo.remaining').replace('{amt}', rem);
           }
           msgEl.textContent = msg;
           // The discount created a new booking: rebuild the payment intent and
@@ -1145,42 +1230,6 @@
 
     // Step 5 back
     document.getElementById('back-4').addEventListener('click', showStep4);
-
-    // Pay
-    document.getElementById('pay-btn').addEventListener('click', function () {
-      var btn = document.getElementById('pay-btn');
-      var errEl = document.getElementById('stripe-errors');
-      btn.disabled = true;
-      document.getElementById('pay-label').innerHTML = '<span class="btn-spinner"></span>';
-      errEl.textContent = '';
-
-      state.stripe.confirmPayment({
-        elements: state.stripeElements,
-        confirmParams: {
-          return_url: window.location.origin + '/payment-return',
-        },
-        redirect: 'if_required',
-      }).then(function (result) {
-        if (result.error) {
-          errEl.textContent = result.error.message;
-          btn.disabled = false;
-          document.getElementById('pay-label').textContent = t('booking.retry');
-          return;
-        }
-        api('/payments/confirm', {
-          method: 'POST',
-          body: JSON.stringify({ payment_intent_id: result.paymentIntent.id }),
-        }).then(function (conf) {
-          if (conf.confirmed) {
-            showConfirmation();
-          } else {
-            errEl.textContent = t('booking.error.payment');
-            btn.disabled = false;
-            document.getElementById('pay-label').textContent = t('booking.retry');
-          }
-        });
-      });
-    });
   }
 
   // ─── Init ─────────────────────────────────────────────────────────────────

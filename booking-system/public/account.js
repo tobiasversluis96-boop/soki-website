@@ -29,6 +29,12 @@
     return '€' + (cents / 100).toFixed(2).replace('.', ',');
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function fmtDate(dateStr) {
     var p = dateStr.split('-').map(Number);
     return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(locale(), {
@@ -62,7 +68,7 @@
       : '';
     return '<div class="history-item">' +
       '<div>' +
-        '<div class="history-item__name">' + b.session_name + '</div>' +
+        '<div class="history-item__name">' + esc(b.session_name) + '</div>' +
         '<div class="history-item__meta">' +
           fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
           ' · ' + personStr(b.group_size) +
@@ -162,7 +168,7 @@
               : '';
             return '<div class="history-item" style="border-left:3px solid #F59E0B;padding-left:12px">' +
               '<div>' +
-                '<div class="history-item__name">' + b.session_name + '</div>' +
+                '<div class="history-item__name">' + esc(b.session_name) + '</div>' +
                 '<div class="history-item__meta">' +
                   fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
                   ' · ' + personStr(b.group_size) +
@@ -221,8 +227,8 @@
           : '<button onclick="leaveWaitlist(' + e.time_slot_id + ',' + paid + ')" style="background:none;border:1px solid rgba(0,0,0,0.2);border-radius:100px;padding:4px 12px;font-size:12px;cursor:pointer;">Verlaten</button>';
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.07);">' +
           '<div>' +
-            '<div style="font-weight:600;font-size:0.875rem;">' + e.session_name + '</div>' +
-            '<div style="font-size:0.8rem;color:var(--text-muted);">' + e.date + ' \u00b7 ' + e.start_time + ' \u2013 ' + e.end_time + '</div>' +
+            '<div style="font-weight:600;font-size:0.875rem;">' + esc(e.session_name) + '</div>' +
+            '<div style="font-size:0.8rem;color:var(--text-muted);">' + esc(e.date) + ' \u00b7 ' + esc(e.start_time) + ' \u2013 ' + esc(e.end_time) + '</div>' +
             (e.total_cents ? '<div style="font-size:0.8rem;color:var(--text-muted);">\u20ac' + (e.total_cents / 100).toFixed(2) + ' \u00b7 ' + e.group_size + ' persoon/personen</div>' : '') +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">' +
@@ -401,30 +407,31 @@
       .then(function(r) { return r.json(); })
       .then(function(sub) {
         var el = document.getElementById('subscription-section');
+        var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
         if (!sub) {
           el.innerHTML = '<div style="background:rgba(217,77,26,0.05);border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;text-align:center;">' +
-            '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:20px;color:var(--brown,#4A1C0C);margin-bottom:8px;">Become a member</h3>' +
-            '<p style="color:var(--text-muted,#8C7B6B);margin-bottom:16px;font-size:14px;">Save with a monthly membership. From \u20ac49/month.</p>' +
-            '<a href="/membership" class="btn btn--primary">View memberships</a>' +
+            '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:20px;color:var(--brown,#4A1C0C);margin-bottom:8px;">' + (isNL ? 'Word member' : 'Become a member') + '</h3>' +
+            '<p style="color:var(--text-muted,#8C7B6B);margin-bottom:16px;font-size:14px;">' + (isNL ? 'Bespaar met een maandelijks membership. Vanaf \u20ac49/maand.' : 'Save with a monthly membership. From \u20ac49/month.') + '</p>' +
+            '<a href="/membership" class="btn btn--primary">' + (isNL ? 'Bekijk memberships' : 'View memberships') + '</a>' +
             '</div>';
           return;
         }
 
         var isUnlimited = sub.credits_per_month === null;
         var creditsHtml = isUnlimited
-          ? '<span style="color:#2E7D32;font-weight:700;">Unlimited access</span>'
-          : '<span style="font-weight:700;font-size:18px;">' + (sub.credits_remaining || 0) + '</span> credits remaining this month';
+          ? '<span style="color:#2E7D32;font-weight:700;">' + (isNL ? 'Onbeperkt toegang' : 'Unlimited access') + '</span>'
+          : '<span style="font-weight:700;font-size:18px;">' + (sub.credits_remaining || 0) + '</span> ' + (isNL ? 'credits over deze maand' : 'credits remaining this month');
 
         var cancelHtml = sub.cancel_at_period_end
-          ? '<p style="color:#C62828;font-size:13px;margin-top:8px;">Cancels on ' + new Date(sub.current_period_end).toLocaleDateString() + '</p>'
-          : '<button onclick="cancelSubscription()" class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;">Cancel membership</button>';
+          ? '<p style="color:#C62828;font-size:13px;margin-top:8px;">' + (isNL ? 'Stopt op ' : 'Cancels on ') + new Date(sub.current_period_end).toLocaleDateString(locale()) + '</p>'
+          : '<button onclick="cancelSubscription()" class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;">' + (isNL ? 'Membership opzeggen' : 'Cancel membership') + '</button>';
 
         el.innerHTML = '<div style="background:#fff;border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">' +
             '<div>' +
-              '<span style="background:var(--terra,#D94D1A);color:#fff;border-radius:100px;padding:3px 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + sub.plan_name + '</span>' +
+              '<span style="background:var(--terra,#D94D1A);color:#fff;border-radius:100px;padding:3px 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + esc(sub.plan_name) + '</span>' +
               '<div style="margin-top:12px;font-size:15px;">' + creditsHtml + '</div>' +
-              (!isUnlimited && sub.credits_reset_at ? '<div style="font-size:12px;color:var(--text-muted,#8C7B6B);margin-top:4px;">Resets on ' + new Date(sub.credits_reset_at).toLocaleDateString() + '</div>' : '') +
+              (!isUnlimited && sub.credits_reset_at ? '<div style="font-size:12px;color:var(--text-muted,#8C7B6B);margin-top:4px;">' + (isNL ? 'Reset op ' : 'Resets on ') + new Date(sub.credits_reset_at).toLocaleDateString(locale()) + '</div>' : '') +
             '</div>' +
           '</div>' +
           cancelHtml +
@@ -433,7 +440,10 @@
   }
 
   window.cancelSubscription = function() {
-    if (!confirm('Are you sure you want to cancel your membership? You will keep access until the end of the billing period.')) return;
+    var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
+    if (!confirm(isNL
+      ? 'Weet je zeker dat je je membership wilt opzeggen? Je houdt toegang tot het einde van de betaalperiode.'
+      : 'Are you sure you want to cancel your membership? You will keep access until the end of the billing period.')) return;
     fetch('/api/subscriptions/cancel', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token },

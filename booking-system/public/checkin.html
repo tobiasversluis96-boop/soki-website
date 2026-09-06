@@ -46,6 +46,10 @@
   var details = document.getElementById('details');
   var errMsg  = document.getElementById('error-msg');
 
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   if (!bid || !sig) {
     icon.className = 'checkin-icon icon--error'; icon.textContent = '✕';
     title.textContent = 'Ongeldige QR-code';
@@ -74,9 +78,9 @@
       }
 
       details.innerHTML = '<div class="checkin-detail">' +
-        '<div class="checkin-row"><span>Sessie</span><span>' + b.session_name + '</span></div>' +
-        '<div class="checkin-row"><span>Datum</span><span>' + b.date + '</span></div>' +
-        '<div class="checkin-row"><span>Tijd</span><span>' + b.start_time + ' – ' + b.end_time + '</span></div>' +
+        '<div class="checkin-row"><span>Sessie</span><span>' + escHtml(b.session_name) + '</span></div>' +
+        '<div class="checkin-row"><span>Datum</span><span>' + escHtml(b.date) + '</span></div>' +
+        '<div class="checkin-row"><span>Tijd</span><span>' + escHtml(b.start_time) + ' – ' + escHtml(b.end_time) + '</span></div>' +
         '<div class="checkin-row"><span>Groep</span><span>' + b.group_size + ' persoon' + (b.group_size > 1 ? 'en' : '') + '</span></div>' +
       '</div>';
 
