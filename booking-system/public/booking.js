@@ -882,6 +882,7 @@
         document.getElementById('pay-label').textContent = t('booking.pay.prefix') + eur(pRes.amount);
 
         // Reset pay button to use Stripe flow
+        document.getElementById('pay-btn').disabled = false;
         document.getElementById('pay-btn').onclick = null;
         } catch (e) {
           showPaymentError(t('booking.error.load'));
@@ -1118,6 +1119,13 @@
             msg += ' Resterend saldo: €' + rem + '.';
           }
           msgEl.textContent = msg;
+          // The discount created a new booking: rebuild the payment intent and
+          // Stripe element so the customer is charged the discounted amount.
+          document.getElementById('payment-summary').innerHTML = summaryHTML();
+          var payBtnEl = document.getElementById('pay-btn');
+          payBtnEl.disabled = true;
+          payBtnEl.querySelector('#pay-label').innerHTML = '<span class="btn-spinner"></span>';
+          initStripePayment();
         } else {
           msgEl.style.color = '#C62828';
           msgEl.textContent = t('promo.invalid');
