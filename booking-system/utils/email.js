@@ -108,6 +108,14 @@ async function sendVerificationEmail({ name, email, code }) {
         <p>Bevestig je e-mailadres met deze code:<br>
            <span style="color:#8C7B6B;">Confirm your email address with this code:</span></p>
         <p style="font-size:32px;font-weight:bold;letter-spacing:6px;background:#FBEFE3;padding:16px 24px;border-radius:12px;text-align:center;">${escapeHtml(code)}</p>
+        <p>Vul deze code in op je accountpagina — je vindt het invulveld in de balk bovenaan.<br>
+           <span style="color:#8C7B6B;">Enter this code on your account page — you'll find the input field in the banner at the top.</span></p>
+        <p style="text-align:center;margin:20px 0;">
+          <a href="${process.env.BASE_URL || 'https://www.sokisocialsauna.nl'}/account"
+             style="display:inline-block;background:#D94D1A;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:100px;">
+            Naar mijn account / Go to my account
+          </a>
+        </p>
         <p>De code is 15 minuten geldig. / This code is valid for 15 minutes.</p>
         <p style="color:#8C7B6B;font-size:13px;">Heb je geen account aangemaakt bij SOKI? Dan kun je deze mail negeren.<br>
            Didn't create a SOKI account? You can safely ignore this email.</p>
