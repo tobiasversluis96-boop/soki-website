@@ -117,7 +117,7 @@ var SOKI_I18N = {
     'type.everyday.desc': '50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge. A free-flow experience: no fixed programme, just move at your own pace.',
     'type.social.desc':   '1hr 20 minutes of access to our sauna and ice baths, plus unlimited lounge time. Curl up with a book, meditate, catch up with friends or meet someone new.',
     'type.ambient.desc':  'A curated DJ transforms the sauna into an immersive listening lounge. 70 minutes of sauna access, stay for the full 4-hour event with live music from 19:00–23:00.',
-    'type.aufguss.desc':  'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation and a homemade salt scrub.',
+    'type.aufguss.desc':  'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation or meditation.',
 
     /* --- Homepage values --- */
     'home.values.eyebrow':       'What we stand for',
@@ -151,7 +151,7 @@ var SOKI_I18N = {
     'sessions.ambient.p1':  'Friday and Saturday nights, and every other Sunday: a curated DJ lineup transforms the sauna into an immersive listening lounge.',
     'sessions.ambient.p2':  '70 minutes of sauna and ice bath access, with the freedom to stay for the full 4-hour event with live music from 19:00–23:00.',
     'sessions.aufguss.p1':  'A traditional ritual led by our sauna masters: essential oils poured over hot stones create a burst of steam that carries you through a guided, sensory journey.',
-    'sessions.aufguss.p2':  'Includes a visualisation and homemade salt scrub, with full sauna and ice bath access woven in.',
+    'sessions.aufguss.p2':  'Includes a visualisation or meditation, with full sauna and ice bath access woven in.',
 
     'sessions.programme.eyebrow': "What's on this month",
     'sessions.programme.h2':      'Programme',
@@ -617,7 +617,7 @@ var SOKI_I18N = {
     'type.everyday.desc': '50 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge. Een vrije ervaring: geen vast programma, beweeg op jouw eigen tempo.',
     'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, praat bij met vrienden of ontmoet iemand nieuw.',
     'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. 70 minuten saunatoegang, blijf voor het volledige vier uur durende evenement met livemuziek van 19:00–23:00.',
-    'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie en een zelfgemaakte zoutscrub.',
+    'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie of meditatie.',
 
     /* --- Homepage values --- */
     'home.values.eyebrow':       'Waar wij voor staan',
@@ -651,7 +651,7 @@ var SOKI_I18N = {
     'sessions.ambient.p1':  'Vrijdag- en zaterdagavond, en elke andere zondag: een gecureerde DJ-line-up transformeert de sauna in een meeslepende luisterlounge.',
     'sessions.ambient.p2':  '70 minuten sauna- en ijsbadtoegang, met de vrijheid om het volledige vier uur durende evenement met livemuziek van 19:00–23:00 bij te wonen.',
     'sessions.aufguss.p1':  'Een traditioneel ritueel geleid door onze saunameesters: essentiële oliën over hete stenen creëren een stoomstoot die je meeneemt op een begeleide, zintuiglijke reis.',
-    'sessions.aufguss.p2':  'Inclusief een visualisatie en zelfgemaakte zoutscrub, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
+    'sessions.aufguss.p2':  'Inclusief een visualisatie of meditatie, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
 
     'sessions.programme.eyebrow': 'Dit staat er op het programma',
     'sessions.programme.h2':      'Programma',

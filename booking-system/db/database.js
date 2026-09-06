@@ -91,7 +91,7 @@ async function seedSessionTypes() {
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
   await pool.query(sql, ['Social Sauna',         'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
   await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           70,  2500,  12, '#D94D1A']);
-  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils, visualisation and salt scrub.',                      90,  2500,  10, '#6B2E18']);
+  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#6B2E18']);
 }
 
 async function seedTimeSlots() {
