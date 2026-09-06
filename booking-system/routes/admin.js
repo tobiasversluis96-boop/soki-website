@@ -764,6 +764,11 @@ router.get('/subscriptions', requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
+router.get('/gift-cards', requireAdmin, async (req, res) => {
+  const cards = await queries.getAllGiftCards();
+  res.json(cards);
+});
+
 // Helper: build pause_collection payload for Stripe
 function pausePayload(resumesAt) {
   const payload = { pause_collection: { behavior: 'void' } };

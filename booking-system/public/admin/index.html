@@ -541,6 +541,9 @@
         <button class="nav-item" data-view="subscriptions">
           <span class="nav-item__icon">◈</span> Abonnementen
         </button>
+        <button class="nav-item" data-view="giftcards">
+          <span class="nav-item__icon">🎁</span> Cadeaubonnen
+        </button>
         <button class="nav-item" data-view="staff">
           <span class="nav-item__icon">👥</span> Medewerkers
         </button>
@@ -947,6 +950,16 @@
           </div>
         </div>
 
+        <!-- ── Gift cards view ── -->
+        <div class="view" id="view-giftcards">
+          <div class="table-card">
+            <div class="table-card__header"><span class="table-card__title">Alle cadeaubonnen</span></div>
+            <div id="giftcards-list" style="padding:0;">
+              <div class="loading" style="padding:24px;">Laden…</div>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Staff view ── -->
         <div class="view" id="view-staff">
 
@@ -1132,7 +1145,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/admin/admin.js?v=20260906-5"></script>
+<script src="/admin/admin.js?v=20260906-6"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

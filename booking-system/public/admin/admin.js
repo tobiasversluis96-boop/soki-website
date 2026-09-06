@@ -104,6 +104,7 @@
       const view = btn.dataset.view;
       if (view === 'staff') { btn.style.display = isAdminUser ? '' : 'none'; return; }
       if (view === 'generate') { btn.style.display = isAdminUser ? '' : 'none'; return; }
+      if (view === 'giftcards') { btn.style.display = isAdminUser ? '' : 'none'; return; }
       const perm = PERM_NAV[view];
       btn.style.display = (!perm || hasPermission(perm)) ? '' : 'none';
     });
@@ -144,7 +145,7 @@
     const navBtn = document.querySelector('.nav-item[data-view="' + name + '"]');
     if (navBtn) navBtn.classList.add('active');
 
-    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', staff: 'Medewerkers' };
+    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', giftcards: 'Cadeaubonnen', staff: 'Medewerkers' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
 
     if (name === 'dashboard') loadDashboard();
@@ -157,6 +158,7 @@
     if (name === 'messages')  loadMessages();
     if (name === 'walkin')        resetWalkin();
     if (name === 'subscriptions') loadSubscriptions();
+    if (name === 'giftcards')     loadGiftCards();
     if (name === 'staff') {
       // Admin sees full staff management; staff only sees own password change
       const createSection = document.querySelector('#view-staff .table-card');
@@ -1394,6 +1396,72 @@
     listEl.querySelectorAll('[data-sub-resume]').forEach(btn => {
       btn.addEventListener('click', () => resumeSubscription(btn.dataset.subResume));
     });
+  }
+
+  // ─── Gift cards ───────────────────────────────────────────────────────────
+  async function loadGiftCards() {
+    const listEl = document.getElementById('giftcards-list');
+    listEl.innerHTML = '<div class="loading" style="padding:24px;">Laden…</div>';
+
+    let cards;
+    try {
+      cards = await api('/gift-cards');
+    } catch { return; }
+
+    if (!Array.isArray(cards) || !cards.length) {
+      listEl.innerHTML = '<div style="padding:24px;color:var(--text-muted);font-size:14px;">Nog geen cadeaubonnen verkocht.</div>';
+      return;
+    }
+
+    const fmtD = d => d ? new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '–';
+
+    const td = 'padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);';
+    const rows = cards.map(c => {
+      const expired = c.expires_at && new Date(c.expires_at) < new Date();
+      let label, color;
+      if (c.status === 'pending')                       { label = 'Niet betaald'; color = '#B7791F'; }
+      else if (c.status === 'depleted' || c.remaining_amount_cents <= 0) { label = 'Opgebruikt'; color = 'var(--text-muted)'; }
+      else if (expired)                                 { label = 'Verlopen';     color = '#C62828'; }
+      else                                              { label = 'Actief';       color = '#2E7D32'; }
+
+      const saldo = c.remaining_amount_cents < c.initial_amount_cents
+        ? `${formatEur(c.remaining_amount_cents)} <span style="font-size:11px;color:var(--text-muted);">van ${formatEur(c.initial_amount_cents)}</span>`
+        : formatEur(c.initial_amount_cents);
+
+      return `
+        <tr${c.message ? ` title="Bericht: ${escapeHtml(c.message)}"` : ''}>
+          <td style="${td}font-family:monospace;font-weight:600;">${escapeHtml(c.code)}</td>
+          <td style="${td}">
+            <div style="font-weight:600;">${escapeHtml(c.purchaser_name || '–')}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(c.purchaser_email || '')}</div>
+          </td>
+          <td style="${td}">
+            <div style="font-weight:600;">${escapeHtml(c.recipient_name || '–')}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(c.recipient_email || '')}</div>
+          </td>
+          <td style="${td}">${saldo}</td>
+          <td style="${td}"><span style="color:${color};font-weight:600;font-size:13px;">${label}</span></td>
+          <td style="${td}">${fmtD(c.created_at)}</td>
+          <td style="${td}">${fmtD(c.expires_at)}</td>
+        </tr>`;
+    }).join('');
+
+    const th = 'text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);';
+    listEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f7f2ec;">
+            <th style="${th}">Code</th>
+            <th style="${th}">Koper</th>
+            <th style="${th}">Ontvanger</th>
+            <th style="${th}">Saldo</th>
+            <th style="${th}">Status</th>
+            <th style="${th}">Gekocht</th>
+            <th style="${th}">Verloopt</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
   async function pauseSubscription(id) {
