@@ -13,7 +13,9 @@ function getMilestoneForVisit(visitCount) {
 }
 
 function generatePromoCode(prefix, userId) {
-  return prefix + userId + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const rand  = Array.from({ length: 4 }, () => chars[require('crypto').randomInt(chars.length)]).join('');
+  return prefix + userId + rand;
 }
 
 function getNextMilestone(visitCount) {

@@ -21,6 +21,7 @@ if (IS_PRODUCTION) {
 }
 
 const express   = require('express');
+require('./utils/async-errors');
 const cors      = require('cors');
 const path      = require('path');
 const rateLimit = require('express-rate-limit');
@@ -53,6 +54,12 @@ app.use((_req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  // Report-only: eerst kijken wat er zou breken voordat we echt gaan blokkeren
+  res.setHeader('Content-Security-Policy-Report-Only',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com; frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://www.google.com; connect-src 'self' https://api.stripe.com https://*.sanity.io https://accounts.google.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com");
   next();
 });
 
@@ -81,6 +88,12 @@ app.use('/api/bookings', rateLimit({
   skip: (req) => req.method !== 'POST',
   message: { error: 'Te veel pogingen — wacht 15 minuten en probeer het opnieuw. / Too many requests — please wait 15 minutes and try again.' },
 }));
+
+// Cadeaubonnen: purchase = card-testing-doelwit, check = brute force op codes
+const giftMsg = { error: 'Te veel pogingen — wacht 15 minuten en probeer het opnieuw. / Too many requests — please wait 15 minutes and try again.' };
+app.use('/api/gift-cards/purchase', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
+app.use('/api/gift-cards/confirm',  rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
+app.use('/api/gift-cards/check',    rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
 
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -126,15 +139,13 @@ app.get('/api/session-types', async (req, res) => {
 
 // Available slots for a session type + month
 app.get('/api/slots', async (req, res) => {
-  const { session_type_id, year, month } = req.query;
-  if (!session_type_id || !year || !month)
-    return res.status(400).json({ error: 'session_type_id, year and month are required' });
+  const typeId = parseInt(req.query.session_type_id);
+  const year   = parseInt(req.query.year);
+  const month  = parseInt(req.query.month);
+  if (isNaN(typeId) || isNaN(year) || isNaN(month) || month < 1 || month > 12 || year < 2020 || year > 2100)
+    return res.status(400).json({ error: 'session_type_id, year and month must be valid numbers' });
 
-  const slots = await queries.getSlotsForMonth(
-    parseInt(session_type_id),
-    parseInt(year),
-    parseInt(month)
-  );
+  const slots = await queries.getSlotsForMonth(typeId, year, month);
   const result = slots.map(s => ({
     ...s,
     capacity:   s.max_capacity || s.type_capacity,
@@ -183,13 +194,31 @@ app.get('/api/upcoming-slots', async (req, res) => {
   })));
 });
 
-// Single slot detail
+// Single slot detail (veld-whitelist: geen interne notities e.d. naar buiten)
 app.get('/api/slots/:id', async (req, res) => {
-  const slot = await queries.getSlotById(req.params.id);
+  const slotId = parseInt(req.params.id);
+  if (isNaN(slotId)) return res.status(400).json({ error: 'Invalid slot id' });
+  const slot = await queries.getSlotById(slotId);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
-  res.json({ ...slot, capacity, spots_left: spotsLeft, is_full: spotsLeft <= 0 });
+  res.json({
+    id:              slot.id,
+    session_type_id: slot.session_type_id,
+    type_id:         slot.type_id ?? slot.session_type_id,
+    session_name:    slot.session_name,
+    date:            slot.date,
+    start_time:      slot.start_time,
+    end_time:        slot.end_time,
+    duration_min:    slot.duration_min,
+    color:           slot.color,
+    price_cents:     slot.price_cents,
+    is_private:      slot.is_private,
+    is_cancelled:    slot.is_cancelled,
+    capacity,
+    spots_left: spotsLeft,
+    is_full:    spotsLeft <= 0,
+  });
 });
 
 // ─── QR Check-in ──────────────────────────────────────────────────────────────
@@ -236,6 +265,16 @@ app.get('/api/checkin/:bookingId', async (req, res) => {
   });
 });
 
+function isStaffOrAdminRequest(req) {
+  const header = req.headers.authorization || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return false;
+  try {
+    const payload = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
+    return payload.type === 'admin' || payload.type === 'staff';
+  } catch { return false; }
+}
+
 app.post('/api/checkin/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const { sig } = req.query;
@@ -244,6 +283,14 @@ app.post('/api/checkin/:bookingId', async (req, res) => {
 
   const booking = await queries.getBookingById(bookingId);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  if (booking.status !== 'confirmed')
+    return res.status(400).json({ error: 'Booking is not confirmed', status: booking.status });
+
+  // Via QR-link alleen op de sessiedag zelf inchecken (voorkomt dat gasten
+  // zichzelf weken vooraf "aanwezig" melden); staff mag altijd.
+  const todayNL = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+  if (String(booking.date).slice(0, 10) !== todayNL && !isStaffOrAdminRequest(req))
+    return res.status(403).json({ error: 'Inchecken kan alleen op de dag van de sessie zelf.' });
 
   await queries.checkInBooking(bookingId, true);
 
@@ -347,6 +394,18 @@ app.get('/waiver',      (_req, res) => res.sendFile(path.join(__dirname, 'public
 app.get('/gift-card',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'gift-card.html')));
 app.get('/admin',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
+
+// ─── Global error handling ───────────────────────────────────────────────────
+// Vangt alle route-fouten (incl. async, via utils/async-errors) — server blijft draaien
+app.use((err, _req, res, _next) => {
+  console.error('Unhandled route error:', err && err.stack ? err.stack : err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Er ging iets mis. Probeer het opnieuw. / Something went wrong. Please try again.' });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 initializeDB().then(() => {

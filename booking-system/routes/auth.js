@@ -38,6 +38,10 @@ async function requireAuth(req, res, next) {
   }
 }
 
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
 function signCustomerToken(user) {
   return jwt.sign(
     { userId: user.id, type: 'customer', tv: user.token_version || 0 },
@@ -119,7 +123,8 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
-  const valid = await bcrypt.compare(password, user.password_hash);
+  // Google-only accounts hebben geen wachtwoord-hash; bcrypt.compare(x, null) gooit
+  const valid = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
   if (!valid) {
     queries.auditLog({ actor_type: 'customer', actor_id: user.id, actor_email: email, action: 'login_failed', ip: req.ip });
     return res.status(401).json({ error: 'Invalid email or password' });
@@ -169,7 +174,8 @@ router.post('/forgot-password', async (req, res) => {
 
   const token     = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  await queries.createPasswordResetToken(user.id, token, expiresAt);
+  // Alleen de hash opslaan: een DB-lek geeft dan geen bruikbare resetlinks
+  await queries.createPasswordResetToken(user.id, hashResetToken(token), expiresAt);
 
   try {
     await sendPasswordResetEmail({ name: user.name, email: user.email, token });
@@ -188,12 +194,12 @@ router.post('/reset-password', async (req, res) => {
   if (password.length < 8)
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-  const record = await queries.getPasswordResetToken(token);
+  const record = await queries.getPasswordResetToken(hashResetToken(token));
   if (!record) return res.status(400).json({ error: 'Invalid or expired reset link' });
 
   const hash = await bcrypt.hash(password, 12);
   await queries.updateUserPassword(record.user_id, hash);
-  await queries.deletePasswordResetToken(token);
+  await queries.deletePasswordResetToken(hashResetToken(token));
   queries.auditLog({ actor_type: 'customer', actor_id: record.user_id, action: 'password_reset', ip: req.ip });
 
   res.json({ ok: true });

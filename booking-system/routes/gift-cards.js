@@ -14,7 +14,7 @@ const router = express.Router();
 
 function generateCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
-  const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const seg = () => Array.from({ length: 4 }, () => chars[crypto.randomInt(chars.length)]).join('');
   return `SOKI-${seg()}-${seg()}`;
 }
 
@@ -83,11 +83,18 @@ router.post('/confirm', async (req, res) => {
   const { payment_intent_id } = req.body;
   if (!payment_intent_id) return res.status(400).json({ error: 'payment_intent_id required' });
 
-  const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+  let intent;
+  try {
+    intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+  } catch (err) {
+    console.error('Gift card confirm: Stripe retrieve failed:', err.message);
+    return res.status(400).json({ error: 'Betaling niet gevonden.' });
+  }
   if (intent.status !== 'succeeded')
     return res.status(400).json({ error: 'Betaling niet geslaagd.' });
 
   const cardId = parseInt(intent.metadata.gift_card_id);
+  if (isNaN(cardId)) return res.status(400).json({ error: 'Cadeaubon niet gevonden.' });
   const card   = await queries.getGiftCardById(cardId);
   if (!card) return res.status(404).json({ error: 'Cadeaubon niet gevonden.' });
   if (card.status === 'active') return res.json({ ok: true, code: card.code }); // idempotent
