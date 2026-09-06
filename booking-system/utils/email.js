@@ -92,6 +92,65 @@ function escapeHtml(s) {
   ));
 }
 
+// Huisstijl gelijk aan de Brevo-nieuwsbrief (crème #ffecd3, donkerbruin #4a1c0c, tan #f2c299)
+const EMAIL_LOGO  = 'https://img.mailinblue.com/10958046/images/content_library/original/6a96d22f8ac0d97f596c4c60.png';
+const EMAIL_FONT  = "'Montserrat',Arial,Helvetica,sans-serif";
+const EMAIL_MUTED = '#8a6a58';
+
+function emailButton(url, label) {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto;">
+      <tr>
+        <td align="center" style="background-color:#4a1c0c;border-radius:4px;">
+          <a href="${url}" style="display:inline-block;padding:14px 32px;font-family:${EMAIL_FONT};font-size:16px;font-weight:bold;color:#f0efea;text-decoration:none;">${label}</a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function emailLayout(title, bodyHtml) {
+  return `<!DOCTYPE html>
+<html lang="nl">
+<body style="margin:0;padding:0;background-color:#ffecd3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffecd3;">
+    <tr>
+      <td align="center" style="padding:32px 16px 0;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;">
+          <tr>
+            <td align="center" style="padding:0 0 28px;">
+              <img src="${EMAIL_LOGO}" alt="SOKI - Social Sauna" width="250" style="display:block;width:250px;max-width:80%;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 8px 20px;">
+              <h1 style="margin:0;font-family:'Arial Black',${EMAIL_FONT};font-size:28px;line-height:1.25;color:#4a1c0c;">${title}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 8px 36px;font-family:${EMAIL_FONT};font-size:16px;line-height:1.6;color:#4a1c0c;">
+              ${bodyHtml}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0 16px 32px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background-color:#4a1c0c;">
+          <tr>
+            <td align="center" style="padding:28px 16px;font-family:${EMAIL_FONT};color:#f0efea;">
+              <div style="font-size:16px;font-weight:bold;">SOKI - Social Sauna</div>
+              <div style="font-size:14px;margin-top:6px;">Europalaan 2B, 3526 KS, Utrecht</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // Geen Brevo-template nodig: de code-mail wordt als kant-en-klare HTML verstuurd
 async function sendVerificationEmail({ name, email, code }) {
   await getClient().transactionalEmails.sendTransacEmail({
@@ -101,25 +160,19 @@ async function sendVerificationEmail({ name, email, code }) {
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
     subject: `${code} — bevestig je e-mailadres / confirm your email`,
-    htmlContent: `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
-        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
-        <p>Hoi ${escapeHtml(name)},</p>
-        <p>Bevestig je e-mailadres met deze code:<br>
-           <span style="color:#8C7B6B;">Confirm your email address with this code:</span></p>
-        <p style="font-size:32px;font-weight:bold;letter-spacing:6px;background:#FBEFE3;padding:16px 24px;border-radius:12px;text-align:center;">${escapeHtml(code)}</p>
-        <p>Vul deze code in op je accountpagina — je vindt het invulveld in de balk bovenaan.<br>
-           <span style="color:#8C7B6B;">Enter this code on your account page — you'll find the input field in the banner at the top.</span></p>
-        <p style="text-align:center;margin:20px 0;">
-          <a href="${process.env.BASE_URL || 'https://www.sokisocialsauna.nl'}/account"
-             style="display:inline-block;background:#D94D1A;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:100px;">
-            Naar mijn account / Go to my account
-          </a>
-        </p>
-        <p>De code is 15 minuten geldig. / This code is valid for 15 minutes.</p>
-        <p style="color:#8C7B6B;font-size:13px;">Heb je geen account aangemaakt bij SOKI? Dan kun je deze mail negeren.<br>
-           Didn't create a SOKI account? You can safely ignore this email.</p>
-      </div>`,
+    htmlContent: emailLayout('Bevestig je e-mailadres', `
+        <p style="margin:0 0 16px;">Hoi ${escapeHtml(name)},</p>
+        <p style="margin:0 0 16px;">Bevestig je e-mailadres met deze code:<br>
+           <span style="color:${EMAIL_MUTED};">Confirm your email address with this code:</span></p>
+        <div style="background-color:#f2c299;padding:20px 24px;border-radius:4px;text-align:center;margin:0 0 20px;">
+          <span style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4a1c0c;">${escapeHtml(code)}</span>
+        </div>
+        <p style="margin:0 0 16px;">Vul deze code in op je accountpagina — je vindt het invulveld in de balk bovenaan.<br>
+           <span style="color:${EMAIL_MUTED};">Enter this code on your account page — you'll find the input field in the banner at the top.</span></p>
+        ${emailButton(`${process.env.BASE_URL || 'https://www.sokisocialsauna.nl'}/account`, 'Naar mijn account / Go to my account')}
+        <p style="margin:0 0 16px;">De code is 15 minuten geldig. / This code is valid for 15 minutes.</p>
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Heb je geen account aangemaakt bij SOKI? Dan kun je deze mail negeren.<br>
+           Didn't create a SOKI account? You can safely ignore this email.</p>`),
   });
 }
 
@@ -199,8 +252,8 @@ async function sendGiftCardEmail(card) {
   const amount  = `€${(card.initial_amount_cents / 100).toFixed(2).replace('.', ',')}`;
   const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
   const messageBlock = card.message
-    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;font-style:italic;">&ldquo;${escapeHtml(card.message)}&rdquo;<br>
-         <span style="color:#8C7B6B;font-style:normal;font-size:13px;">&mdash; ${escapeHtml(card.purchaser_name)}</span></p>`
+    ? `<p style="background-color:#ffffff;border-left:4px solid #f2c299;padding:12px 16px;border-radius:0 4px 4px 0;font-style:italic;margin:0 0 16px;">&ldquo;${escapeHtml(card.message)}&rdquo;<br>
+         <span style="color:${EMAIL_MUTED};font-style:normal;font-size:13px;">&mdash; ${escapeHtml(card.purchaser_name)}</span></p>`
     : '';
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: card.recipient_email, name: card.recipient_name }],
@@ -209,23 +262,20 @@ async function sendGiftCardEmail(card) {
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
     subject: `Je hebt een cadeaubon van ${amount} gekregen! / You've received a ${amount} gift card!`,
-    htmlContent: `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
-        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
-        <p>Hoi ${escapeHtml(card.recipient_name)},</p>
-        <p><strong>${escapeHtml(card.purchaser_name)}</strong> heeft een cadeaubon voor je gekocht!<br>
-           <span style="color:#8C7B6B;">${escapeHtml(card.purchaser_name)} bought you a gift card!</span></p>
+    htmlContent: emailLayout('Je hebt een cadeaubon gekregen!', `
+        <p style="margin:0 0 16px;">Hoi ${escapeHtml(card.recipient_name)},</p>
+        <p style="margin:0 0 16px;"><strong>${escapeHtml(card.purchaser_name)}</strong> heeft een cadeaubon voor je gekocht!<br>
+           <span style="color:${EMAIL_MUTED};">${escapeHtml(card.purchaser_name)} bought you a gift card!</span></p>
         ${messageBlock}
-        <div style="background:#FBEFE3;padding:24px;border-radius:12px;text-align:center;margin:16px 0;">
-          <div style="font-size:36px;font-weight:bold;color:#D94D1A;">${amount}</div>
-          <div style="color:#8C7B6B;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
-          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;">${escapeHtml(card.code)}</div>
+        <div style="background-color:#f2c299;padding:24px;border-radius:4px;text-align:center;margin:0 0 20px;">
+          <div style="font-size:36px;font-weight:bold;color:#4a1c0c;">${amount}</div>
+          <div style="color:#4a1c0c;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
+          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;color:#4a1c0c;">${escapeHtml(card.code)}</div>
         </div>
-        <p>Vul de code in bij het afrekenen van je boeking op
-           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
-           <span style="color:#8C7B6B;">Enter the code at checkout when booking your session.</span></p>
-        <p style="color:#8C7B6B;font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>
-      </div>`,
+        <p style="margin:0 0 16px;">Vul de code in bij het afrekenen van je boeking.<br>
+           <span style="color:${EMAIL_MUTED};">Enter the code at checkout when booking your session.</span></p>
+        ${emailButton(bookUrl, 'Boek een sessie / Book a session')}
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>`),
   });
 }
 
@@ -246,23 +296,20 @@ async function sendGiftCardPurchaseEmail(card) {
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
     subject: `Bevestiging van je cadeaubon van ${amount} / Your ${amount} gift card confirmation`,
-    htmlContent: `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
-        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
-        <p>Hoi ${escapeHtml(card.purchaser_name)},</p>
-        <p>Bedankt voor je aankoop! Je cadeaubon voor <strong>${escapeHtml(card.recipient_name)}</strong> is betaald en de code is naar ${escapeHtml(card.recipient_email)} gestuurd.<br>
-           <span style="color:#8C7B6B;">Thanks for your purchase! Your gift card for <strong>${escapeHtml(card.recipient_name)}</strong> has been paid and the code has been sent to ${escapeHtml(card.recipient_email)}.</span></p>
-        <div style="background:#FBEFE3;padding:24px;border-radius:12px;text-align:center;margin:16px 0;">
-          <div style="font-size:36px;font-weight:bold;color:#D94D1A;">${amount}</div>
-          <div style="color:#8C7B6B;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
-          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;">${escapeHtml(card.code)}</div>
+    htmlContent: emailLayout('Bedankt voor je aankoop!', `
+        <p style="margin:0 0 16px;">Hoi ${escapeHtml(card.purchaser_name)},</p>
+        <p style="margin:0 0 16px;">Je cadeaubon voor <strong>${escapeHtml(card.recipient_name)}</strong> is betaald en de code is naar ${escapeHtml(card.recipient_email)} gestuurd.<br>
+           <span style="color:${EMAIL_MUTED};">Your gift card for <strong>${escapeHtml(card.recipient_name)}</strong> has been paid and the code has been sent to ${escapeHtml(card.recipient_email)}.</span></p>
+        <div style="background-color:#f2c299;padding:24px;border-radius:4px;text-align:center;margin:0 0 20px;">
+          <div style="font-size:36px;font-weight:bold;color:#4a1c0c;">${amount}</div>
+          <div style="color:#4a1c0c;font-size:13px;margin:8px 0 4px;">Cadeauboncode / Gift card code</div>
+          <div style="font-size:24px;font-weight:bold;letter-spacing:3px;color:#4a1c0c;">${escapeHtml(card.code)}</div>
         </div>
-        <p>De code is in te wisselen bij het afrekenen van een boeking op
-           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
-           <span style="color:#8C7B6B;">The code can be redeemed at checkout when booking a session.</span></p>
-        <p style="color:#8C7B6B;font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>
-        <p style="color:#8C7B6B;font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>
-      </div>`,
+        <p style="margin:0 0 16px;">De code is in te wisselen bij het afrekenen van een boeking op
+           <a href="${bookUrl}" style="color:#4a1c0c;font-weight:bold;">sokisocialsauna.nl</a>.<br>
+           <span style="color:${EMAIL_MUTED};">The code can be redeemed at checkout when booking a session.</span></p>
+        <p style="margin:0 0 8px;color:${EMAIL_MUTED};font-size:13px;">Geldig tot ${expiresNl}. / Valid until ${expiresEn}.</p>
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>`),
   });
 }
 
@@ -278,14 +325,14 @@ async function sendBookingCancelledEmail(booking, { refunded = false, creditsRes
   const amount  = `€${((booking.total_cents || 0) / 100).toFixed(2).replace('.', ',')}`;
   const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
   const refundBlock = refunded
-    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;">
+    ? `<p style="background-color:#ffffff;border-left:4px solid #f2c299;padding:12px 16px;border-radius:0 4px 4px 0;margin:0 0 16px;">
          Je betaling van <strong>${amount}</strong> wordt automatisch teruggestort. Het bedrag staat binnen 5&ndash;10 werkdagen op je rekening.<br>
-         <span style="color:#8C7B6B;">Your payment of <strong>${amount}</strong> will be refunded automatically. It will appear on your account within 5&ndash;10 business days.</span></p>`
+         <span style="color:${EMAIL_MUTED};">Your payment of <strong>${amount}</strong> will be refunded automatically. It will appear on your account within 5&ndash;10 business days.</span></p>`
     : '';
   const creditsBlock = creditsRestored > 0
-    ? `<p style="background:#FBEFE3;border-left:4px solid #D94D1A;padding:12px 16px;border-radius:0 12px 12px 0;">
+    ? `<p style="background-color:#ffffff;border-left:4px solid #f2c299;padding:12px 16px;border-radius:0 4px 4px 0;margin:0 0 16px;">
          Je gebruikte credits (${creditsRestored}) zijn teruggezet op je account.<br>
-         <span style="color:#8C7B6B;">The credits you used (${creditsRestored}) have been returned to your account.</span></p>`
+         <span style="color:${EMAIL_MUTED};">The credits you used (${creditsRestored}) have been returned to your account.</span></p>`
     : '';
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: booking.customer_email, name: booking.customer_name }],
@@ -294,19 +341,16 @@ async function sendBookingCancelledEmail(booking, { refunded = false, creditsRes
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
     subject: `Je sessie op ${dateNl} is geannuleerd / Your session on ${dateEn} has been cancelled`,
-    htmlContent: `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#4A1C0C;">
-        <h2 style="color:#D94D1A;margin-bottom:0.5rem;">SOKI Social Sauna</h2>
-        <p>Hoi ${escapeHtml(booking.customer_name)},</p>
-        <p>Helaas gaat de sessie <strong>${escapeHtml(booking.session_name)}</strong> op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) niet door. Onze excuses voor het ongemak.<br>
-           <span style="color:#8C7B6B;">Unfortunately, the <strong>${escapeHtml(booking.session_name)}</strong> session on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled. We're sorry for the inconvenience.</span></p>
+    htmlContent: emailLayout('Je sessie is geannuleerd', `
+        <p style="margin:0 0 16px;">Hoi ${escapeHtml(booking.customer_name)},</p>
+        <p style="margin:0 0 16px;">Helaas gaat de sessie <strong>${escapeHtml(booking.session_name)}</strong> op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) niet door. Onze excuses voor het ongemak.<br>
+           <span style="color:${EMAIL_MUTED};">Unfortunately, the <strong>${escapeHtml(booking.session_name)}</strong> session on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled. We're sorry for the inconvenience.</span></p>
         ${refundBlock}
         ${creditsBlock}
-        <p>We hopen je snel weer te zien &mdash; boek een nieuwe sessie op
-           <a href="${bookUrl}" style="color:#D94D1A;">sokisocialsauna.nl</a>.<br>
-           <span style="color:#8C7B6B;">We hope to see you again soon &mdash; book a new session at sokisocialsauna.nl.</span></p>
-        <p style="color:#8C7B6B;font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>
-      </div>`,
+        <p style="margin:0 0 16px;">We hopen je snel weer te zien!<br>
+           <span style="color:${EMAIL_MUTED};">We hope to see you again soon!</span></p>
+        ${emailButton(bookUrl, 'Boek een nieuwe sessie / Book a new session')}
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>`),
   });
 }
 
