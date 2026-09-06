@@ -1384,10 +1384,11 @@ const queries = {
   },
 
   getAnalytics: async () => {
-    const [total, confirmed, revenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
+    const [total, confirmed, revenue, giftRevenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status = 'confirmed'"),
       pool.query("SELECT COALESCE(SUM(total_cents),0)::int AS n FROM bookings WHERE status = 'confirmed'"),
+      pool.query('SELECT COALESCE(SUM(initial_amount_cents),0)::int AS n FROM gift_cards WHERE stripe_payment_intent_id IS NOT NULL'),
       pool.query(`
         SELECT st.name, COUNT(b.id)::int AS count
         FROM session_types st
@@ -1409,7 +1410,8 @@ const queries = {
     return {
       totalBookings:     total.rows[0].n,
       confirmedBookings: confirmed.rows[0].n,
-      totalRevenue:      revenue.rows[0].n,
+      totalRevenue:      revenue.rows[0].n + giftRevenue.rows[0].n,
+      giftCardRevenue:   giftRevenue.rows[0].n,
       bookingsPerType:   perType.rows,
       bookingsPerWeek:   perWeek.rows,
       avgGroupSize:      avgGroup.rows[0].n,

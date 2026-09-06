@@ -219,7 +219,7 @@
     document.getElementById('stat-grid').innerHTML = [
       { label: 'Totaal boekingen',  value: data.totalBookings,         sub: 'actief' },
       { label: 'Bevestigd',         value: data.confirmedBookings,      sub: 'betaald' },
-      { label: 'Omzet (deze maand)', value: formatEur(data.totalRevenue), sub: 'bevestigde boekingen' },
+      { label: 'Omzet (totaal)', value: formatEur(data.totalRevenue), sub: data.giftCardRevenue > 0 ? `waarvan ${formatEur(data.giftCardRevenue)} cadeaubonnen` : 'boekingen + cadeaubonnen' },
       { label: 'Abonnementen',      value: formatEur(enhanced.mrr),     sub: totalMembers + ' actieve leden' },
     ].map(s => `
       <div class="stat-card">

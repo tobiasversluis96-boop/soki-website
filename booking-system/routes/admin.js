@@ -469,16 +469,27 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
     revenuePerMonth,
   ] = await Promise.all([
 
-    // 1. Weekly revenue for last 12 weeks (confirmed bookings only)
+    // 1. Weekly revenue for last 12 weeks (confirmed bookings + gift card sales)
     pool.query(`
-      SELECT
-        TO_CHAR(ts.date::date, 'IYYY-"W"IW') AS week,
-        COALESCE(SUM(b.total_cents), 0)::int AS revenue_cents,
-        COUNT(b.id)::int AS bookings
-      FROM bookings b
-      JOIN time_slots ts ON ts.id = b.time_slot_id
-      WHERE b.status = 'confirmed'
-        AND ts.date >= TO_CHAR(CURRENT_DATE - INTERVAL '11 weeks', 'YYYY-MM-DD')
+      SELECT week, SUM(revenue_cents)::int AS revenue_cents, SUM(bookings)::int AS bookings
+      FROM (
+        SELECT
+          TO_CHAR(ts.date::date, 'IYYY-"W"IW') AS week,
+          b.total_cents AS revenue_cents,
+          1 AS bookings
+        FROM bookings b
+        JOIN time_slots ts ON ts.id = b.time_slot_id
+        WHERE b.status = 'confirmed'
+          AND ts.date >= TO_CHAR(CURRENT_DATE - INTERVAL '11 weeks', 'YYYY-MM-DD')
+        UNION ALL
+        SELECT
+          TO_CHAR(g.created_at::date, 'IYYY-"W"IW') AS week,
+          g.initial_amount_cents AS revenue_cents,
+          0 AS bookings
+        FROM gift_cards g
+        WHERE g.stripe_payment_intent_id IS NOT NULL
+          AND g.created_at >= CURRENT_DATE - INTERVAL '11 weeks'
+      ) x
       GROUP BY week
       ORDER BY week
     `),
@@ -588,17 +599,28 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       ORDER BY month
     `),
 
-    // 8. Monthly revenue for last 12 months
+    // 8. Monthly revenue for last 12 months (confirmed bookings + gift card sales)
     pool.query(`
-      SELECT
-        TO_CHAR(DATE_TRUNC('month', ts.date::date), 'YYYY-MM') AS month,
-        COALESCE(SUM(b.total_cents), 0)::int AS revenue_cents,
-        COUNT(b.id)::int AS bookings
-      FROM bookings b
-      JOIN time_slots ts ON ts.id = b.time_slot_id
-      WHERE b.status = 'confirmed'
-        AND ts.date >= TO_CHAR(DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months'), 'YYYY-MM-DD')
-        AND ts.date < TO_CHAR(DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month'), 'YYYY-MM-DD')
+      SELECT month, SUM(revenue_cents)::int AS revenue_cents, SUM(bookings)::int AS bookings
+      FROM (
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', ts.date::date), 'YYYY-MM') AS month,
+          b.total_cents AS revenue_cents,
+          1 AS bookings
+        FROM bookings b
+        JOIN time_slots ts ON ts.id = b.time_slot_id
+        WHERE b.status = 'confirmed'
+          AND ts.date >= TO_CHAR(DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months'), 'YYYY-MM-DD')
+          AND ts.date < TO_CHAR(DATE_TRUNC('month', CURRENT_DATE + INTERVAL '1 month'), 'YYYY-MM-DD')
+        UNION ALL
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', g.created_at), 'YYYY-MM') AS month,
+          g.initial_amount_cents AS revenue_cents,
+          0 AS bookings
+        FROM gift_cards g
+        WHERE g.stripe_payment_intent_id IS NOT NULL
+          AND g.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months')
+      ) x
       GROUP BY month
       ORDER BY month
     `),
