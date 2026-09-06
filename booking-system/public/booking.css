@@ -534,3 +534,13 @@
   .history-item { flex-wrap: wrap; }
   .history-item__right { width: 100%; text-align: left; }
 }
+
+/* ─── Waiver-stap: lucht tussen secties en regels ───────────────────────────── */
+
+#step-4b .booking-step-title { margin-bottom: 1.75rem; }
+.waiver-section { margin-bottom: 2.25rem; }
+.waiver-section h3 { margin: 0 0 0.75rem; }
+.waiver-section p { margin: 0 0 0.75rem; }
+.waiver-section ul { margin: 0; padding-left: 1.25rem; }
+.waiver-section li { margin-bottom: 0.6rem; }
+.waiver-agree { margin-top: 1.5rem; }
