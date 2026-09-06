@@ -15,10 +15,11 @@ function getClient() {
 }
 
 function formatDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
+  // pg geeft DATE-kolommen soms als JS Date terug, soms als 'YYYY-MM-DD'-string
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  if (dateStr instanceof Date) return dateStr.toLocaleDateString('en-GB', opts);
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', opts);
 }
 
 async function send(templateId, to, name, params) {
@@ -241,6 +242,101 @@ async function sendMilestoneEmail({ customer_name, customer_email, milestone, la
   );
 }
 
+// Bevestiging als de gast zélf annuleert (template 8)
+async function sendSelfCancelledEmail({ customer_name, customer_email, session_name, date, start_time, end_time, refund_amount_cents = 0, refund_pct = 0, credits_restored = 0 }) {
+  await send(
+    process.env.BREVO_TEMPLATE_SELF_CANCELLED,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME:    customer_name,
+      SESSION_NAME:     session_name,
+      DATE:             formatDate(date),
+      START_TIME:       start_time,
+      END_TIME:         end_time,
+      REFUND_AMOUNT:    refund_amount_cents > 0 ? `€${(refund_amount_cents / 100).toFixed(2)}` : '',
+      REFUND_PCT:       refund_amount_cents > 0 ? String(refund_pct) : '',
+      CREDITS_RESTORED: credits_restored > 0 ? String(credits_restored) : '',
+    }
+  );
+}
+
+// Bevestiging "je staat op de wachtlijst" zodra de betaling binnen is (template 9)
+async function sendWaitlistJoinedEmail({ customer_name, customer_email, session_name, date, start_time, end_time, group_size, total_cents }) {
+  await send(
+    process.env.BREVO_TEMPLATE_WAITLIST_JOINED,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME: customer_name,
+      SESSION_NAME:  session_name,
+      DATE:          formatDate(date),
+      START_TIME:    start_time,
+      END_TIME:      end_time,
+      GROUP_SIZE:    group_size,
+      TOTAL:         `€${(total_cents / 100).toFixed(2)}`,
+    }
+  );
+}
+
+// Ontvangstbevestiging van een bericht via het platform (template 10)
+async function sendMessageReceivedEmail({ customer_name, customer_email, subject, body }) {
+  await send(
+    process.env.BREVO_TEMPLATE_MESSAGE_RECEIVED,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME:   customer_name,
+      MESSAGE_SUBJECT: subject,
+      MESSAGE_BODY:    body,
+    }
+  );
+}
+
+// Welkomstmail bij start van een membership (template 11)
+async function sendMemberWelcomeEmail({ customer_name, customer_email, plan_name, credits_per_month, price_cents }) {
+  await send(
+    process.env.BREVO_TEMPLATE_MEMBER_WELCOME,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME: customer_name,
+      PLAN_NAME:     plan_name,
+      CREDITS:       credits_per_month != null ? String(credits_per_month) : '',
+      PRICE:         `€${(price_cents / 100).toFixed(2)}`,
+    }
+  );
+}
+
+// Bevestiging van opzegging membership (template 12)
+async function sendMemberCancelledEmail({ customer_name, customer_email, plan_name, ends_at }) {
+  const d = ends_at instanceof Date ? ends_at : new Date(ends_at);
+  await send(
+    process.env.BREVO_TEMPLATE_MEMBER_CANCELLED,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME: customer_name,
+      PLAN_NAME:     plan_name,
+      ENDS_AT:       d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    }
+  );
+}
+
+// Melding dat een maandelijkse membershipbetaling is mislukt (template 13)
+async function sendPaymentFailedEmail({ customer_name, customer_email, plan_name, amount_cents }) {
+  await send(
+    process.env.BREVO_TEMPLATE_PAYMENT_FAILED,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME: customer_name,
+      PLAN_NAME:     plan_name,
+      AMOUNT:        amount_cents ? `€${(amount_cents / 100).toFixed(2)}` : '',
+    }
+  );
+}
+
 // Geen Brevo-template nodig: de cadeaubon-mail wordt als kant-en-klare HTML verstuurd
 async function sendGiftCardEmail(card) {
   const expiresNl = new Date(card.expires_at).toLocaleDateString('nl-NL', {
@@ -366,5 +462,11 @@ module.exports = {
   sendMilestoneEmail,
   sendGiftCardEmail,
   sendGiftCardPurchaseEmail,
+  sendSelfCancelledEmail,
+  sendWaitlistJoinedEmail,
+  sendMessageReceivedEmail,
+  sendMemberWelcomeEmail,
+  sendMemberCancelledEmail,
+  sendPaymentFailedEmail,
   generateCheckinSig,
 };

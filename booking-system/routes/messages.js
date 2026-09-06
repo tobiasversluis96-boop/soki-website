@@ -6,6 +6,7 @@
 const express = require('express');
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
+const { sendMessageReceivedEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -20,6 +21,21 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'body too long' });
 
   const msg = await queries.createMessage(req.user.userId, subject.trim(), body.trim());
+
+  try {
+    const user = await queries.getUserById(req.user.userId);
+    if (user) {
+      await sendMessageReceivedEmail({
+        customer_name:  user.name,
+        customer_email: user.email,
+        subject:        subject.trim(),
+        body:           body.trim(),
+      });
+    }
+  } catch (e) {
+    console.error('Message-received email failed (non-fatal):', e.message);
+  }
+
   res.status(201).json(msg);
 });
 

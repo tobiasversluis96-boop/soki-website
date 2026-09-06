@@ -71,6 +71,22 @@ router.post('/cancel', requireAuth, async (req, res) => {
     cancel_at_period_end: true,
   });
   await queries.cancelSubscription(req.user.userId);
+
+  try {
+    const user = await queries.getUserById(req.user.userId);
+    if (user) {
+      const { sendMemberCancelledEmail } = require('../utils/email');
+      await sendMemberCancelledEmail({
+        customer_name:  user.name,
+        customer_email: user.email,
+        plan_name:      sub.plan_name,
+        ends_at:        sub.current_period_end,
+      });
+    }
+  } catch (e) {
+    console.error('Member-cancelled email failed (non-fatal):', e.message);
+  }
+
   res.json({ ok: true, ends_at: sub.current_period_end });
 });
 

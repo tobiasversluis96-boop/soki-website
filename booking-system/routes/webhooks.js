@@ -86,6 +86,22 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           plan.credits_per_month, periodEnd
         );
         console.log(`✓ Subscription created for user ${userId}`);
+
+        try {
+          const user = await queries.getUserById(userId);
+          if (user) {
+            const { sendMemberWelcomeEmail } = require('../utils/email');
+            await sendMemberWelcomeEmail({
+              customer_name:     user.name,
+              customer_email:    user.email,
+              plan_name:         plan.name,
+              credits_per_month: plan.credits_per_month,
+              price_cents:       plan.price_cents,
+            });
+          }
+        } catch (e) {
+          console.error('Member welcome email failed (non-fatal):', e.message);
+        }
         break;
       }
 
@@ -143,6 +159,26 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (intent.metadata?.type === 'waitlist') {
           await queries.markWaitlistPaid(intent.id);
           console.log(`✓ Waitlist payment confirmed for intent ${intent.id}`);
+
+          try {
+            const user = await queries.getUserById(parseInt(intent.metadata.user_id));
+            const slot = await queries.getSlotById(parseInt(intent.metadata.slot_id));
+            if (user && slot) {
+              const { sendWaitlistJoinedEmail } = require('../utils/email');
+              await sendWaitlistJoinedEmail({
+                customer_name:  user.name,
+                customer_email: user.email,
+                session_name:   slot.session_name,
+                date:           slot.date,
+                start_time:     slot.start_time,
+                end_time:       slot.end_time,
+                group_size:     parseInt(intent.metadata.group_size) || 1,
+                total_cents:    intent.amount,
+              });
+            }
+          } catch (e) {
+            console.error('Waitlist-joined email failed (non-fatal):', e.message);
+          }
           break;
         }
 
@@ -172,6 +208,36 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           }
         } catch (e) {
           console.error('Webhook confirmation email failed (non-fatal):', e.message);
+        }
+        break;
+      }
+
+      // Note: 'invoice.payment_failed' must be enabled in Stripe Dashboard webhook settings
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const stripeSubId = invoice.subscription;
+        if (!stripeSubId) break;
+        // Stripe vuurt dit event bij elke incassopoging — alleen bij de eerste mailen
+        if (invoice.attempt_count > 1) break;
+
+        const sub = await queries.getSubscriptionByStripeId(stripeSubId);
+        if (!sub) break;
+
+        try {
+          const user  = await queries.getUserById(sub.user_id);
+          const plans = await queries.getSubscriptionPlans();
+          const plan  = plans.find(p => p.id === sub.plan_id);
+          if (user) {
+            const { sendPaymentFailedEmail } = require('../utils/email');
+            await sendPaymentFailedEmail({
+              customer_name:  user.name,
+              customer_email: user.email,
+              plan_name:      plan ? plan.name : 'Membership',
+              amount_cents:   invoice.amount_due,
+            });
+          }
+        } catch (e) {
+          console.error('Payment-failed email error (non-fatal):', e.message);
         }
         break;
       }

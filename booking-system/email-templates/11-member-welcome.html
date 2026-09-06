@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="nl">
+<body style="margin:0;padding:0;background-color:#ffecd3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffecd3;">
+    <tr>
+      <td align="center" style="padding:32px 16px 0;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;">
+          <tr>
+            <td align="center" style="padding:0 0 28px;">
+              <img src="https://img.mailinblue.com/10958046/images/content_library/original/6a96d22f8ac0d97f596c4c60.png" alt="SOKI - Social Sauna" width="250" style="display:block;width:250px;max-width:80%;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 8px 20px;">
+              <h1 style="margin:0;font-family:'Arial Black','Montserrat',Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;color:#4a1c0c;">Welkom bij SOKI!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 8px 36px;font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#4a1c0c;">
+              <p style="margin:0 0 16px;">Hoi {{ params.CUSTOMER_NAME }},</p>
+              <p style="margin:0 0 16px;">Wat leuk dat je member bent geworden! Je membership is actief en je kunt meteen boeken.<br>
+                 <span style="color:#8a6a58;">Great to have you as a member! Your membership is active and you can start booking right away.</span></p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2c299;border-radius:4px;margin:0 0 20px;">
+                <tr>
+                  <td align="center" style="padding:24px;font-family:'Montserrat',Arial,Helvetica,sans-serif;color:#4a1c0c;">
+                    <div style="font-size:20px;font-weight:bold;">{{ params.PLAN_NAME }}</div>
+                    <div style="font-size:16px;margin-top:6px;">{{ params.PRICE }} per maand / per month</div>
+                    {% if params.CREDITS %}
+                    <div style="font-size:14px;margin-top:6px;">{{ params.CREDITS }} credits per maand / per month</div>
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+              {% if params.CREDITS %}
+              <p style="margin:0 0 16px;">Je credits vind je in je account. Everyday en Social Sauna kosten 1 credit per persoon, Ambient en Aufguss 1,5 credit. Bij het boeken kies je gewoon &ldquo;betalen met credits&rdquo;.<br>
+                 <span style="color:#8a6a58;">You'll find your credits in your account. Everyday and Social Sauna cost 1 credit per person, Ambient and Aufguss 1.5 credits. Just choose &ldquo;pay with credits&rdquo; when booking.</span></p>
+              {% else %}
+              <p style="margin:0 0 16px;">Met Unlimited heb je onbeperkt toegang tot alle sessies &mdash; boek zo vaak je wilt.<br>
+                 <span style="color:#8a6a58;">With Unlimited you have unlimited access to all sessions &mdash; book as often as you like.</span></p>
+              {% endif %}
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto;">
+                <tr>
+                  <td align="center" style="background-color:#4a1c0c;border-radius:4px;">
+                    <a href="https://www.sokisocialsauna.nl/booking" style="display:inline-block;padding:14px 32px;font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#f0efea;text-decoration:none;">Boek je eerste sessie / Book your first session</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#8a6a58;font-size:13px;">Je kunt je membership op elk moment beheren of opzeggen via je account.<br>
+                 You can manage or cancel your membership anytime via your account.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0 16px 32px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background-color:#4a1c0c;">
+          <tr>
+            <td align="center" style="padding:28px 16px;font-family:'Montserrat',Arial,Helvetica,sans-serif;color:#f0efea;">
+              <div style="font-size:16px;font-weight:bold;">SOKI - Social Sauna</div>
+              <div style="font-size:14px;margin-top:6px;">Europalaan 2B, 3526 KS, Utrecht</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -6,7 +6,7 @@
 const express = require('express');
 const { queries, getPool } = require('../db/database');
 const { requireAuth } = require('./auth');
-const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation } = require('../utils/email');
+const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -246,13 +246,33 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   await queries.cancelBooking(req.params.id);
 
   // Membercredits terug (zelfde beleid als admin-annulering)
+  let creditsRestored = 0;
   if (booking.credits_used > 0) {
     const restored = await queries.restoreCredits(booking.user_id, booking.credits_used);
-    if (restored) console.log(`✓ ${booking.credits_used} credits teruggestort voor user ${booking.user_id}`);
+    if (restored) {
+      creditsRestored = booking.credits_used;
+      console.log(`✓ ${booking.credits_used} credits teruggestort voor user ${booking.user_id}`);
+    }
   }
   // Ingewisselde cadeaubon-portie terug (naar rato van het refundpercentage)
   const giftRestored = await queries.restoreGiftCardForBooking(booking.id, refundPct);
   if (giftRestored) console.log(`✓ Cadeaubon ${giftRestored.gift_card_id}: €${(giftRestored.restored_cents / 100).toFixed(2)} teruggestort`);
+
+  try {
+    await sendSelfCancelledEmail({
+      customer_name:       booking.customer_name,
+      customer_email:      booking.customer_email,
+      session_name:        booking.session_name,
+      date:                dateStr,
+      start_time:          booking.start_time,
+      end_time:            booking.end_time,
+      refund_amount_cents: refundAmountCents,
+      refund_pct:          refundPct,
+      credits_restored:    creditsRestored,
+    });
+  } catch (e) {
+    console.error('Self-cancel email failed (non-fatal):', e.message);
+  }
 
   queries.auditLog({
     actor_type: 'customer', actor_id: req.user.userId, action: 'booking_cancelled',
