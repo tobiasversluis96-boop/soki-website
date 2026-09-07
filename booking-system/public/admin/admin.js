@@ -133,9 +133,22 @@
     showView(firstAllowedView());
   }
 
+  // ─── Mobiel menu ──────────────────────────────────────────────────────────
+  const sidebarEl = document.querySelector('.sidebar');
+  const backdropEl = document.getElementById('sidebar-backdrop');
+  function closeSidebar() {
+    sidebarEl.classList.remove('open');
+    backdropEl.classList.remove('open');
+  }
+  document.getElementById('menu-toggle').addEventListener('click', () => {
+    const open = sidebarEl.classList.toggle('open');
+    backdropEl.classList.toggle('open', open);
+  });
+  backdropEl.addEventListener('click', closeSidebar);
+
   // ─── Views ────────────────────────────────────────────────────────────────
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => showView(btn.dataset.view));
+    btn.addEventListener('click', () => { showView(btn.dataset.view); closeSidebar(); });
   });
 
   function showView(name) {
