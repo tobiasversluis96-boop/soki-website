@@ -53,7 +53,7 @@ router.post('/checkout', requireAuth, async (req, res) => {
         currency: 'eur',
         unit_amount: bundle.price_cents,
         product_data: {
-          name: `SOKI ${bundle.name} — ${Number(bundle.credits)} credits`,
+          name: `SOKI ${bundle.name} - ${Number(bundle.credits)} credits`,
         },
       },
       quantity: 1,

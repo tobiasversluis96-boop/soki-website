@@ -412,8 +412,8 @@
         if (!sub) {
           el.innerHTML = '<div style="background:rgba(217,77,26,0.05);border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;text-align:center;">' +
             '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:20px;color:var(--brown,#4A1C0C);margin-bottom:8px;">' + (isNL ? 'Word member' : 'Become a member') + '</h3>' +
-            '<p style="color:var(--text-muted,#8C7B6B);margin-bottom:16px;font-size:14px;">' + (isNL ? 'Bespaar met een maandelijks membership. Vanaf \u20ac49/maand.' : 'Save with a monthly membership. From \u20ac49/month.') + '</p>' +
-            '<a href="/membership" class="btn btn--primary">' + (isNL ? 'Bekijk memberships' : 'View memberships') + '</a>' +
+            '<p style="color:var(--text-muted,#8C7B6B);margin:0 auto 16px;max-width:42ch;font-size:14px;">' + (isNL ? 'Bespaar met een maandelijks membership vanaf \u20ac49/maand - of koop een Punch Pass: 10 credits, 1 jaar geldig, geen abonnement.' : 'Save with a monthly membership from \u20ac49/month - or get a Punch Pass: 10 credits, valid 1 year, no subscription.') + '</p>' +
+            '<a href="/membership" class="btn btn--primary">' + (isNL ? 'Bekijk memberships & Punch Pass' : 'View memberships & Punch Pass') + '</a>' +
             '</div>';
           return;
         }
@@ -457,7 +457,7 @@
           // Betaling kan nog onderweg zijn (webhook): korte melding tonen na terugkeer uit checkout
           el.innerHTML = justBought
             ? '<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:16px;padding:20px;margin-bottom:12px;font-size:14px;color:#2E7D32;">' +
-              (isNL ? 'Bedankt voor je aankoop! Je credits worden binnen enkele minuten bijgeschreven — ververs de pagina zo nog even.' : 'Thanks for your purchase! Your credits will appear within a few minutes — refresh the page shortly.') +
+              (isNL ? 'Bedankt voor je aankoop! Je credits worden binnen enkele minuten bijgeschreven - ververs de pagina zo nog even.' : 'Thanks for your purchase! Your credits will appear within a few minutes - refresh the page shortly.') +
               '</div>'
             : '';
           return;
