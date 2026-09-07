@@ -166,8 +166,8 @@ async function seedSubscriptionPlans() {
   const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM subscription_plans');
   if (rows[0].n > 0) return;
 
-  // Create Everyday Member plan
-  const prod1 = await stripe.products.create({ name: 'Soki Everyday Member' });
+  // Create SOKI Weekly plan
+  const prod1 = await stripe.products.create({ name: 'SOKI Weekly' });
   const price1 = await stripe.prices.create({
     product: prod1.id,
     unit_amount: 4900,
@@ -176,11 +176,11 @@ async function seedSubscriptionPlans() {
   });
   await pool.query(
     'INSERT INTO subscription_plans (name, credits_per_month, price_cents, stripe_price_id) VALUES ($1, $2, $3, $4)',
-    ['Everyday Member', 4, 4900, price1.id]
+    ['SOKI Weekly', 4, 4900, price1.id]
   );
 
-  // Create Unlimited plan
-  const prod2 = await stripe.products.create({ name: 'Soki Unlimited Member' });
+  // Create SOKI Unlimited plan
+  const prod2 = await stripe.products.create({ name: 'SOKI Unlimited' });
   const price2 = await stripe.prices.create({
     product: prod2.id,
     unit_amount: 9900,
@@ -189,7 +189,7 @@ async function seedSubscriptionPlans() {
   });
   await pool.query(
     'INSERT INTO subscription_plans (name, credits_per_month, price_cents, stripe_price_id) VALUES ($1, $2, $3, $4)',
-    ['Unlimited', null, 9900, price2.id]
+    ['SOKI Unlimited', null, 9900, price2.id]
   );
 
   console.log('✓ Subscription plans seeded');
@@ -218,6 +218,59 @@ async function migrateUnlimitedPrice() {
       console.log('✓ Unlimited plan price migrated to €99');
     } catch (e) {
       console.error('Unlimited price migration failed (non-fatal):', e.message);
+    }
+  }
+}
+
+// Eenmalige migratie: plannen hernoemd naar SOKI Weekly / SOKI Unlimited.
+// Hernoemt ook het bijbehorende Stripe-product zodat facturen kloppen.
+async function migratePlanNames() {
+  const renames = [
+    { from: 'Everyday Member', to: 'SOKI Weekly' },
+    { from: 'Unlimited', to: 'SOKI Unlimited' },
+  ];
+  for (const { from, to } of renames) {
+    try {
+      const { rows } = await pool.query(
+        'UPDATE subscription_plans SET name = $1 WHERE name = $2 RETURNING stripe_price_id',
+        [to, from]
+      );
+      for (const row of rows) {
+        const price = await stripe.prices.retrieve(row.stripe_price_id);
+        const productId = typeof price.product === 'string' ? price.product : price.product.id;
+        await stripe.products.update(productId, { name: to });
+        console.log(`✓ Plan renamed: ${from} → ${to}`);
+      }
+    } catch (e) {
+      console.error(`Plan rename ${from} → ${to} failed (non-fatal):`, e.message);
+    }
+  }
+}
+
+// Eenmalige migratie: Weekly stond op €39 maar hoort €49 te zijn. Nieuwe
+// Stripe-prijs op hetzelfde product, oude prijs archiveren zodat niemand
+// zich er nog op kan abonneren. Bestaande abonnees houden hun oude prijs.
+async function migrateWeeklyPrice() {
+  const { rows } = await pool.query(
+    "SELECT id, stripe_price_id FROM subscription_plans WHERE name = 'SOKI Weekly' AND price_cents = 3900"
+  );
+  for (const plan of rows) {
+    try {
+      const oldPrice = await stripe.prices.retrieve(plan.stripe_price_id);
+      const newPrice = await stripe.prices.create({
+        product: typeof oldPrice.product === 'string' ? oldPrice.product : oldPrice.product.id,
+        unit_amount: 4900,
+        currency: 'eur',
+        recurring: { interval: 'month' },
+      });
+      await pool.query(
+        'UPDATE subscription_plans SET price_cents = 4900, stripe_price_id = $2 WHERE id = $1',
+        [plan.id, newPrice.id]
+      );
+      await stripe.prices.update(plan.stripe_price_id, { active: false });
+      console.log('✓ Weekly plan price migrated to €49');
+    } catch (e) {
+      console.error('Weekly price migration failed (non-fatal):', e.message);
     }
   }
 }
@@ -390,6 +443,8 @@ async function initializeDB() {
   await seedAdmin();
   await seedSubscriptionPlans();
   await migrateUnlimitedPrice();
+  await migratePlanNames();
+  await migrateWeeklyPrice();
   console.log('✓ Database ready (PostgreSQL)');
 }
 

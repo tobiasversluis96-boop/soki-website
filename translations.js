@@ -69,6 +69,7 @@ var SOKI_I18N = {
     'gc.success.sub':    'The recipient will receive an email with their code shortly.',
     'gc.success.cta':    'Back to home',
     'nav.giftcard':      'Gift card',
+    'nav.membership':    'Membership',
 
     /* --- Location section --- */
     'location.eyebrow':      'Find us',
@@ -495,7 +496,7 @@ var SOKI_I18N = {
     'booking.waitlist.continue': 'Continue to payment',
     'booking.waitlist.joined':   '✓ On waitlist (paid)',
     'booking.member.title':          'Member booking',
-    'booking.member.unlimited.note': 'Your Unlimited membership covers this session.',
+    'booking.member.unlimited.note': 'Your SOKI Unlimited membership covers this session.',
     'booking.member.credits.note':   'This will use {n} of your {r} remaining credits.',
     'booking.member.insufficient':   'You have {r} credits left but need {n}. You can simply pay by iDEAL or card.',
     'booking.qr.note':        '→ View your check-in QR code in your account',
@@ -570,6 +571,7 @@ var SOKI_I18N = {
     'gc.success.sub':    'De ontvanger krijgt zo een e-mail met de code.',
     'gc.success.cta':    'Terug naar home',
     'nav.giftcard':      'Cadeaubon',
+    'nav.membership':    'Membership',
 
     /* --- Location section --- */
     'location.eyebrow':      'Vind ons',
@@ -996,7 +998,7 @@ var SOKI_I18N = {
     'booking.waitlist.continue': 'Doorgaan naar betalen',
     'booking.waitlist.joined':   '✓ Op wachtlijst (betaald)',
     'booking.member.title':          'Memberboeking',
-    'booking.member.unlimited.note': 'Je Unlimited membership dekt deze sessie.',
+    'booking.member.unlimited.note': 'Je SOKI Unlimited membership dekt deze sessie.',
     'booking.member.credits.note':   'Dit gebruikt {n} van je {r} resterende credits.',
     'booking.member.insufficient':   'Je hebt {r} credits over, maar hebt er {n} nodig. Je kunt gewoon betalen via iDEAL of kaart.',
     'booking.qr.note':        '→ Bekijk QR-code voor inchecken in je account',

@@ -168,6 +168,7 @@
       line-height: 1.65;
     }
     .faq-item.open .faq-item__a { display: block; }
+    .nav:not(.scrolled) .nav__links a.active { color: var(--peach); }
   </style>
   <script src="/consent.js"></script>
 </head>
@@ -182,6 +183,7 @@
     <ul class="nav__links">
       <li><a href="/" data-i18n="nav.home">Home</a></li>
       <li><a href="/sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+      <li><a href="/membership" class="active" data-i18n="nav.membership">Membership</a></li>
       <li><a href="/about.html" data-i18n="nav.about">About us</a></li>
       <li><a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
       <li><a href="/gift-card" data-i18n="nav.giftcard">Gift card</a></li>
@@ -201,6 +203,7 @@
 <div class="nav__mobile" id="navMobile">
   <a href="/" data-i18n="nav.home">Home</a>
   <a href="/sessions.html" data-i18n="nav.sessions">Sessions</a>
+  <a href="/membership" class="active" data-i18n="nav.membership">Membership</a>
   <a href="/about.html" data-i18n="nav.about">About us</a>
   <a href="/newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
   <a href="/gift-card" data-i18n="nav.giftcard">Gift card</a>
@@ -221,14 +224,14 @@
 <!-- ===== PLAN CARDS ===== -->
 <div class="plans-grid" id="plans-grid">
   <div class="plan-card" id="plan-everyday">
-    <div class="plan-card__name">Everyday Member</div>
+    <div class="plan-card__name">SOKI Weekly</div>
     <div class="plan-card__price">&euro;49 <span>/month</span></div>
     <div class="plan-card__credits">4 credits per month</div>
     <ul class="plan-card__features">
       <li>Everyday &amp; Social Sauna = 1 credit</li>
       <li>Ambient &amp; Aufguss = 1.5 credits</li>
       <li>Skip the payment step when booking</li>
-      <li>Credits reset monthly</li>
+      <li>Credits reset monthly (a leftover half credit carries over)</li>
       <li>Cancel anytime</li>
     </ul>
     <button class="btn btn--outline" id="btn-everyday" onclick="subscribe(null)">Subscribe</button>
@@ -236,7 +239,7 @@
 
   <div class="plan-card plan-card--popular" id="plan-unlimited">
     <div class="plan-card__badge">Most popular</div>
-    <div class="plan-card__name">Unlimited</div>
+    <div class="plan-card__name">SOKI Unlimited</div>
     <div class="plan-card__price">&euro;99 <span>/month</span></div>
     <div class="plan-card__credits">Unlimited access</div>
     <ul class="plan-card__features">
@@ -260,7 +263,7 @@
   <div class="faq-item">
     <div class="faq-item__q">How do credits work?</div>
     <div class="faq-item__a">
-      With the Everyday Member plan you get 4 credits per month. Everyday Sauna and Social Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.
+      With the SOKI Weekly plan you get 4 credits per month. Everyday Sauna and Social Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.
     </div>
   </div>
   <div class="faq-item">
@@ -278,7 +281,7 @@
   <div class="faq-item">
     <div class="faq-item__q">What if I run out of credits?</div>
     <div class="faq-item__a">
-      If you don't have enough credits for a session, you can still book and pay with card as usual. Or consider upgrading to the Unlimited plan for worry-free access.
+      If you don't have enough credits for a session, you can still book and pay with card as usual. Or consider upgrading to the SOKI Unlimited plan for worry-free access.
     </div>
   </div>
 </div>
@@ -315,7 +318,7 @@
   </div>
 </footer>
 
-<script src="/translations.js?v=20260906-2"></script>
+<script src="/translations.js?v=20260907-3"></script>
 <script src="/main.js?v=20260906-5"></script>
 <script>
 (function() {
