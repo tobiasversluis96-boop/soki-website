@@ -1082,6 +1082,7 @@
     const capacity  = parseInt(document.getElementById('gen-capacity').value) || null;
     const days      = [...document.querySelectorAll('#gen-days input:checked')].map(i => parseInt(i.value));
     const isFree    = document.getElementById('gen-free').checked;
+    const artist    = document.getElementById('gen-artist').value.trim() || null;
 
     if (!typeId || !startTime || !endTime || !fromDate || !toDate || !days.length) return null;
     if (fromDate > toDate) return null;
@@ -1099,6 +1100,7 @@
           end_time:   endTime,
           max_capacity: capacity,
           price_cents: isFree ? 0 : null,
+          artist: artist,
         });
       }
       cur.setDate(cur.getDate() + 1);
@@ -1188,7 +1190,7 @@
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.date}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${DAY_NL[d.getDay()]}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}${overlapNote}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.artist ? ` <span style="color:var(--muted);font-size:11px;">· met ${escapeHtml(s.artist)}</span>` : ''}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
       </tr>`;
     }).join('');
     const overlapBadge = overlapCount

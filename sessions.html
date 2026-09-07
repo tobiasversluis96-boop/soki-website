@@ -280,15 +280,6 @@
         }
         function timeShort(t) { return (t || '').slice(0, 5); }
 
-        function tagLabel(name) {
-          var t = String(name || '').toLowerCase();
-          if (t.indexOf('everyday') > -1) return 'Everyday';
-          if (t.indexOf('social')   > -1) return 'Social';
-          if (t.indexOf('ambient')  > -1) return 'Ambient';
-          if (t.indexOf('aufguss')  > -1 || t.indexOf('opgiet') > -1) return 'Aufguss';
-          return name;
-        }
-
         function tagClass(name) {
           var t = String(name || '').toLowerCase();
           if (t.indexOf('everyday') > -1) return 'tag--everyday';
@@ -323,7 +314,6 @@
                 var day = dateParts[2];
                 var mon = MONTH_ABBR[dateParts[1] - 1];
                 var typeSlug = TYPE_MAP[s.type_id] || 'other';
-                var typeLabel = tagLabel(s.session_name);
                 var typeCls = tagClass(s.session_name);
                 var isFree = s.price_cents === 0;
                 var spotsLeft = s.spots_left;
@@ -351,7 +341,7 @@
                   '</div>' +
                   '<div class="session-card__sep"></div>' +
                   '<div class="session-card__info">' +
-                    '<h4>' + (isFree ? (s.session_name + STR.tryOut) : typeLabel) +
+                    '<h4>' + (isFree ? (s.session_name + STR.tryOut) : s.session_name) +
                       (s.artist ? ' <span style="font-weight:400;color:var(--terra);font-size:0.85em;">' + STR.withLabel + ': ' + escText(s.artist) + '</span>' : '') +
                     '</h4>' +
                     '<div class="session-card__meta">' +

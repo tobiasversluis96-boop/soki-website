@@ -276,6 +276,10 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
   if (!Array.isArray(slots) || !slots.length)
     return res.status(400).json({ error: 'slots array is required' });
 
+  const artist = slots[0] && slots[0].artist ? String(slots[0].artist).trim() : null;
+  if (artist && artist.length > 100)
+    return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
+
   const results = { created: 0, skipped: 0, errors: [], conflicts: [] };
   for (const s of slots) {
     try {
@@ -285,7 +289,7 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
         results.conflicts.push(`${s.date}: overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}`);
         continue;
       }
-      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null);
+      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null, false, s.artist ? String(s.artist).trim() : null);
       results.created++;
     } catch (err) {
       results.skipped++;
