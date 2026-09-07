@@ -305,12 +305,14 @@
     var todayStr  = now.toISOString().slice(0, 10);
     var nowTime   = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
-    // Build map: date → available slot count
+    // Build maps: date → available slot count / any (incl. full) slot count
     var available = {};
+    var anySlot   = {};
     slots.forEach(function (s) {
-      if (s.is_full) return;
       if (s.date < todayStr) return;
       if (s.date === todayStr && s.start_time <= nowTime) return;
+      anySlot[s.date] = (anySlot[s.date] || 0) + 1;
+      if (s.is_full) return;
       available[s.date] = (available[s.date] || 0) + 1;
     });
 
@@ -329,10 +331,12 @@
       var dateStr = year + '-' + mm + '-' + dd;
 
       var isPast    = dateStr < todayStr;
-      var hasSlots  = !!available[dateStr];
+      var hasSlots  = !!anySlot[dateStr];
+      var allFull   = hasSlots && !available[dateStr];
       var cls = 'cal-cell';
       if (isPast)   cls += ' cal-cell--past';
       if (hasSlots) cls += ' cal-cell--available';
+      if (allFull)  cls += ' cal-cell--full';
       if (dateStr === todayStr) cls += ' cal-cell--today';
 
       if (!isPast && hasSlots) {
