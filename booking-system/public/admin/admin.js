@@ -592,6 +592,40 @@
   document.getElementById('add-slot-btn').addEventListener('click', () => openSlotModal());
   document.getElementById('slot-modal-cancel').addEventListener('click', closeSlotModal);
 
+  // Duurcontrole: waarschuw als start/eind niet overeenkomt met de
+  // standaardduur van het sessietype; wegklikbaar voor uitzonderingen.
+  let durationOverride = false;
+  function slotDurationMismatch() {
+    const type  = sessionTypes.find(t => t.id === +document.getElementById('slot-session-type').value);
+    const start = document.getElementById('slot-start').value;
+    const end   = document.getElementById('slot-end').value;
+    if (!type || !type.duration_min || !start || !end) return null;
+    const mins = (parseInt(end.slice(0, 2), 10) * 60 + parseInt(end.slice(3, 5), 10))
+               - (parseInt(start.slice(0, 2), 10) * 60 + parseInt(start.slice(3, 5), 10));
+    if (mins <= 0 || mins === type.duration_min) return null;
+    return { mins, type };
+  }
+  function updateDurationWarning() {
+    const warn = document.getElementById('slot-duration-warning');
+    const mismatch = slotDurationMismatch();
+    if (!mismatch || durationOverride) { warn.style.display = 'none'; return; }
+    document.getElementById('slot-duration-warning-text').textContent =
+      '⚠️ Deze tijden geven een duur van ' + mismatch.mins + ' minuten, maar ' +
+      mismatch.type.name + ' hoort ' + mismatch.type.duration_min + ' minuten te duren.';
+    warn.style.display = 'block';
+  }
+  ['slot-session-type', 'slot-start', 'slot-end'].forEach(fieldId => {
+    document.getElementById(fieldId).addEventListener('change', () => {
+      durationOverride = false;
+      updateDurationWarning();
+    });
+  });
+  document.getElementById('slot-duration-dismiss').addEventListener('click', () => {
+    durationOverride = true;
+    document.getElementById('slot-duration-warning').style.display = 'none';
+    document.getElementById('slot-error').textContent = '';
+  });
+
   function openSlotModal(slot) {
     document.getElementById('slot-modal-title').textContent = slot ? 'Slot bewerken' : 'Slot toevoegen';
     document.getElementById('slot-id').value       = slot ? slot.id : '';
@@ -612,6 +646,8 @@
     privBox.onchange.call(privBox);
     if (slot) document.getElementById('slot-session-type').value = slot.session_type_id;
     document.getElementById('slot-error').textContent = '';
+    durationOverride = false;
+    updateDurationWarning();
     document.getElementById('slot-modal').classList.add('open');
   }
 
@@ -644,6 +680,13 @@
     if (isPrivate && (!body.price_cents || body.price_cents <= 0 || !body.max_capacity)) {
       document.getElementById('slot-error').textContent =
         'Privéverhuur: vul zowel het aantal personen als de totaalprijs (meer dan €0) in.';
+      return;
+    }
+
+    if (slotDurationMismatch() && !durationOverride) {
+      updateDurationWarning();
+      document.getElementById('slot-error').textContent =
+        'De duur wijkt af van de standaard. Pas de tijden aan, of bevestig hierboven dat het een uitzondering is.';
       return;
     }
 
