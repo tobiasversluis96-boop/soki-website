@@ -6,6 +6,13 @@
 
 require('dotenv').config();
 
+// Losse spaties in env-vars (bijv. bij kopiëren in het Railway-dashboard) breken
+// Stripe-URLs en API-keys — hier één keer opschonen voor het hele proces.
+for (const key of ['BASE_URL', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PUBLISHABLE_KEY']) {
+  if (process.env[key]) process.env[key] = process.env[key].trim();
+}
+if (process.env.BASE_URL) process.env.BASE_URL = process.env.BASE_URL.replace(/\/+$/, '');
+
 // ─── Production safety checks ────────────────────────────────────────────────
 // Refuse to boot in production with missing secrets: a silent fallback here
 // means forgeable login tokens or unverified payment webhooks.
