@@ -44,6 +44,7 @@ const subscriptionRoutes  = require('./routes/subscriptions');
 const waitlistRoutes      = require('./routes/waitlist');
 const webhookRoutes       = require('./routes/webhooks');
 const giftCardRoutes      = require('./routes/gift-cards');
+const punchPassRoutes     = require('./routes/punch-passes');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -123,6 +124,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/waitlist',      waitlistRoutes);
 app.use('/api/gift-cards',   giftCardRoutes);
+app.use('/api/punch-passes', punchPassRoutes);
 
 // Public config (non-secret values for frontend)
 app.get('/api/config', (_req, res) => {

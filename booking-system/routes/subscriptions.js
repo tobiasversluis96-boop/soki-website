@@ -97,12 +97,16 @@ router.post('/credit-cost', requireAuth, async (req, res) => {
   const groupSize = Math.min(Math.max(parseInt(req.body.group_size) || 1, 1), 20);
   const cost = (CREDIT_COST[session_type_id] || 1.5) * groupSize;
   const sub  = await queries.getActiveSubscription(req.user.userId);
+  const passes = await queries.getActivePunchPasses(req.user.userId);
+  const passTotal = passes.reduce((sum, p) => sum + Number(p.credits_remaining), 0);
+  // Geen mixen van bronnen per boeking: één enkele kaart moet de kosten dekken
+  const passCovers = passes.some(p => Number(p.credits_remaining) >= cost);
   res.json({
-    has_subscription: !!sub,
+    has_subscription: !!sub || passes.length > 0,
     credits_cost: cost,
-    credits_remaining: sub ? sub.credits_remaining : 0,
+    credits_remaining: (sub ? Number(sub.credits_remaining) || 0 : 0) + passTotal,
     is_unlimited: sub ? sub.credits_per_month === null : false,
-    can_book: sub ? (sub.credits_per_month === null || (sub.credits_remaining || 0) >= cost) : false,
+    can_book: (sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= cost) : false) || passCovers,
   });
 });
 

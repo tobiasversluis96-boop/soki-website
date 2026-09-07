@@ -337,6 +337,23 @@ async function sendPaymentFailedEmail({ customer_name, customer_email, plan_name
   );
 }
 
+// Bevestiging na aankoop van een strippenkaart (punch pass)
+async function sendPunchPassEmail({ customer_name, customer_email, bundle_name, credits, price_cents, expires_at }) {
+  const d = expires_at instanceof Date ? expires_at : new Date(expires_at);
+  await send(
+    process.env.BREVO_TEMPLATE_PUNCH_PASS,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME: customer_name,
+      BUNDLE_NAME:   bundle_name,
+      CREDITS:       String(credits),
+      PRICE:         `€${(price_cents / 100).toFixed(2)}`,
+      EXPIRES_AT:    d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    }
+  );
+}
+
 // Geen Brevo-template nodig: de cadeaubon-mail wordt als kant-en-klare HTML verstuurd
 async function sendGiftCardEmail(card) {
   const expiresNl = new Date(card.expires_at).toLocaleDateString('nl-NL', {
@@ -468,5 +485,6 @@ module.exports = {
   sendMemberWelcomeEmail,
   sendMemberCancelledEmail,
   sendPaymentFailedEmail,
+  sendPunchPassEmail,
   generateCheckinSig,
 };

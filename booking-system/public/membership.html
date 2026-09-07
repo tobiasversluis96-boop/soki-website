@@ -33,7 +33,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
-      max-width: 760px;
+      max-width: 1120px;
       margin: -2rem auto 0;
       padding: 0 1.5rem;
       position: relative;
@@ -251,6 +251,20 @@
     </ul>
     <button class="btn btn--primary" id="btn-unlimited" onclick="subscribe(null)">Subscribe</button>
   </div>
+
+  <div class="plan-card" id="plan-punchpass" style="display:none">
+    <div class="plan-card__name">Punch Pass</div>
+    <div class="plan-card__price" id="pp-price">&euro;150 <span>one-time</span></div>
+    <div class="plan-card__credits" id="pp-credits">10 credits</div>
+    <ul class="plan-card__features">
+      <li>Buy credits once &mdash; no subscription</li>
+      <li>Everyday &amp; Social Sauna = 1 credit</li>
+      <li>Ambient &amp; Aufguss = 1.5 credits</li>
+      <li>Credits valid for 1 year</li>
+      <li>Skip the payment step when booking</li>
+    </ul>
+    <button class="btn btn--outline" id="btn-punchpass">Buy punch pass</button>
+  </div>
 </div>
 
 <!-- ===== FAQ ===== -->
@@ -337,6 +351,33 @@
     document.getElementById('btn-everyday').onclick = function() { subscribe(everydayPlanId); };
     document.getElementById('btn-unlimited').onclick = function() { subscribe(unlimitedPlanId); };
   });
+
+  fetch('/api/punch-passes/bundles').then(function(r) { return r.json(); }).then(function(bundles) {
+    var bundle = bundles && bundles[0];
+    if (!bundle) return;
+    var euros = bundle.price_cents / 100;
+    var priceStr = (euros % 1 === 0) ? String(euros) : euros.toFixed(2).replace('.', ',');
+    document.getElementById('pp-price').innerHTML = '&euro;' + priceStr + ' <span>one-time</span>';
+    document.getElementById('pp-credits').textContent = bundle.credits + ' credits';
+    document.getElementById('plan-punchpass').style.display = '';
+    document.getElementById('btn-punchpass').onclick = function() { buyPunchPass(bundle.id); };
+  }).catch(function() {});
+
+  function buyPunchPass(bundleId) {
+    var token = localStorage.getItem('soki_token');
+    if (!token) {
+      window.location.href = '/login?redirect=/membership';
+      return;
+    }
+    fetch('/api/punch-passes/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ bundle_id: bundleId }),
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.error) { alert(res.error); return; }
+      window.location.href = res.url;
+    });
+  }
 
   window.subscribe = function(planId) {
     if (!planId) return;

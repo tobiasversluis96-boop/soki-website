@@ -245,10 +245,10 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
   await queries.cancelBooking(req.params.id);
 
-  // Membercredits terug (zelfde beleid als admin-annulering)
+  // Membercredits terug (zelfde beleid als admin-annulering; naar strippenkaart óf abonnement)
   let creditsRestored = 0;
   if (booking.credits_used > 0) {
-    const restored = await queries.restoreCredits(booking.user_id, booking.credits_used);
+    const restored = await queries.restoreCreditsForBooking(booking);
     if (restored) {
       creditsRestored = booking.credits_used;
       console.log(`✓ ${booking.credits_used} credits teruggestort voor user ${booking.user_id}`);
@@ -333,9 +333,11 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
 
-  // Verify subscription
+  // Verify subscription or punch pass
   const sub = await queries.getActiveSubscription(req.user.userId);
-  if (!sub) return res.status(403).json({ error: 'No active subscription' });
+  const activePasses = await queries.getActivePunchPasses(req.user.userId);
+  if (!sub && activePasses.length === 0)
+    return res.status(403).json({ error: 'No active subscription or punch pass' });
 
   // Server determines the credit cost — never trust the client for this
   const { CREDIT_COST } = require('./subscriptions');
@@ -343,28 +345,41 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
     return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
-  // Credits gelden per persoon, niet per boeking
-  const perPerson = sub.credits_per_month === null ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+  // Credits gelden per persoon, niet per boeking (unlimited membership = 0 credits)
+  const perPerson = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
   const creditsToUse = perPerson * (booking.group_size || 1);
 
   // Deduct credits + confirm booking in a single transaction
   const pool = getPool();
   const client = await pool.connect();
+  let punchPassId = null;
   try {
     await client.query('BEGIN');
     if (creditsToUse > 0) {
+      // Eerst het abonnement proberen, anders één strippenkaart (vroegst-verlopend) met genoeg saldo
       const { rows } = await client.query(
         'UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN (\'active\', \'past_due\') AND credits_remaining >= $1 RETURNING *',
         [creditsToUse, req.user.userId]
       );
       if (!rows[0]) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Insufficient credits' });
+        const pp = await client.query(`
+          UPDATE punch_passes SET credits_remaining = credits_remaining - $1
+          WHERE id = (
+            SELECT id FROM punch_passes
+            WHERE user_id = $2 AND credits_remaining >= $1 AND expires_at > NOW()
+            ORDER BY expires_at LIMIT 1
+          ) RETURNING id
+        `, [creditsToUse, req.user.userId]);
+        if (!pp.rows[0]) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Insufficient credits' });
+        }
+        punchPassId = pp.rows[0].id;
       }
     }
     await client.query(
-      "UPDATE bookings SET status = 'confirmed', credits_used = $2 WHERE id = $1",
-      [bookingId, creditsToUse]
+      "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3 WHERE id = $1",
+      [bookingId, creditsToUse, punchPassId]
     );
     await client.query('COMMIT');
   } catch (err) {

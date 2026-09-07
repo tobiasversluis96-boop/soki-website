@@ -170,7 +170,7 @@
     if (name === 'generate')  loadGenerate();
     if (name === 'messages')  loadMessages();
     if (name === 'walkin')        resetWalkin();
-    if (name === 'subscriptions') loadSubscriptions();
+    if (name === 'subscriptions') { loadSubscriptions(); loadPunchBundles(); }
     if (name === 'giftcards')     loadGiftCards();
     if (name === 'staff') {
       // Admin sees full staff management; staff only sees own password change
@@ -1451,6 +1451,73 @@
     });
     listEl.querySelectorAll('[data-sub-resume]').forEach(btn => {
       btn.addEventListener('click', () => resumeSubscription(btn.dataset.subResume));
+    });
+  }
+
+  // ─── Punch pass bundles (strippenkaart) ───────────────────────────────────
+  async function loadPunchBundles() {
+    const el = document.getElementById('punch-bundles-editor');
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Laden…</div>';
+
+    let bundles;
+    try {
+      bundles = await api('/punch-bundles');
+    } catch { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Kon strippenkaarten niet laden.</div>'; return; }
+
+    if (!Array.isArray(bundles) || !bundles.length) {
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Geen strippenkaart-bundels gevonden.</div>';
+      return;
+    }
+
+    el.innerHTML = bundles.map(b => `
+      <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;" data-bundle-row="${b.id}">
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Naam</label>
+          <div style="font-weight:600;padding:8px 0;">${escapeHtml(b.name)}</div>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Credits</label>
+          <input type="number" step="0.5" min="0.5" data-pb-credits value="${Number(b.credits)}" style="width:90px;padding:8px 10px;border:1px solid rgba(0,0,0,.15);border-radius:6px;font-size:13px;" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Prijs (&euro;)</label>
+          <input type="number" step="0.01" min="0.01" data-pb-price value="${(b.price_cents / 100).toFixed(2)}" style="width:110px;padding:8px 10px;border:1px solid rgba(0,0,0,.15);border-radius:6px;font-size:13px;" />
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:8px 0;cursor:pointer;">
+          <input type="checkbox" data-pb-active ${b.is_active ? 'checked' : ''} /> Te koop op de site
+        </label>
+        <button class="btn btn--primary" data-pb-save style="font-size:13px;padding:8px 16px;">Opslaan</button>
+        <span data-pb-msg style="font-size:12px;"></span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+        De prijs geldt direct voor nieuwe aankopen (handig voor tijdelijke acties). Al verkochte kaarten veranderen niet mee.
+      </div>`).join('');
+
+    el.querySelectorAll('[data-bundle-row]').forEach(row => {
+      row.querySelector('[data-pb-save]').addEventListener('click', async () => {
+        const msg = row.querySelector('[data-pb-msg]');
+        const credits = parseFloat(row.querySelector('[data-pb-credits]').value);
+        const priceEur = parseFloat(String(row.querySelector('[data-pb-price]').value).replace(',', '.'));
+        const isActive = row.querySelector('[data-pb-active]').checked;
+        if (!(credits > 0) || !(priceEur > 0)) {
+          msg.textContent = 'Vul geldige credits en een prijs in.';
+          msg.style.color = '#C62828';
+          return;
+        }
+        try {
+          const res = await api(`/punch-bundles/${row.dataset.bundleRow}`, {
+            method: 'PUT',
+            body: JSON.stringify({ credits, price_cents: Math.round(priceEur * 100), is_active: isActive }),
+          });
+          if (res && res.error) throw new Error(res.error);
+          msg.textContent = 'Opgeslagen ✓';
+          msg.style.color = '#2E7D32';
+        } catch (e) {
+          msg.textContent = e.message || 'Opslaan mislukt';
+          msg.style.color = '#C62828';
+        }
+      });
     });
   }
 

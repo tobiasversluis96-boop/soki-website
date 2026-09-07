@@ -195,6 +195,16 @@ async function seedSubscriptionPlans() {
   console.log('✓ Subscription plans seeded');
 }
 
+async function seedPunchPassBundles() {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM punch_pass_bundles');
+  if (rows[0].n > 0) return;
+  await pool.query(
+    'INSERT INTO punch_pass_bundles (name, credits, price_cents) VALUES ($1, $2, $3)',
+    ['Punch Pass', 10, 15000]
+  );
+  console.log('✓ Punch pass bundle seeded');
+}
+
 // Eenmalige migratie: Unlimited ging van €89 naar €99. Stripe-prijzen zijn
 // onveranderlijk, dus we maken een nieuwe prijs aan op hetzelfde product en
 // koppelen die aan het plan. Draait alleen zolang de oude prijs nog actief is.
@@ -395,6 +405,28 @@ async function initializeDB() {
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS pause_resumes_at TIMESTAMPTZ');
 
+  // Strippenkaart: losse creditbundels (eenmalige aankoop, geen abonnement)
+  await pool.query(`CREATE TABLE IF NOT EXISTS punch_pass_bundles (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT NOT NULL,
+    credits     NUMERIC(6,1) NOT NULL,
+    price_cents INTEGER NOT NULL,
+    is_active   BOOLEAN DEFAULT TRUE,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS punch_passes (
+    id                       SERIAL PRIMARY KEY,
+    user_id                  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bundle_name              TEXT NOT NULL,
+    credits                  NUMERIC(6,1) NOT NULL,
+    credits_remaining        NUMERIC(6,1) NOT NULL,
+    price_cents              INTEGER NOT NULL,
+    stripe_payment_intent_id TEXT UNIQUE,
+    expires_at               TIMESTAMPTZ NOT NULL,
+    created_at               TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS punch_pass_id INTEGER REFERENCES punch_passes(id)');
+
   await pool.query(`CREATE TABLE IF NOT EXISTS staff_users (
     id            SERIAL      PRIMARY KEY,
     name          TEXT        NOT NULL,
@@ -442,6 +474,7 @@ async function initializeDB() {
   await seedTimeSlots();
   await seedAdmin();
   await seedSubscriptionPlans();
+  await seedPunchPassBundles();
   await migrateUnlimitedPrice();
   await migratePlanNames();
   await migrateWeeklyPrice();
@@ -1132,6 +1165,91 @@ const queries = {
   getSubscriptionByStripeId: async (stripeSubId) => {
     const { rows } = await pool.query('SELECT * FROM subscriptions WHERE stripe_subscription_id = $1', [stripeSubId]);
     return rows[0] || null;
+  },
+
+  // Punch passes (strippenkaart)
+  getPunchPassBundles: async () => {
+    const { rows } = await pool.query('SELECT * FROM punch_pass_bundles WHERE is_active = TRUE ORDER BY price_cents');
+    return rows;
+  },
+
+  getAllPunchPassBundles: async () => {
+    const { rows } = await pool.query('SELECT * FROM punch_pass_bundles ORDER BY price_cents');
+    return rows;
+  },
+
+  getPunchPassBundleById: async (id) => {
+    const { rows } = await pool.query('SELECT * FROM punch_pass_bundles WHERE id = $1', [id]);
+    return rows[0] || null;
+  },
+
+  updatePunchPassBundle: async (id, { name, credits, price_cents, is_active }) => {
+    const { rows } = await pool.query(`
+      UPDATE punch_pass_bundles
+      SET name = COALESCE($2, name),
+          credits = COALESCE($3, credits),
+          price_cents = COALESCE($4, price_cents),
+          is_active = COALESCE($5, is_active)
+      WHERE id = $1 RETURNING *
+    `, [id, name, credits, price_cents, is_active]);
+    return rows[0] || null;
+  },
+
+  createPunchPass: async (userId, { bundle_name, credits, price_cents }, paymentIntentId) => {
+    const { rows } = await pool.query(`
+      INSERT INTO punch_passes (user_id, bundle_name, credits, credits_remaining, price_cents, stripe_payment_intent_id, expires_at)
+      VALUES ($1, $2, $3, $3, $4, $5, NOW() + interval '1 year')
+      ON CONFLICT (stripe_payment_intent_id) DO NOTHING
+      RETURNING *
+    `, [userId, bundle_name, credits, price_cents, paymentIntentId]);
+    return rows[0] || null;
+  },
+
+  getActivePunchPasses: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT * FROM punch_passes
+      WHERE user_id = $1 AND credits_remaining > 0 AND expires_at > NOW()
+      ORDER BY expires_at
+    `, [userId]);
+    return rows;
+  },
+
+  getUserPunchPasses: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT * FROM punch_passes WHERE user_id = $1 ORDER BY created_at DESC
+    `, [userId]);
+    return rows;
+  },
+
+  deductPunchPassCredits: async (userId, creditsToUse) => {
+    const { rows } = await pool.query(`
+      UPDATE punch_passes
+      SET credits_remaining = credits_remaining - $2
+      WHERE id = (
+        SELECT id FROM punch_passes
+        WHERE user_id = $1 AND credits_remaining >= $2 AND expires_at > NOW()
+        ORDER BY expires_at LIMIT 1
+      )
+      RETURNING *
+    `, [userId, creditsToUse]);
+    return rows[0] || null;
+  },
+
+  restorePunchPassCredits: async (punchPassId, credits) => {
+    const { rows } = await pool.query(`
+      UPDATE punch_passes
+      SET credits_remaining = LEAST(credits_remaining + $2, credits)
+      WHERE id = $1 RETURNING *
+    `, [punchPassId, credits]);
+    return rows[0] || null;
+  },
+
+  restoreCreditsForBooking: async (booking) => {
+    if (!booking || !(booking.credits_used > 0)) return null;
+    if (booking.punch_pass_id) {
+      return queries.restorePunchPassCredits(booking.punch_pass_id, booking.credits_used);
+    }
+    return queries.restoreCredits(booking.user_id, booking.credits_used);
   },
 
   getAllSubscriptions: async () => {

@@ -66,6 +66,43 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           break;
         }
 
+        // Punch pass (strippenkaart) purchase: create the pass once payment is in
+        if (session.mode === 'payment' && session.metadata && session.metadata.type === 'punch_pass') {
+          if (session.payment_status !== 'paid') break;
+          const ppUserId = parseInt(session.metadata.user_id);
+          const credits  = parseFloat(session.metadata.credits);
+          const priceCents = parseInt(session.metadata.price_cents);
+          if (!ppUserId || !(credits > 0)) break;
+
+          // Idempotent: UNIQUE op stripe_payment_intent_id, ON CONFLICT DO NOTHING
+          const pass = await queries.createPunchPass(ppUserId, {
+            bundle_name: session.metadata.bundle_name || 'Punch Pass',
+            credits,
+            price_cents: priceCents || 0,
+          }, session.payment_intent);
+
+          if (pass) {
+            console.log(`✓ Punch pass created for user ${ppUserId} (${credits} credits)`);
+            try {
+              const user = await queries.getUserById(ppUserId);
+              if (user) {
+                const { sendPunchPassEmail } = require('../utils/email');
+                await sendPunchPassEmail({
+                  customer_name:  user.name,
+                  customer_email: user.email,
+                  bundle_name:    pass.bundle_name,
+                  credits:        Number(pass.credits),
+                  price_cents:    pass.price_cents,
+                  expires_at:     pass.expires_at,
+                });
+              }
+            } catch (e) {
+              console.error('Punch pass email failed (non-fatal):', e.message);
+            }
+          }
+          break;
+        }
+
         if (session.mode !== 'subscription') break;
 
         const userId = parseInt(session.metadata.user_id);

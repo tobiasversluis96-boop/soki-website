@@ -211,7 +211,7 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
 
   let creditsRestored = 0;
   if (Number(booking.credits_used) > 0) {
-    const restored = await queries.restoreCredits(booking.user_id, booking.credits_used);
+    const restored = await queries.restoreCreditsForBooking(booking);
     if (restored) creditsRestored = Number(booking.credits_used);
   }
 
@@ -337,7 +337,7 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
     await queries.cancelBooking(b.id);
     let creditsRestored = 0;
     if (Number(b.credits_used) > 0) {
-      const restored = await queries.restoreCredits(b.user_id, b.credits_used);
+      const restored = await queries.restoreCreditsForBooking(b);
       if (restored) creditsRestored = Number(b.credits_used);
     }
     const giftRestored = await queries.restoreGiftCardForBooking(b.id, 100);
@@ -767,6 +767,34 @@ router.get('/subscriptions', requireAdmin, async (req, res) => {
 router.get('/gift-cards', requireAdmin, async (req, res) => {
   const cards = await queries.getAllGiftCards();
   res.json(cards);
+});
+
+// GET /api/admin/punch-bundles — punch pass bundles (incl. inactive) for the editor
+router.get('/punch-bundles', requireAdmin, async (req, res) => {
+  const bundles = await queries.getAllPunchPassBundles();
+  res.json(bundles);
+});
+
+// PUT /api/admin/punch-bundles/:id  { credits?, price_cents?, is_active? }
+router.put('/punch-bundles/:id', requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid bundle id' });
+
+  const credits    = req.body.credits !== undefined ? parseFloat(req.body.credits) : null;
+  const priceCents = req.body.price_cents !== undefined ? parseInt(req.body.price_cents) : null;
+  const isActive   = typeof req.body.is_active === 'boolean' ? req.body.is_active : null;
+  if (credits !== null && !(credits > 0))
+    return res.status(400).json({ error: 'Credits moeten boven 0 zijn.' });
+  if (priceCents !== null && !(priceCents > 0))
+    return res.status(400).json({ error: 'Prijs moet boven €0 zijn.' });
+
+  const updated = await queries.updatePunchPassBundle(id, {
+    name: null, credits, price_cents: priceCents, is_active: isActive,
+  });
+  if (!updated) return res.status(404).json({ error: 'Bundle not found' });
+
+  queries.auditLog({ ...actorOf(req), action: 'punch_bundle_updated', target: `punch_bundle:${id}`, detail: `${updated.credits} credits, ${updated.price_cents} cents, active=${updated.is_active}`, ip: req.ip });
+  res.json(updated);
 });
 
 // Helper: build pause_collection payload for Stripe

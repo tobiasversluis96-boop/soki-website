@@ -200,6 +200,7 @@
       });
 
       loadSubscription();
+      loadPunchPasses();
       loadWaitlist();
       // loadMilestones();  // Milestones tijdelijk uit — sectie staat verborgen in account.html
       renderMessages();
@@ -437,6 +438,39 @@
           cancelHtml +
           '</div>';
       });
+  }
+
+  // ─── Punch passes (strippenkaart) ──────────────────────────────────────────
+
+  function loadPunchPasses() {
+    var el = document.getElementById('punchpass-section');
+    if (!el) return;
+    fetch('/api/punch-passes/my', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) { return r.json(); })
+      .then(function(passes) {
+        var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
+        var justBought = new URLSearchParams(location.search).get('pp') === 'success';
+        var active = (passes || []).filter(function(p) {
+          return Number(p.credits_remaining) > 0 && new Date(p.expires_at) > new Date();
+        });
+        if (!active.length) {
+          // Betaling kan nog onderweg zijn (webhook): korte melding tonen na terugkeer uit checkout
+          el.innerHTML = justBought
+            ? '<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:16px;padding:20px;margin-bottom:12px;font-size:14px;color:#2E7D32;">' +
+              (isNL ? 'Bedankt voor je aankoop! Je credits worden binnen enkele minuten bijgeschreven — ververs de pagina zo nog even.' : 'Thanks for your purchase! Your credits will appear within a few minutes — refresh the page shortly.') +
+              '</div>'
+            : '';
+          return;
+        }
+        el.innerHTML = active.map(function(p) {
+          return '<div style="background:#fff;border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;margin-bottom:12px;">' +
+            '<span style="background:var(--brown,#4A1C0C);color:#fff;border-radius:100px;padding:3px 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + esc(p.bundle_name) + '</span>' +
+            '<div style="margin-top:12px;font-size:15px;"><span style="font-weight:700;font-size:18px;">' + Number(p.credits_remaining) + '</span> ' + (isNL ? 'credits over' : 'credits remaining') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted,#8C7B6B);margin-top:4px;">' + (isNL ? 'Geldig tot ' : 'Valid until ') + new Date(p.expires_at).toLocaleDateString(locale()) + '</div>' +
+            '</div>';
+        }).join('');
+      })
+      .catch(function() {});
   }
 
   window.cancelSubscription = function() {
