@@ -276,9 +276,15 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
   if (!Array.isArray(slots) || !slots.length)
     return res.status(400).json({ error: 'slots array is required' });
 
-  const results = { created: 0, skipped: 0, errors: [] };
+  const results = { created: 0, skipped: 0, errors: [], conflicts: [] };
   for (const s of slots) {
     try {
+      const overlap = await queries.findOverlappingSlot(s.date, s.start_time, s.end_time);
+      if (overlap) {
+        results.skipped++;
+        results.conflicts.push(`${s.date}: overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}`);
+        continue;
+      }
       await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null);
       results.created++;
     } catch (err) {

@@ -1108,7 +1108,48 @@
 
   const DAY_NL = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
 
-  document.getElementById('gen-preview-btn').addEventListener('click', () => {
+  // Zelfde duurcontrole als het losse slot-formulier, maar dan voor de generator
+  let genDurationOverride = false;
+  function genDurationMismatch() {
+    const type  = sessionTypes.find(t => t.id === +document.getElementById('gen-session-type').value);
+    const start = document.getElementById('gen-start').value;
+    const end   = document.getElementById('gen-end').value;
+    if (!type || !type.duration_min || !start || !end) return null;
+    const mins = (parseInt(end.slice(0, 2), 10) * 60 + parseInt(end.slice(3, 5), 10))
+               - (parseInt(start.slice(0, 2), 10) * 60 + parseInt(start.slice(3, 5), 10));
+    if (mins <= 0 || mins === type.duration_min) return null;
+    return { mins, type };
+  }
+  function updateGenDurationWarning() {
+    const warn = document.getElementById('gen-duration-warning');
+    const mismatch = genDurationMismatch();
+    if (!mismatch || genDurationOverride) { warn.style.display = 'none'; return; }
+    document.getElementById('gen-duration-warning-text').textContent =
+      '⚠️ Deze tijden geven een duur van ' + mismatch.mins + ' minuten, maar ' +
+      mismatch.type.name + ' hoort ' + mismatch.type.duration_min + ' minuten te duren.';
+    warn.style.display = 'block';
+  }
+  ['gen-session-type', 'gen-start', 'gen-end'].forEach(fieldId => {
+    document.getElementById(fieldId).addEventListener('change', () => {
+      genDurationOverride = false;
+      updateGenDurationWarning();
+    });
+  });
+  document.getElementById('gen-duration-dismiss').addEventListener('click', () => {
+    genDurationOverride = true;
+    document.getElementById('gen-duration-warning').style.display = 'none';
+  });
+
+  function findGenOverlap(s, existing) {
+    return existing.find(e =>
+      String(e.date).slice(0, 10) === s.date &&
+      !e.is_cancelled &&
+      String(e.start_time).slice(0, 5) < s.end_time &&
+      String(e.end_time).slice(0, 5) > s.start_time
+    );
+  }
+
+  document.getElementById('gen-preview-btn').addEventListener('click', async () => {
     const slots = buildSlotList();
     const resultEl = document.getElementById('gen-result');
     resultEl.textContent = '';
@@ -1121,20 +1162,39 @@
       return;
     }
 
+    updateGenDurationWarning();
+
+    // Bestaande slots in de periode ophalen om overlap te markeren
+    let existing = [];
+    try {
+      existing = await api('/slots?from=' + document.getElementById('gen-from').value +
+                           '&to=' + document.getElementById('gen-to').value);
+      if (!Array.isArray(existing)) existing = [];
+    } catch { existing = []; }
+
+    let overlapCount = 0;
     const typeName = document.getElementById('gen-session-type').selectedOptions[0].text;
     const freeBadge = document.getElementById('gen-free').checked
       ? ' <span style="background:#2E7D32;color:#fff;font-size:10px;padding:1px 6px;border-radius:100px;margin-left:6px;">GRATIS</span>'
       : '';
-    document.getElementById('gen-preview-label').innerHTML = `${slots.length} slots om aan te maken${freeBadge}`;
     document.getElementById('gen-preview-body').innerHTML = slots.map(s => {
       const d = new Date(s.date + 'T12:00:00');
-      return `<tr>
+      const overlap = findGenOverlap(s, existing);
+      if (overlap) overlapCount++;
+      const overlapNote = overlap
+        ? `<div style="color:#C62828;font-size:11px;font-weight:600;">⚠️ overlapt met ${escapeHtml(overlap.session_name)} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)} en wordt overgeslagen</div>`
+        : '';
+      return `<tr${overlap ? ' style="background:#FFF5F5"' : ''}>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.date}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${DAY_NL[d.getDay()]}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}${overlapNote}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
       </tr>`;
     }).join('');
+    const overlapBadge = overlapCount
+      ? ` <span style="background:#C62828;color:#fff;font-size:10px;padding:1px 6px;border-radius:100px;margin-left:6px;">${overlapCount} MET OVERLAP</span>`
+      : '';
+    document.getElementById('gen-preview-label').innerHTML = `${slots.length} slots om aan te maken${freeBadge}${overlapBadge}`;
     document.getElementById('gen-preview').style.display = 'block';
   });
 
@@ -1143,6 +1203,13 @@
     const btn     = document.getElementById('gen-create-btn');
     const resultEl = document.getElementById('gen-result');
     if (!slots?.length) return;
+
+    if (genDurationMismatch() && !genDurationOverride) {
+      updateGenDurationWarning();
+      resultEl.style.color = '#C62828';
+      resultEl.textContent = 'De duur wijkt af van de standaard. Pas de tijden aan, of bevestig hierboven dat het een uitzondering is.';
+      return;
+    }
 
     btn.disabled = true;
     btn.textContent = 'Aanmaken…';
@@ -1157,8 +1224,13 @@
         resultEl.style.color = '#C62828';
         resultEl.textContent = res.error;
       } else {
-        resultEl.style.color = '#2E7D32';
-        resultEl.textContent = `✓ ${res.created} slots aangemaakt${res.skipped ? `, ${res.skipped} overgeslagen` : ''}.`;
+        resultEl.style.color = res.skipped ? '#B26A00' : '#2E7D32';
+        let msg = `✓ ${res.created} slots aangemaakt${res.skipped ? `, ${res.skipped} overgeslagen wegens overlap` : ''}.`;
+        if (res.conflicts?.length) {
+          const shown = res.conflicts.slice(0, 5).join(' · ');
+          msg += ` (${shown}${res.conflicts.length > 5 ? ` en ${res.conflicts.length - 5} meer` : ''})`;
+        }
+        resultEl.textContent = msg;
         document.getElementById('gen-preview').style.display = 'none';
       }
     } catch {

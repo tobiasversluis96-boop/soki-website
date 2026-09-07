@@ -883,6 +883,19 @@ const queries = {
     return rows;
   },
 
+  findOverlappingSlot: async (date, startTime, endTime) => {
+    const { rows } = await pool.query(`
+      SELECT ts.id, ts.start_time, ts.end_time, st.name AS session_name
+      FROM time_slots ts
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE ts.date = $1 AND ts.is_cancelled = FALSE
+        AND ts.start_time < $3 AND ts.end_time > $2
+      ORDER BY ts.start_time
+      LIMIT 1
+    `, [date, startTime, endTime]);
+    return rows[0] || null;
+  },
+
   createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate, artist) => {
     const price = (priceCents === null || priceCents === undefined) ? null : parseInt(priceCents);
     const { rows } = await pool.query(`
