@@ -206,10 +206,10 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   if (booking.status === 'cancelled')
     return res.status(400).json({ error: 'Booking is already cancelled' });
 
-  // Tiered cancellation policy:
+  // Tiered cancellation policy (cancelling is always allowed before the session):
   //   > 48h before → 100% refund
   //   24-48h before → 50% refund (credits: always fully restored)
-  //   < 24h before → money bookings blocked; credit bookings may cancel but forfeit credits
+  //   < 24h before → no refund; credits forfeited
   // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' —
   // normalise both before combining, otherwise this yields Invalid Date/NaN.
   const dateStr = booking.date instanceof Date
@@ -220,15 +220,11 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const hoursUntil = (sessionDatetime - Date.now()) / 36e5;
   if (Number.isNaN(hoursUntil))
     return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
-  const isCreditBooking = booking.credits_used > 0;
-  if (hoursUntil < 24 && !isCreditBooking)
-    return res.status(400).json({ error: 'Cancellations must be made at least 24 hours in advance', hours_until: Math.round(hoursUntil) });
-
-  const refundPct = hoursUntil >= 48 ? 100 : 50;
+  const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
 
   // Refund via Stripe if payment was confirmed
   let refundAmountCents = 0;
-  if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
+  if (refundPct > 0 && booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
     refundAmountCents = refundPct === 100
       ? booking.total_cents
       : Math.floor(booking.total_cents * refundPct / 100);

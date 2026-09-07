@@ -190,9 +190,8 @@
           ? upcoming.map(function(b) {
               var sessionDatetime = new Date(b.date + 'T' + b.start_time + ':00');
               var hoursUntil = (sessionDatetime - Date.now()) / 36e5;
-              // Credit-boekingen mogen ook binnen 24u annuleren (credits vervallen dan)
-              var canCancel = hoursUntil >= 24 || (Number(b.credits_used) > 0 && hoursUntil > 0);
-              return bookingCard(b, canCancel);
+              // Annuleren kan altijd vóór de sessie; binnen 24u zonder refund/credits terug
+              return bookingCard(b, hoursUntil > 0);
             }).join('')
           : emptyState(t('account.empty.upcoming'), true);
 
@@ -589,7 +588,7 @@
     if (body && date && startTime) {
       var sessionDt = new Date(date + 'T' + startTime + ':00');
       var hoursUntil = (sessionDt - Date.now()) / 36e5;
-      var refundPct = hoursUntil >= 48 ? 100 : 50;
+      var refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
       var refundAmt = totalCents > 0
         ? Math.floor(totalCents * refundPct / 100)
         : 0;
@@ -602,6 +601,9 @@
           refundLine = isNL ? 'Je credits worden teruggestort.'
                             : 'Your credits will be restored.';
         }
+      } else if (totalCents > 0 && refundPct === 0) {
+        refundLine = isNL ? 'Deze sessie is binnen 24 uur. Je kunt annuleren, maar je krijgt geen geld terug.'
+                          : 'This session is within 24 hours. You can cancel, but you will not receive a refund.';
       } else if (totalCents === 0) {
         refundLine = isNL ? 'Deze boeking was gratis, dus er is niets terug te betalen.'
                           : 'This booking was free, so there is nothing to refund.';
