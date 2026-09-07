@@ -208,8 +208,8 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
   // Tiered cancellation policy:
   //   > 48h before → 100% refund
-  //   24-48h before → 50% refund
-  //   < 24h before → cancellation blocked
+  //   24-48h before → 50% refund (credits: always fully restored)
+  //   < 24h before → money bookings blocked; credit bookings may cancel but forfeit credits
   // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' —
   // normalise both before combining, otherwise this yields Invalid Date/NaN.
   const dateStr = booking.date instanceof Date
@@ -220,7 +220,8 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const hoursUntil = (sessionDatetime - Date.now()) / 36e5;
   if (Number.isNaN(hoursUntil))
     return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
-  if (hoursUntil < 24)
+  const isCreditBooking = booking.credits_used > 0;
+  if (hoursUntil < 24 && !isCreditBooking)
     return res.status(400).json({ error: 'Cancellations must be made at least 24 hours in advance', hours_until: Math.round(hoursUntil) });
 
   const refundPct = hoursUntil >= 48 ? 100 : 50;
@@ -245,9 +246,9 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
   await queries.cancelBooking(req.params.id);
 
-  // Membercredits terug (zelfde beleid als admin-annulering; naar strippenkaart óf abonnement)
+  // Membercredits terug (naar strippenkaart óf abonnement) — maar binnen 24u vóór de sessie ben je ze kwijt
   let creditsRestored = 0;
-  if (booking.credits_used > 0) {
+  if (booking.credits_used > 0 && hoursUntil >= 24) {
     const restored = await queries.restoreCreditsForBooking(booking);
     if (restored) {
       creditsRestored = booking.credits_used;
@@ -321,6 +322,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     refunded: booking.stripe_payment_status === 'succeeded',
     refund_pct: refundPct,
     refund_amount_cents: refundAmountCents,
+    credits_restored: creditsRestored,
   });
 });
 

@@ -285,6 +285,16 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         console.log(`✓ Subscription expired: ${stripeSub.id}`);
         break;
       }
+
+      // Note: 'charge.refunded' must be enabled in Stripe Dashboard webhook settings
+      case 'charge.refunded': {
+        const charge = event.data.object;
+        // Alleen bij volledige refund van een punch pass het tegoed intrekken
+        if (!charge.payment_intent || !charge.refunded) break;
+        const revoked = await queries.revokePunchPassByPaymentIntent(charge.payment_intent);
+        if (revoked) console.log(`✓ Punch pass #${revoked.id} ingetrokken na volledige refund (intent ${charge.payment_intent})`);
+        break;
+      }
     }
   } catch (err) {
     // 500 zodat Stripe het event opnieuw aanbiedt; handlers zijn idempotent

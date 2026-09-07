@@ -58,7 +58,7 @@
 
   function bookingCard(b, canCancel, isPast) {
     var cancelBtn = canCancel
-      ? '<button class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="cancelBooking(' + b.id + ',\'' + b.date + '\',\'' + b.start_time + '\',' + b.total_cents + ')">' + t('booking.cancel') + '</button>'
+      ? '<button class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="cancelBooking(' + b.id + ',\'' + b.date + '\',\'' + b.start_time + '\',' + b.total_cents + ',' + (Number(b.credits_used) || 0) + ')">' + t('booking.cancel') + '</button>'
       : '';
     var qrBtn = (!isPast && b.status === 'confirmed')
       ? '<button class="btn btn--sm" style="background:rgba(217,77,26,0.08);color:#D94D1A;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;" onclick="showQR(' + b.id + ')">QR</button>'
@@ -85,7 +85,7 @@
   }
 
   function emptyState(msg, showCta) {
-    return '<div style="text-align:center;padding:var(--space-xl) var(--space-md);color:var(--text-muted);">' +
+    return '<div style="padding:var(--space-lg) 0;color:var(--text-muted);">' +
       '<p style="margin-bottom:1.5rem;">' + msg + '</p>' +
       (showCta ? '<a href="/booking" class="btn btn--primary">' + t('account.empty.book') + '</a>' : '') +
       '</div>';
@@ -190,7 +190,9 @@
           ? upcoming.map(function(b) {
               var sessionDatetime = new Date(b.date + 'T' + b.start_time + ':00');
               var hoursUntil = (sessionDatetime - Date.now()) / 36e5;
-              return bookingCard(b, hoursUntil >= 24);
+              // Credit-boekingen mogen ook binnen 24u annuleren (credits vervallen dan)
+              var canCancel = hoursUntil >= 24 || (Number(b.credits_used) > 0 && hoursUntil > 0);
+              return bookingCard(b, canCancel);
             }).join('')
           : emptyState(t('account.empty.upcoming'), true);
 
@@ -580,7 +582,7 @@
 
   // Cancel booking
   var cancelConfirmId = null;
-  window.cancelBooking = function(id, date, startTime, totalCents) {
+  window.cancelBooking = function(id, date, startTime, totalCents, creditsUsed) {
     cancelConfirmId = id;
     var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
     var body = document.getElementById('cancel-modal-body');
@@ -592,7 +594,15 @@
         ? Math.floor(totalCents * refundPct / 100)
         : 0;
       var refundLine;
-      if (totalCents === 0) {
+      if (creditsUsed > 0) {
+        if (hoursUntil < 24) {
+          refundLine = isNL ? 'Deze sessie is binnen 24 uur. Je kunt annuleren, maar je credits krijg je niet terug.'
+                            : 'This session is within 24 hours. You can cancel, but your credits will not be returned.';
+        } else {
+          refundLine = isNL ? 'Je credits worden teruggestort.'
+                            : 'Your credits will be restored.';
+        }
+      } else if (totalCents === 0) {
         refundLine = isNL ? 'Deze boeking was gratis, dus er is niets terug te betalen.'
                           : 'This booking was free, so there is nothing to refund.';
       } else if (refundPct === 100) {
@@ -637,6 +647,8 @@
         msg = isNL
           ? ('Boeking geannuleerd. ' + eur(res.refund_amount_cents) + ' wordt terugbetaald (' + res.refund_pct + '%).')
           : ('Booking cancelled. ' + eur(res.refund_amount_cents) + ' will be refunded (' + res.refund_pct + '%).');
+      } else if (res.credits_restored > 0) {
+        msg = isNL ? 'Boeking geannuleerd. Je credits zijn teruggestort.' : 'Booking cancelled. Your credits have been restored.';
       } else {
         msg = isNL ? 'Boeking geannuleerd.' : 'Booking cancelled.';
       }

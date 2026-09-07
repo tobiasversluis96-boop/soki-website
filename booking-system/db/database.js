@@ -647,7 +647,7 @@ const queries = {
 
   getUserBookings: async (userId) => {
     const { rows } = await pool.query(`
-      SELECT b.id, b.group_size, b.status, b.total_cents, b.created_at,
+      SELECT b.id, b.group_size, b.status, b.total_cents, b.credits_used, b.created_at,
              ts.date, ts.start_time, ts.end_time,
              st.name AS session_name
       FROM bookings b
@@ -1241,6 +1241,15 @@ const queries = {
       SET credits_remaining = LEAST(credits_remaining + $2, credits)
       WHERE id = $1 RETURNING *
     `, [punchPassId, credits]);
+    return rows[0] || null;
+  },
+
+  revokePunchPassByPaymentIntent: async (paymentIntentId) => {
+    const { rows } = await pool.query(`
+      UPDATE punch_passes
+      SET credits_remaining = 0
+      WHERE stripe_payment_intent_id = $1 RETURNING *
+    `, [paymentIntentId]);
     return rows[0] || null;
   },
 
