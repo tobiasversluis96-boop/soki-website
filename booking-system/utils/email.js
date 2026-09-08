@@ -53,6 +53,7 @@ async function sendBookingConfirmation(booking) {
       GROUP_SIZE:     booking.group_size,
       TOTAL:          `€${(booking.total_cents / 100).toFixed(2)}`,
       CHECKIN_URL:    `${process.env.BASE_URL || 'http://localhost:3001'}/ticket?bid=${booking.id}&sig=${generateCheckinSig(booking.id)}`,
+      MANAGE_URL:     `${process.env.BASE_URL || 'http://localhost:3001'}/account`,
     }
   );
 }
