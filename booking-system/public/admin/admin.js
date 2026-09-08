@@ -956,6 +956,27 @@
       } catch { alert('Verwijderen mislukt.'); }
     };
 
+    // Wire free-credits button (giveaways etc. — creates a €0 punch pass)
+    document.getElementById('customer-modal-credits-btn').onclick = async function () {
+      const input = prompt('Hoeveel gratis credits wil je ' + c.name + ' geven?\n\nEveryday/Social = 1 credit, Ambient/Aufguss = 1,5 credits per persoon. Credits zijn 1 jaar geldig.');
+      if (input === null) return;
+      const credits = parseFloat(String(input).replace(',', '.'));
+      if (!isFinite(credits) || credits <= 0 || credits > 100) {
+        alert('Vul een geldig aantal credits in (tussen 0 en 100).');
+        return;
+      }
+      if (!confirm(credits + ' gratis credit(s) geven aan ' + c.name + '?')) return;
+      try {
+        await api('/customers/' + c.id + '/credits', {
+          method: 'POST',
+          body: JSON.stringify({ credits }),
+        });
+        alert(credits + ' credit(s) toegevoegd. ' + c.name + ' ziet ze direct in het account en kan ermee boeken.');
+      } catch (e) {
+        alert('Credits geven mislukt: ' + (e.message || 'onbekende fout'));
+      }
+    };
+
     // Wire notes button
     document.getElementById('customer-modal-notes-btn').onclick = function () {
       document.getElementById('customer-modal').classList.remove('open');

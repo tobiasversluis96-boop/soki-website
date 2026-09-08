@@ -429,6 +429,19 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/admin/customers/:id/credits — gratis credits geven als €0-punchpass
+router.post('/customers/:id/credits', requireAdmin, async (req, res) => {
+  const credits = Number(req.body.credits);
+  if (!Number.isFinite(credits) || credits <= 0 || credits > 100)
+    return res.status(400).json({ error: 'Aantal credits moet tussen 0 en 100 liggen.' });
+
+  const user = await queries.getUserById(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Klant niet gevonden.' });
+
+  const pass = await queries.createPunchPass(user.id, { bundle_name: 'Cadeau credits', credits, price_cents: 0 }, null);
+  res.status(201).json({ id: pass.id, credits: Number(pass.credits), expires_at: pass.expires_at });
+});
+
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 // GET /api/admin/messages
