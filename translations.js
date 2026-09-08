@@ -156,7 +156,7 @@ var SOKI_I18N = {
 
     'sessions.programme.eyebrow': "What's on this month",
     'sessions.programme.h2':      'Programme',
-    'sessions.programme.p':       'Alongside our regular Everyday and Social Sauna sessions, we run a weekly programme of special creative and community events on Thursday, Friday and Saturday evenings, and Sunday afternoons.',
+    'sessions.programme.p':       'Alongside our regular Everyday and Social Sauna sessions, every now and then we run a programme of special creative and community events.',
 
     'sessions.info.eyebrow': 'Good to know',
     'sessions.info.h2':      'Before you come',
@@ -658,7 +658,7 @@ var SOKI_I18N = {
 
     'sessions.programme.eyebrow': 'Dit staat er op het programma',
     'sessions.programme.h2':      'Programma',
-    'sessions.programme.p':       'Naast onze reguliere Everyday en Social Sauna sessies hebben we een wekelijks programma van speciale creatieve en gemeenschapsevenementen op donderdag-, vrijdag- en zaterdagavond en op zondagmiddag.',
+    'sessions.programme.p':       'Naast onze reguliere Everyday en Social Sauna sessies organiseren we af en toe een programma van speciale creatieve en gemeenschapsevenementen.',
 
     'sessions.info.eyebrow': 'Goed om te weten',
     'sessions.info.h2':      'Voor je komt',
