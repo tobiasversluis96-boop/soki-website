@@ -389,6 +389,11 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
         [creditsToUse, req.user.userId]
       );
       if (!rows[0]) {
+        // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
+        if ((booking.group_size || 1) > 1) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Strippenkaart-credits zijn persoonlijk en gelden alleen voor een boeking voor 1 persoon.' });
+        }
         const pp = await client.query(`
           UPDATE punch_passes SET credits_remaining = credits_remaining - $1
           WHERE id = (

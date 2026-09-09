@@ -817,6 +817,9 @@
         } else if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
+        } else if (data.pass_group_limited) {
+          document.getElementById('stripe-errors').textContent = t('booking.member.passgroup');
+          initStripePayment();
         } else if (data.has_subscription && !data.is_unlimited) {
           document.getElementById('stripe-errors').textContent =
             t('booking.member.insufficient').replace('{r}', data.credits_remaining).replace('{n}', data.credits_cost);

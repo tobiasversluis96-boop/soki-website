@@ -40,7 +40,8 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     const creditsToUse = perPerson * (booking.group_size || 1);
     const covered = creditsToUse === 0
       || (sub && (Number(sub.credits_remaining) || 0) >= creditsToUse)
-      || passes.some(p => Number(p.credits_remaining) >= creditsToUse);
+      // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
+      || ((booking.group_size || 1) === 1 && passes.some(p => Number(p.credits_remaining) >= creditsToUse));
     if (!covered)
       return res.status(400).json({ error: 'Onvoldoende credits voor deze sessie.' });
     amount = booking.kantine_addon_cents;

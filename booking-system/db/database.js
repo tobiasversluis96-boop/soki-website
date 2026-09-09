@@ -869,7 +869,7 @@ const queries = {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const bk = await client.query('SELECT status FROM bookings WHERE id = $1 FOR UPDATE', [bookingId]);
+      const bk = await client.query('SELECT status, group_size FROM bookings WHERE id = $1 FOR UPDATE', [bookingId]);
       if (!bk.rows[0] || bk.rows[0].status !== 'pending') {
         await client.query('ROLLBACK');
         return { ok: bk.rows[0] ? bk.rows[0].status === 'confirmed' : false, already: true };
@@ -882,6 +882,11 @@ const queries = {
           [creditsToUse, userId]
         );
         if (!rows[0]) {
+          // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
+          if ((bk.rows[0].group_size || 1) > 1) {
+            await client.query('ROLLBACK');
+            return { ok: false, insufficient: true };
+          }
           const pp = await client.query(`
             UPDATE punch_passes SET credits_remaining = credits_remaining - $1
             WHERE id = (
