@@ -931,6 +931,28 @@
   }
   document.getElementById('customer-search').addEventListener('input', applyCustomerSearch);
 
+  // Export via fetch met Authorization-header (token hoort niet in de URL)
+  document.getElementById('customers-export-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/customers/export.csv', {
+        headers: { 'Authorization': 'Bearer ' + adminToken },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'klanten.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('CSV-export mislukt: ' + err.message);
+    }
+  });
+
   function renderCustomers(list) {
     const tbody = document.getElementById('customers-table-body');
     if (!list.length) {

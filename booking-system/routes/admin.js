@@ -421,6 +421,24 @@ router.get('/customers', requireStaff('customers'), async (req, res) => {
   res.json(users);
 });
 
+router.get('/customers/export.csv', requireStaff('customers'), async (req, res) => {
+  const users = await queries.getAllUsers();
+  queries.auditLog({ ...actorOf(req), action: 'csv_export', target: 'customers', detail: `${users.length} rows`, ip: req.ip });
+
+  const header = 'id,name,email,bookings,created_at\n';
+  const rows   = users.map(u => [
+    u.id,
+    u.name,
+    u.email,
+    u.booking_count,
+    u.created_at instanceof Date ? u.created_at.toISOString() : u.created_at,
+  ].map(csvCell).join(',')).join('\n');
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="soki-klanten.csv"');
+  res.send(header + rows);
+});
+
 router.get('/customers/:id', requireStaff('customers'), async (req, res) => {
   const bookings = await queries.getUserBookings(req.params.id);
   res.json(bookings);
