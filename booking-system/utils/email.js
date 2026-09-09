@@ -51,6 +51,9 @@ async function sendBookingConfirmation(booking) {
       START_TIME:     booking.start_time,
       END_TIME:       booking.end_time,
       GROUP_SIZE:     booking.group_size,
+      // Lege string bij boekingen zonder combi-deal: de Brevo-template plakt deze
+      // param direct in het detailblok, dus de regel verdwijnt dan volledig.
+      KANTINE_LINE:   booking.kantine_addon_cents > 0 ? 'Combi-deal De Kantine: 2-gangendiner / 2-course dinner ✓<br>' : '',
       TOTAL:          `€${(booking.total_cents / 100).toFixed(2)}`,
       CHECKIN_URL:    `${process.env.BASE_URL || 'http://localhost:3001'}/ticket?bid=${booking.id}&sig=${generateCheckinSig(booking.id)}`,
       MANAGE_URL:     `${process.env.BASE_URL || 'http://localhost:3001'}/account`,

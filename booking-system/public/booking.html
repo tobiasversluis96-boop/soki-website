@@ -128,6 +128,16 @@
       <p class="group-caption" id="group-caption"></p>
     </div>
 
+    <div id="kantine-addon-box" style="display:none;background:#fff;border:1.5px solid var(--border-color,#E8D5BF);border-radius:14px;padding:1rem 1.25rem;margin:1.25rem 0 0;text-align:left;">
+      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+        <input type="checkbox" id="kantine-addon-check" style="margin-top:3px;width:18px;height:18px;accent-color:var(--terra,#D94D1A);cursor:pointer;">
+        <span>
+          <strong style="color:var(--brown,#4A1C0C);" data-i18n="booking.kantine.title">Combi-deal De Kantine · +€10 p.p.</strong><br>
+          <span style="font-size:0.85rem;color:var(--text-muted,#8C7B6B);" data-i18n="booking.kantine.desc">Add a 2-course dinner at De Kantine (across the street) for everyone in your group.</span>
+        </span>
+      </label>
+    </div>
+
     <div class="step-nav">
       <button class="btn btn--outline" id="back-2" data-i18n="booking.btn.back">← Back</button>
       <button class="btn btn--primary" id="next-3" data-i18n="booking.btn.next">Next →</button>
@@ -365,9 +375,9 @@
   </div>
 </footer>
 
-<script src="/translations.js?v=20260909-1"></script>
+<script src="/translations.js?v=20260909-2"></script>
 <script src="/main.js?v=20260906-5"></script>
-<script src="/booking.js?v=20260909-1"></script>
+<script src="/booking.js?v=20260909-2"></script>
 <script>
 (function() {
   var forgotLink = document.getElementById('forgot-link');

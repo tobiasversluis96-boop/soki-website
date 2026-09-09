@@ -12,7 +12,7 @@ const router = express.Router();
 
 // POST /api/bookings — create a pending booking
 router.post('/', requireAuth, async (req, res) => {
-  const { slot_id, promo_code } = req.body;
+  const { slot_id, promo_code, kantine_addon } = req.body;
   let { group_size } = req.body;
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
@@ -75,8 +75,16 @@ router.post('/', requireAuth, async (req, res) => {
     if (pct > 0) cotenantCents = Math.round(slot.price_cents * pct / 100);
   }
 
+  // Combi-deal De Kantine: 2-gangendiner, vast bedrag per persoon. Alleen bij
+  // betaalde losse sessies (niet gratis, niet privéverhuur); creditsboekingen
+  // worden in confirm-member geweigerd zolang er een addon op de boeking staat.
+  const KANTINE_ADDON_CENTS = 1000;
+  let kantineCents = 0;
+  if (kantine_addon === true && !isFree && !slot.is_private && slot.price_cents > 0)
+    kantineCents = KANTINE_ADDON_CENTS * group_size;
+
   if (!isFree && promo_code) {
-    const bookingTotal = grossTotal - cotenantCents;
+    const bookingTotal = grossTotal - cotenantCents + kantineCents;
 
     // Check gift card first
     giftCard = await queries.getGiftCardByCode(promo_code.trim());
@@ -122,10 +130,10 @@ router.post('/', requireAuth, async (req, res) => {
     }
   }
 
-  const totalCents = isFree ? 0 : Math.max(0, grossTotal - cotenantCents - discountCents);
+  const totalCents = isFree ? 0 : Math.max(0, grossTotal - cotenantCents + kantineCents - discountCents);
   let booking;
   try {
-    booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents);
+    booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents, isFree ? 0 : kantineCents);
   } catch (err) {
     if (err.code === 'NO_CAPACITY')
       return res.status(409).json({ error: err.message, spots_left: err.spots_left });
@@ -173,6 +181,7 @@ router.post('/', requireAuth, async (req, res) => {
     total_cents:    totalCents,
     discount_cents: discountCents,
     cotenant_discount_cents: cotenantCents,
+    kantine_addon_cents: kantineCents,
     gift_card_remaining: giftCard ? Math.max(0, giftCard.remaining_amount_cents - discountCents) : undefined,
     slot,
     group_size,
@@ -340,6 +349,8 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
+  if (booking.kantine_addon_cents > 0)
+    return res.status(400).json({ error: 'De combi-deal met De Kantine kan niet met credits worden geboekt.' });
 
   // Verify subscription or punch pass
   const sub = await queries.getActiveSubscription(req.user.userId);

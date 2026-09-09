@@ -29,6 +29,7 @@
     bookingId:     null,
     totalCents:    null,
     cotenantCents: 0,
+    kantineAddon:  false,
     stripe:         null,
     stripeElements: null,
     clientSecret:   null,
@@ -65,9 +66,21 @@
   function resetBookingState() {
     state.bookingId       = null;
     state.totalCents      = null;
+    state.cotenantCents   = 0;
     state.clientSecret    = null;
     state.paymentIntentId = null;
     state.promoCode       = null;
+  }
+
+  // Combi-deal De Kantine geldt alleen bij betaalde losse sessies
+  function kantineApplies() {
+    if (!state.slot || state.slot.is_private) return false;
+    var perPerson = (state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : (state.sessionType ? state.sessionType.price_cents : 0);
+    return perPerson > 0;
+  }
+
+  function kantineCents() {
+    return (state.kantineAddon && kantineApplies()) ? 1000 * state.groupSize : 0;
   }
 
   function fmtDate(dateStr) {
@@ -113,8 +126,11 @@
     ];
     if (includeTotal !== false) {
       var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
-      var computedTotal = (state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize;
+      var computedTotal = ((state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize) + kantineCents();
       var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
+      if (kantineCents() > 0) {
+        rows.push([t('booking.summary.kantine'), '+' + eur(kantineCents())]);
+      }
       if (state.cotenantCents > 0 && finalTotal > 0) {
         rows.push([t('booking.summary.discount'), '−' + eur(state.cotenantCents)]);
       }
@@ -610,6 +626,8 @@
 
   // ─── Step 3: Group size ───────────────────────────────────────────────────
   function updateGroup() {
+    document.getElementById('kantine-addon-box').style.display = kantineApplies() ? 'block' : 'none';
+    document.getElementById('kantine-addon-check').checked = state.kantineAddon;
     // Privéverhuur: vast aantal personen en één totaalprijs, afgesproken met SOKI
     if (state.slot && state.slot.is_private) {
       state.groupSize = state.slot.capacity || state.slot.spots_left || 1;
@@ -624,7 +642,7 @@
     if (state.groupSize > spotsLeft) state.groupSize = spotsLeft;
     document.getElementById('group-count').textContent = state.groupSize;
     var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
-    document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize);
+    document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize + kantineCents());
     document.getElementById('group-caption').textContent =
       personStr(state.groupSize) + ' · ' + spotsLeft + ' ' + t('booking.spots.left');
     document.getElementById('group-minus').disabled = state.groupSize <= 1;
@@ -736,7 +754,7 @@
       if (state.bookingId) { showConfirmation(); return; }
       api('/bookings', {
         method: 'POST',
-        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
+        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
       }).then(function (bRes) {
         if (bRes.error) {
           // Still show payment step so error is visible
@@ -756,8 +774,9 @@
     document.getElementById('payment-summary').innerHTML = summaryHTML();
     document.getElementById('stripe-errors').textContent = '';
 
-    // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken totaalprijs)
-    if (state.token && !(state.slot && state.slot.is_private)) {
+    // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken
+    // totaalprijs, en niet bij de combi-deal: die kan alleen met losse betaling)
+    if (state.token && !(state.slot && state.slot.is_private) && !state.kantineAddon) {
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
@@ -785,7 +804,7 @@
     if (state.bookingId) { callback(); return; }
     api('/bookings', {
       method: 'POST',
-      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
+      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
     }).then(function (bRes) {
       if (bRes.error) { document.getElementById('stripe-errors').textContent = bRes.error; return; }
       state.bookingId  = bRes.booking_id;
@@ -969,7 +988,7 @@
 
     api('/bookings', {
       method: 'POST',
-      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize }),
+      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
     }).then(function (bRes) {
       if (bRes.error) { showPaymentError(bRes.error); return; }
       state.bookingId  = bRes.booking_id;
@@ -1073,6 +1092,11 @@
 
     // Step 3 nav — back goes to slot list (step 2)
     document.getElementById('back-2').addEventListener('click', function () { showStep(2); });
+    document.getElementById('kantine-addon-check').addEventListener('change', function () {
+      state.kantineAddon = this.checked;
+      resetBookingState();
+      updateGroup();
+    });
     document.getElementById('next-3').addEventListener('click', showStep4);
     document.getElementById('group-minus').addEventListener('click', function () {
       if (state.groupSize > 1) { state.groupSize--; resetBookingState(); updateGroup(); }
@@ -1202,7 +1226,7 @@
 
       api('/bookings', {
         method: 'POST',
-        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, promo_code: code }),
+        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, promo_code: code, kantine_addon: state.kantineAddon }),
       }).then(function (res) {
         applyBtn.disabled = false;
         if (res.error) {

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Combi-diners — SOKI × De Kantine</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: var(--cream, #F9F4EF); min-height: 100vh; padding: 2rem 1rem; }
+    .kantine-wrap { max-width: 560px; margin: 0 auto; }
+    .kantine-card { background: #fff; border-radius: 24px; padding: 2rem 1.75rem; box-shadow: 0 4px 32px rgba(74,28,12,0.1); }
+    .kantine-title { font-size: 1.35rem; font-weight: 700; color: var(--brown, #4A1C0C); margin: 0 0 0.25rem; }
+    .kantine-sub { color: var(--text-muted, #8C7B6B); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .kantine-section { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--terra, #D94D1A); margin: 1.5rem 0 0.5rem; }
+    .kantine-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 0.95rem; }
+    .kantine-row:last-child { border-bottom: none; }
+    .kantine-row .when { color: var(--brown, #4A1C0C); }
+    .kantine-row .when small { color: var(--text-muted, #8C7B6B); display: block; font-size: 0.8rem; }
+    .kantine-row .count { font-weight: 700; color: var(--brown, #4A1C0C); white-space: nowrap; }
+    .kantine-today { background: #FFF6E8; border-radius: 10px; padding: 10px 12px; margin: 0 -12px; }
+    .kantine-total { margin-top: 1.5rem; padding-top: 1rem; border-top: 2px dashed var(--border-color, #E8D5BF); display: flex; justify-content: space-between; font-weight: 700; color: var(--brown, #4A1C0C); }
+    .kantine-empty { color: var(--text-muted, #8C7B6B); font-size: 0.9rem; padding: 0.5rem 0; }
+    .loading, .error { color: var(--text-muted, #8C7B6B); padding: 2rem 0; text-align: center; }
+    .error { color: #C62828; }
+  </style>
+</head>
+<body>
+<div class="kantine-wrap">
+  <div class="kantine-card" id="card">
+    <div class="loading">Laden…</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var key  = new URLSearchParams(location.search).get('key');
+  var card = document.getElementById('card');
+
+  if (!key) { card.innerHTML = '<div class="error">Ongeldige link.</div>'; return; }
+
+  fetch('/api/kantine/combi?key=' + encodeURIComponent(key))
+    .then(function(r) { return r.json(); })
+    .then(function(rows) {
+      if (rows.error) { card.innerHTML = '<div class="error">' + esc(rows.error) + '</div>'; return; }
+
+      var today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+      var upcoming = [], past = [], total = 0;
+      rows.forEach(function(r) {
+        r.day = String(r.date).slice(0, 10);
+        total += r.diners;
+        (r.day >= today ? upcoming : past).push(r);
+      });
+      upcoming.sort(function(a, b) { return (a.day + a.start_time) < (b.day + b.start_time) ? -1 : 1; });
+
+      var html =
+        '<img src="/images/soki-logo-brown.png" alt="SOKI" style="width:120px;display:block;margin:0 0 1.25rem;">' +
+        '<h1 class="kantine-title">Combi-diners SOKI × De Kantine</h1>' +
+        '<p class="kantine-sub">Aantal geboekte 2-gangendiners per saunasessie. Deze pagina is altijd actueel — ververs voor de laatste stand.</p>';
+
+      html += '<div class="kantine-section">Vandaag &amp; komende sessies</div>';
+      html += upcoming.length
+        ? upcoming.map(function(r) { return rowHTML(r, r.day === today); }).join('')
+        : '<div class="kantine-empty">Nog geen combi-diners geboekt voor komende sessies.</div>';
+
+      if (past.length) {
+        html += '<div class="kantine-section">Eerdere sessies</div>';
+        html += past.map(function(r) { return rowHTML(r, false); }).join('');
+      }
+
+      html += '<div class="kantine-total"><span>Totaal verkocht</span><span>' + total + ' diners</span></div>';
+      card.innerHTML = html;
+    })
+    .catch(function() { card.innerHTML = '<div class="error">Verbindingsfout. Probeer opnieuw.</div>'; });
+
+  function rowHTML(r, isToday) {
+    var d = r.day.split('-').map(Number);
+    var dateStr = new Date(d[0], d[1] - 1, d[2]).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    return '<div class="kantine-row' + (isToday ? ' kantine-today' : '') + '">' +
+      '<span class="when">' + esc(dateStr) + (isToday ? ' · vandaag' : '') +
+        '<small>' + esc(r.session_name) + ' · ' + esc(String(r.start_time).slice(0, 5)) + '–' + esc(String(r.end_time).slice(0, 5)) + '</small></span>' +
+      '<span class="count">' + r.diners + ' diner' + (r.diners === 1 ? '' : 's') + '</span>' +
+    '</div>';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+})();
+</script>
+</body>
+</html>

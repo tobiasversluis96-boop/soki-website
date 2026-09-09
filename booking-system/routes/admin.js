@@ -429,6 +429,15 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/admin/kantine-link — permanente deelbare link voor de koks van De Kantine
+// (zelfde sleutelafleiding als in server.js: HMAC van JWT_SECRET, dus altijd geldig)
+router.get('/kantine-link', requireAdmin, async (_req, res) => {
+  const crypto = require('crypto');
+  const key = crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+    .update('kantine-combi-view').digest('hex').slice(0, 32);
+  res.json({ url: `${process.env.BASE_URL || 'http://localhost:3001'}/kantine?key=${key}` });
+});
+
 // PATCH /api/admin/customers/:id/discount — vaste korting op losse sessies (bv. medehuurders)
 router.patch('/customers/:id/discount', requireAdmin, async (req, res) => {
   const pct = Number(req.body.pct);

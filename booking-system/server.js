@@ -244,6 +244,27 @@ function validCheckinSig(sig, bookingId) {
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
+// ─── Combi-deal De Kantine: permanente deelbare kokspagina ───────────────────
+// Sleutel is afgeleid van JWT_SECRET, dus de link blijft altijd geldig zonder
+// extra configuratie (verandert alleen als JWT_SECRET ooit wordt geroteerd).
+function kantineKey() {
+  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+    .update('kantine-combi-view').digest('hex').slice(0, 32);
+}
+function validKantineKey(key) {
+  const expected = kantineKey();
+  const provided = String(key || '');
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
+
+app.get('/api/kantine/combi', async (req, res) => {
+  if (!validKantineKey(req.query.key))
+    return res.status(403).json({ error: 'Ongeldige link' });
+  const stats = await queries.getKantineCombiStats();
+  res.json(stats);
+});
+
 app.get('/api/checkin/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const { sig } = req.query;
@@ -270,6 +291,7 @@ app.get('/api/checkin/:bookingId', async (req, res) => {
     start_time:    booking.start_time,
     end_time:      booking.end_time,
     group_size:    booking.group_size,
+    kantine_addon_cents: booking.kantine_addon_cents || 0,
     checked_in:    booking.checked_in,
     qr_data_url,
   });
@@ -402,6 +424,7 @@ app.get('/checkin', (_req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/ticket',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'ticket.html')));
 app.get('/waiver',      (_req, res) => res.sendFile(path.join(__dirname, 'public', 'waiver.html')));
 app.get('/gift-card',  (_req, res) => res.sendFile(path.join(__dirname, 'public', 'gift-card.html')));
+app.get('/kantine', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'kantine.html')));
 app.get('/admin',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 

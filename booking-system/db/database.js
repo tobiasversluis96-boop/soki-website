@@ -299,6 +299,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_addon_cents INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
     id          SERIAL      PRIMARY KEY,
@@ -619,6 +620,21 @@ const queries = {
     await pool.query('UPDATE users SET discount_pct = $1 WHERE id = $2', [pct, userId]);
   },
 
+  // Combi-deal De Kantine: aantal diners per sessie (voor de deelbare kokspagina)
+  getKantineCombiStats: async () => {
+    const { rows } = await pool.query(`
+      SELECT ts.date, ts.start_time, ts.end_time, st.name AS session_name,
+             SUM(b.group_size)::int AS diners, COUNT(*)::int AS bookings
+      FROM bookings b
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE b.kantine_addon_cents > 0 AND b.status = 'confirmed'
+      GROUP BY ts.date, ts.start_time, ts.end_time, st.name
+      ORDER BY ts.date DESC, ts.start_time DESC
+    `);
+    return rows;
+  },
+
   getScheduleByDate: async (date) => {
     const { rows } = await pool.query(`
       SELECT
@@ -665,7 +681,7 @@ const queries = {
   },
 
   // Bookings
-  createBooking: async (userId, slotId, groupSize, totalCents) => {
+  createBooking: async (userId, slotId, groupSize, totalCents, kantineAddonCents = 0) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -687,8 +703,8 @@ const queries = {
       const booked = countRows[0].booked;
       if (booked + groupSize > capacity) throw Object.assign(new Error(`Only ${capacity - booked} spot(s) remaining`), { code: 'NO_CAPACITY', spots_left: capacity - booked });
       const { rows } = await client.query(
-        'INSERT INTO bookings (user_id, time_slot_id, group_size, total_cents) VALUES ($1, $2, $3, $4) RETURNING id',
-        [userId, slotId, groupSize, totalCents]
+        'INSERT INTO bookings (user_id, time_slot_id, group_size, total_cents, kantine_addon_cents) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [userId, slotId, groupSize, totalCents, kantineAddonCents]
       );
       await client.query('COMMIT');
       return rows[0];

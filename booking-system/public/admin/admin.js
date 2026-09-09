@@ -96,6 +96,25 @@
 
   document.getElementById('admin-logout').addEventListener('click', logout);
 
+  // Combi-deal De Kantine: permanente deelbare link voor de koks kopiëren
+  document.getElementById('kantine-link-copy').addEventListener('click', async function () {
+    const btn = this;
+    let url;
+    try {
+      url = (await api('/kantine-link')).url;
+    } catch (e) {
+      alert('Link ophalen mislukt: ' + (e.message || 'onbekende fout'));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = 'Gekopieerd ✓';
+      setTimeout(() => { btn.textContent = 'Deelbare link kopiëren'; }, 2500);
+    } catch {
+      prompt('Kopieer de link handmatig:', url);
+    }
+  });
+
   // Permission → nav view mapping
   const PERM_NAV = { dashboard: 'revenue', revenue: 'revenue', bookings: 'bookings', slots: 'slots', schedule: 'schedule', customers: 'customers', generate: 'generate', messages: 'messages' };
 
