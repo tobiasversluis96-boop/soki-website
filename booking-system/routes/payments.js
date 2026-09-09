@@ -29,7 +29,7 @@ router.post('/create-intent', requireAuth, async (req, res) => {
   const extraMetadata = {};
   if (req.body.use_credits === true) {
     if (!(booking.kantine_addon_cents > 0))
-      return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met de combi-deal.' });
+      return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
     const { CREDIT_COST } = require('./subscriptions');
     const slot = await queries.getSlotById(booking.time_slot_id);
     if (!slot || slot.is_private)

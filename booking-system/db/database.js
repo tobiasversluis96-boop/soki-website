@@ -624,8 +624,10 @@ const queries = {
   getKantineCombiStats: async () => {
     const { rows } = await pool.query(`
       SELECT ts.date, ts.start_time, ts.end_time, st.name AS session_name,
-             SUM(b.group_size)::int AS diners, COUNT(*)::int AS bookings
+             SUM(b.group_size)::int AS diners, COUNT(*)::int AS bookings,
+             COUNT(*) FILTER (WHERE u.discount_pct > 0)::int AS huurders
       FROM bookings b
+      JOIN users u ON u.id = b.user_id
       JOIN time_slots ts ON ts.id = b.time_slot_id
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE b.kantine_addon_cents > 0 AND b.status = 'confirmed'

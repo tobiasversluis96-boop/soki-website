@@ -69,16 +69,19 @@ router.post('/', requireAuth, async (req, res) => {
   // Medehuurderskorting: percentage over ÉÉN plek (alleen de eigen plek van de
   // accounthouder), niet bij privéverhuur of gratis sessies.
   let cotenantCents = 0;
+  let isHuurder = false;
   if (!isFree && !slot.is_private && slot.price_cents > 0) {
     const bookingUser = await queries.getUserById(req.user.userId);
     const pct = bookingUser ? Number(bookingUser.discount_pct) || 0 : 0;
+    isHuurder = pct > 0;
     if (pct > 0) cotenantCents = Math.round(slot.price_cents * pct / 100);
   }
 
-  // Combi-deal De Kantine: 2-gangendiner, vast bedrag per persoon. Alleen bij
+  // Combi ticket De Kantine: 2-gangendiner, €12 p.p. — huurders (accounts met
+  // huurderskorting) betalen hun vaste Kantine-prijs van €10 p.p. Alleen bij
   // betaalde losse sessies (niet gratis, niet privéverhuur); creditsboekingen
   // worden in confirm-member geweigerd zolang er een addon op de boeking staat.
-  const KANTINE_ADDON_CENTS = 1000;
+  const KANTINE_ADDON_CENTS = isHuurder ? 1000 : 1200;
   let kantineCents = 0;
   if (kantine_addon === true && !isFree && !slot.is_private && slot.price_cents > 0)
     kantineCents = KANTINE_ADDON_CENTS * group_size;
@@ -355,7 +358,7 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
   if (booking.kantine_addon_cents > 0)
-    return res.status(400).json({ error: 'De combi-deal met De Kantine kan niet met credits worden geboekt.' });
+    return res.status(400).json({ error: 'Het combi ticket met De Kantine kan niet met credits worden geboekt.' });
 
   // Verify subscription or punch pass
   const sub = await queries.getActiveSubscription(req.user.userId);

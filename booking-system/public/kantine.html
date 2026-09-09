@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Combi-diners — SOKI × De Kantine</title>
+  <title>Combi-diners - SOKI × De Kantine</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
     body { background: var(--cream, #F9F4EF); min-height: 100vh; padding: 2rem 1rem; }
@@ -17,7 +17,10 @@
     .kantine-row:last-child { border-bottom: none; }
     .kantine-row .when { color: var(--brown, #4A1C0C); }
     .kantine-row .when small { color: var(--text-muted, #8C7B6B); display: block; font-size: 0.8rem; }
-    .kantine-row .count { font-weight: 700; color: var(--brown, #4A1C0C); white-space: nowrap; }
+    .kantine-row .count { font-weight: 700; color: var(--brown, #4A1C0C); white-space: nowrap; text-align: right; }
+    .kantine-row .count small { display: block; font-weight: 600; font-size: 0.75rem; color: var(--terra, #D94D1A); }
+    .kantine-logos { display: flex; align-items: center; gap: 16px; margin: 0 0 1.25rem; }
+    .kantine-logos img { display: block; }
     .kantine-today { background: #FFF6E8; border-radius: 10px; padding: 10px 12px; margin: 0 -12px; }
     .kantine-total { margin-top: 1.5rem; padding-top: 1rem; border-top: 2px dashed var(--border-color, #E8D5BF); display: flex; justify-content: space-between; font-weight: 700; color: var(--brown, #4A1C0C); }
     .kantine-empty { color: var(--text-muted, #8C7B6B); font-size: 0.9rem; padding: 0.5rem 0; }
@@ -45,18 +48,22 @@
       if (rows.error) { card.innerHTML = '<div class="error">' + esc(rows.error) + '</div>'; return; }
 
       var today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
-      var upcoming = [], past = [], total = 0;
+      var upcoming = [], past = [], total = 0, totalHuurders = 0;
       rows.forEach(function(r) {
         r.day = String(r.date).slice(0, 10);
         total += r.diners;
+        totalHuurders += r.huurders || 0;
         (r.day >= today ? upcoming : past).push(r);
       });
       upcoming.sort(function(a, b) { return (a.day + a.start_time) < (b.day + b.start_time) ? -1 : 1; });
 
       var html =
-        '<img src="/images/soki-logo-brown.png" alt="SOKI" style="width:120px;display:block;margin:0 0 1.25rem;">' +
+        '<div class="kantine-logos">' +
+          '<img src="/images/soki-logo-brown.png" alt="SOKI" style="width:120px;">' +
+          '<img src="/images/kantine-logo.png" alt="De Kantine" style="height:76px;">' +
+        '</div>' +
         '<h1 class="kantine-title">Combi-diners SOKI × De Kantine</h1>' +
-        '<p class="kantine-sub">Aantal geboekte 2-gangendiners per saunasessie. Deze pagina is altijd actueel — ververs voor de laatste stand.</p>';
+        '<p class="kantine-sub">Aantal geboekte 2-gangendiners per saunasessie. Deze pagina is altijd actueel - ververs voor de laatste stand.</p>';
 
       html += '<div class="kantine-section">Vandaag &amp; komende sessies</div>';
       html += upcoming.length
@@ -69,6 +76,9 @@
       }
 
       html += '<div class="kantine-total"><span>Totaal verkocht</span><span>' + total + ' diners</span></div>';
+      if (totalHuurders > 0) {
+        html += '<div class="kantine-sub" style="margin:0.5rem 0 0;text-align:right;">waarvan ' + totalHuurders + ' huurder' + (totalHuurders === 1 ? '' : 's') + ' (betalen €10 i.p.v. €12)</div>';
+      }
       card.innerHTML = html;
     })
     .catch(function() { card.innerHTML = '<div class="error">Verbindingsfout. Probeer opnieuw.</div>'; });
@@ -79,7 +89,9 @@
     return '<div class="kantine-row' + (isToday ? ' kantine-today' : '') + '">' +
       '<span class="when">' + esc(dateStr) + (isToday ? ' · vandaag' : '') +
         '<small>' + esc(r.session_name) + ' · ' + esc(String(r.start_time).slice(0, 5)) + '–' + esc(String(r.end_time).slice(0, 5)) + '</small></span>' +
-      '<span class="count">' + r.diners + ' diner' + (r.diners === 1 ? '' : 's') + '</span>' +
+      '<span class="count">' + r.diners + ' diner' + (r.diners === 1 ? '' : 's') +
+        (r.huurders > 0 ? '<small>waarvan ' + r.huurders + ' huurder' + (r.huurders === 1 ? '' : 's') + '</small>' : '') +
+      '</span>' +
     '</div>';
   }
 

@@ -81,7 +81,9 @@
   }
 
   function kantineCents() {
-    return (state.kantineAddon && kantineApplies()) ? 1000 * state.groupSize : 0;
+    // Huurders (accounts met huurderskorting) betalen €10 p.p., anderen €12
+    var pp = (state.user && Number(state.user.discount_pct) > 0) ? 1000 : 1200;
+    return (state.kantineAddon && kantineApplies()) ? pp * state.groupSize : 0;
   }
 
   function fmtDate(dateStr) {
@@ -647,6 +649,9 @@
   function updateGroup() {
     document.getElementById('kantine-addon-box').style.display = kantineApplies() ? 'block' : 'none';
     document.getElementById('kantine-addon-check').checked = state.kantineAddon;
+    var kTitle = document.querySelector('#kantine-addon-box [data-i18n="booking.kantine.title"]');
+    if (kTitle && state.user && Number(state.user.discount_pct) > 0)
+      kTitle.textContent = t('booking.kantine.title').replace('€12', '€10');
     // Privéverhuur: vast aantal personen en één totaalprijs, afgesproken met SOKI
     if (state.slot && state.slot.is_private) {
       state.groupSize = state.slot.capacity || state.slot.spots_left || 1;
