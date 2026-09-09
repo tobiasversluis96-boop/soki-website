@@ -71,8 +71,26 @@
         : '<div class="kantine-empty">Nog geen combi-diners geboekt voor komende sessies.</div>';
 
       if (past.length) {
-        html += '<div class="kantine-section">Eerdere sessies</div>';
-        html += past.map(function(r) { return rowHTML(r, false); }).join('');
+        var months = {};
+        past.forEach(function(r) {
+          var key = r.day.slice(0, 7);
+          if (!months[key]) months[key] = { diners: 0, huurders: 0, sessions: 0 };
+          months[key].diners   += r.diners;
+          months[key].huurders += r.huurders || 0;
+          months[key].sessions++;
+        });
+        html += '<div class="kantine-section">Archief per maand</div>';
+        html += Object.keys(months).sort().reverse().map(function(key) {
+          var m = months[key];
+          var p = key.split('-').map(Number);
+          var label = new Date(p[0], p[1] - 1, 1).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+          return '<div class="kantine-row">' +
+            '<span class="when">' + esc(label) + '<small>' + m.sessions + ' sessie' + (m.sessions === 1 ? '' : 's') + '</small></span>' +
+            '<span class="count">' + m.diners + ' diner' + (m.diners === 1 ? '' : 's') +
+              (m.huurders > 0 ? '<small>waarvan ' + m.huurders + ' huurder' + (m.huurders === 1 ? '' : 's') + '</small>' : '') +
+            '</span>' +
+          '</div>';
+        }).join('');
       }
 
       html += '<div class="kantine-total"><span>Totaal verkocht</span><span>' + total + ' diners</span></div>';
