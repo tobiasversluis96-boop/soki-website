@@ -855,6 +855,54 @@ const queries = {
     `, [paymentIntentId, status, bookingId]);
   },
 
+  // Hybride combi-boeking: sessie met credits, diner al via Stripe betaald.
+  // Idempotent: alleen een pending boeking wordt bevestigd.
+  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const bk = await client.query('SELECT status FROM bookings WHERE id = $1 FOR UPDATE', [bookingId]);
+      if (!bk.rows[0] || bk.rows[0].status !== 'pending') {
+        await client.query('ROLLBACK');
+        return { ok: bk.rows[0] ? bk.rows[0].status === 'confirmed' : false, already: true };
+      }
+      let punchPassId = null;
+      if (creditsToUse > 0) {
+        // Eerst het abonnement proberen, anders één strippenkaart (vroegst-verlopend) met genoeg saldo
+        const { rows } = await client.query(
+          "UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN ('active', 'past_due') AND credits_remaining >= $1 RETURNING id",
+          [creditsToUse, userId]
+        );
+        if (!rows[0]) {
+          const pp = await client.query(`
+            UPDATE punch_passes SET credits_remaining = credits_remaining - $1
+            WHERE id = (
+              SELECT id FROM punch_passes
+              WHERE user_id = $2 AND credits_remaining >= $1 AND expires_at > NOW()
+              ORDER BY expires_at LIMIT 1
+            ) RETURNING id
+          `, [creditsToUse, userId]);
+          if (!pp.rows[0]) {
+            await client.query('ROLLBACK');
+            return { ok: false, insufficient: true };
+          }
+          punchPassId = pp.rows[0].id;
+        }
+      }
+      await client.query(
+        "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($4, stripe_payment_intent_id) WHERE id = $1",
+        [bookingId, creditsToUse, punchPassId, paymentIntentId]
+      );
+      await client.query('COMMIT');
+      return { ok: true };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   // Admin
   getAdminByEmail: async (email) => {
     const { rows } = await pool.query('SELECT * FROM admin_users WHERE email = $1', [email]);

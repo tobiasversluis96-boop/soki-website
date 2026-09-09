@@ -242,11 +242,16 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
 
   // Refund via Stripe if payment was confirmed
+  // Hybride combi-boeking (credits + diner): via Stripe is alleen het dinerdeel
+  // betaald, dus daarover wordt het refundpercentage berekend.
+  const chargedCents = (booking.credits_used > 0 && booking.kantine_addon_cents > 0)
+    ? booking.kantine_addon_cents
+    : booking.total_cents;
   let refundAmountCents = 0;
   if (refundPct > 0 && booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
     refundAmountCents = refundPct === 100
-      ? booking.total_cents
-      : Math.floor(booking.total_cents * refundPct / 100);
+      ? chargedCents
+      : Math.floor(chargedCents * refundPct / 100);
     try {
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
       const refundArgs = { payment_intent: booking.stripe_payment_intent_id };

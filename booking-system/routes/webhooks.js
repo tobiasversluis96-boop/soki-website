@@ -219,6 +219,13 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           break;
         }
 
+        // Hybride combi-boeking: credits afschrijven + bevestigen (idempotent)
+        if (intent.metadata?.type === 'member_combi') {
+          const { settleMemberCombi } = require('./payments');
+          await settleMemberCombi(intent);
+          break;
+        }
+
         // Otherwise confirm regular booking
         const booking = await queries.getBookingByPaymentIntent(intent.id);
         if (!booking) break;

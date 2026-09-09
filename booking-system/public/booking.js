@@ -70,6 +70,7 @@
     state.clientSecret    = null;
     state.paymentIntentId = null;
     state.promoCode       = null;
+    state.memberCombi     = null;
   }
 
   // Combi-deal De Kantine geldt alleen bij betaalde losse sessies
@@ -131,7 +132,12 @@
       if (kantineCents() > 0) {
         rows.push([t('booking.summary.kantine'), '+' + eur(kantineCents())]);
       }
-      if (state.cotenantCents > 0 && finalTotal > 0) {
+      if (state.memberCombi) {
+        // Hybride: sessie gedekt door credits, alleen het diner wordt afgerekend
+        rows.push([t('booking.summary.credits'), state.memberCombi.is_unlimited ? 'Unlimited ✓' : state.memberCombi.credits_cost + ' credits ✓']);
+        finalTotal = kantineCents();
+      }
+      if (state.cotenantCents > 0 && finalTotal > 0 && !state.memberCombi) {
         rows.push([t('booking.summary.discount'), '−' + eur(state.cotenantCents)]);
       }
       rows.push([t('booking.summary.total'), finalTotal === 0 ? t('booking.free') : eur(finalTotal)]);
@@ -786,16 +792,24 @@
     showStep(5);
     document.getElementById('payment-summary').innerHTML = summaryHTML();
     document.getElementById('stripe-errors').textContent = '';
+    document.getElementById('promo-toggle').style.display = '';
 
     // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken
-    // totaalprijs, en niet bij de combi-deal: die kan alleen met losse betaling)
-    if (state.token && !(state.slot && state.slot.is_private) && !state.kantineAddon) {
+    // totaalprijs)
+    if (state.token && !(state.slot && state.slot.is_private)) {
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
         body: JSON.stringify({ session_type_id: state.sessionType.id, group_size: state.groupSize }),
       }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.can_book) {
+        if (data.can_book && kantineCents() > 0) {
+          // Hybride: sessie met credits, alleen het diner (€10 p.p.) afrekenen.
+          // Promocodes gelden hier niet — de sessie wordt al door credits gedekt.
+          state.memberCombi = { credits_cost: data.credits_cost, is_unlimited: data.is_unlimited };
+          document.getElementById('promo-toggle').style.display = 'none';
+          document.getElementById('promo-field').style.display = 'none';
+          ensureBooking(function() { initStripePayment(); });
+        } else if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
         } else if (data.has_subscription && !data.is_unlimited) {
@@ -881,7 +895,7 @@
       }
       api('/payments/create-intent', {
         method: 'POST',
-        body: JSON.stringify({ booking_id: state.bookingId }),
+        body: JSON.stringify({ booking_id: state.bookingId, use_credits: !!state.memberCombi }),
       }).then(function (pRes) {
         if (pRes.error) { showPaymentError(pRes.error); return; }
         try {
