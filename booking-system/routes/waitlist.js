@@ -45,6 +45,15 @@ router.post('/:slotId', requireAuth, async (req, res) => {
 
   const totalCents = slot.price_cents * groupSize;
 
+  // Gratis sessies: geen betaling nodig — meteen definitief op de wachtlijst
+  // (status 'paid' zodat de auto-boek-flow ze gewoon meeneemt zodra er plek is)
+  if (totalCents === 0) {
+    const entry = await queries.joinWaitlist(req.user.userId, slotId, groupSize, 0, null);
+    if (entry) await queries.markWaitlistPaidById(entry.id);
+    const pos = await queries.getWaitlistPosition(req.user.userId, slotId);
+    return res.status(201).json({ free: true, position: pos.position, total: pos.total, total_cents: 0 });
+  }
+
   // Create Stripe PaymentIntent (charged immediately, refunded if never claimed)
   const user = await queries.getUserById(req.user.userId);
   const intent = await stripe.paymentIntents.create({

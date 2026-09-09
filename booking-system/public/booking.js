@@ -488,28 +488,31 @@
     if (existing) existing.remove();
 
     var pricePerPerson = slot ? slot.price_cents : 0;
+    // Gratis sessies: geen betaling — andere teksten en direct aanmelden
+    var isFreeSlot = !pricePerPerson;
+    var continueLabel = t(isFreeSlot ? 'booking.waitlist.joinFree' : 'booking.waitlist.continue');
     var modal = document.createElement('div');
     modal.id = 'waitlist-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px;';
     modal.innerHTML =
       '<div style="background:#fff;border-radius:16px;padding:32px;max-width:440px;width:100%;">' +
         '<h3 style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-weight:700;text-transform:uppercase;font-size:22px;color:#4A1C0C;margin:0 0 8px;">' + t('booking.waitlist.title') + '</h3>' +
-        '<p style="color:#666;font-size:14px;margin:0 0 20px;">' + t('booking.waitlist.info') + '</p>' +
-        (slot ? '<p style="font-weight:600;color:#4A1C0C;margin:0 0 20px;">' + esc(slot.start_time) + ' – ' + esc(slot.end_time) + ' · ' + eur(pricePerPerson) + ' p.p.</p>' : '') +
+        '<p style="color:#666;font-size:14px;margin:0 0 20px;">' + t(isFreeSlot ? 'booking.waitlist.infoFree' : 'booking.waitlist.info') + '</p>' +
+        (slot ? '<p style="font-weight:600;color:#4A1C0C;margin:0 0 20px;">' + esc(slot.start_time) + ' – ' + esc(slot.end_time) + (isFreeSlot ? '' : ' · ' + eur(pricePerPerson) + ' p.p.') + '</p>' : '') +
         '<div style="margin-bottom:16px;">' +
           '<label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8C7B6B;margin-bottom:6px;">' + t('booking.waitlist.group') + '</label>' +
           '<div style="display:flex;align-items:center;gap:12px;">' +
             '<button id="wl-minus" style="width:36px;height:36px;border-radius:50%;border:2px solid #E8D5BF;background:#fff;font-size:20px;cursor:pointer;line-height:1;">−</button>' +
             '<span id="wl-count" style="font-size:20px;font-weight:700;min-width:24px;text-align:center;">1</span>' +
             '<button id="wl-plus"  style="width:36px;height:36px;border-radius:50%;border:2px solid #E8D5BF;background:#fff;font-size:20px;cursor:pointer;line-height:1;">+</button>' +
-            '<span id="wl-total" style="margin-left:8px;font-size:16px;font-weight:600;color:#D94D1A;">' + eur(pricePerPerson) + '</span>' +
+            (isFreeSlot ? '' : '<span id="wl-total" style="margin-left:8px;font-size:16px;font-weight:600;color:#D94D1A;">' + eur(pricePerPerson) + '</span>') +
           '</div>' +
         '</div>' +
         '<div id="wl-stripe-container" style="margin-bottom:16px;"></div>' +
         '<div id="wl-error" style="color:#C62828;font-size:13px;margin-bottom:12px;display:none;"></div>' +
         '<div style="display:flex;gap:10px;">' +
           '<button id="wl-cancel-btn" class="btn btn--outline" style="flex:1;">' + t('booking.waitlist.cancel') + '</button>' +
-          '<button id="wl-pay-btn" class="btn btn--primary" style="flex:2;">' + t('booking.waitlist.continue') + '</button>' +
+          '<button id="wl-pay-btn" class="btn btn--primary" style="flex:2;">' + continueLabel + '</button>' +
         '</div>' +
       '</div>';
 
@@ -521,7 +524,8 @@
     var wlClientSecret = null;
 
     function updateWlTotal() {
-      document.getElementById('wl-total').textContent = eur(pricePerPerson * wlGroupSize);
+      var totalEl = document.getElementById('wl-total');
+      if (totalEl) totalEl.textContent = eur(pricePerPerson * wlGroupSize);
       document.getElementById('wl-count').textContent = wlGroupSize;
     }
 
@@ -556,7 +560,16 @@
             errEl.textContent = res.error;
             errEl.style.display = 'block';
             payBtn.disabled = false;
-            payBtn.textContent = t('booking.waitlist.continue');
+            payBtn.textContent = continueLabel;
+            return;
+          }
+          if (res.free) {
+            modal.remove();
+            if (triggerBtn) {
+              triggerBtn.textContent = t('booking.waitlist.joinedFree');
+              triggerBtn.style.color = '#2E7D32';
+              triggerBtn.style.borderColor = '#2E7D32';
+            }
             return;
           }
           wlClientSecret = res.client_secret;
@@ -579,7 +592,7 @@
           errEl.textContent = t('booking.error.load');
           errEl.style.display = 'block';
           payBtn.disabled = false;
-          payBtn.textContent = t('booking.waitlist.continue');
+          payBtn.textContent = continueLabel;
         });
         return;
       }

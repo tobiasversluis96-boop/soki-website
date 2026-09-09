@@ -1495,6 +1495,10 @@ const queries = {
     return rows[0] || null;
   },
 
+  markWaitlistPaidById: async (id) => {
+    await pool.query("UPDATE waitlist SET stripe_payment_status = 'paid' WHERE id = $1", [id]);
+  },
+
   markWaitlistPaid: async (paymentIntentId) => {
     await pool.query(
       "UPDATE waitlist SET stripe_payment_status = 'paid' WHERE stripe_payment_intent_id = $1",

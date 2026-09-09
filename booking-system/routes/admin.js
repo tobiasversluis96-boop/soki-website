@@ -366,11 +366,14 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
   const waiters = await queries.getUnclaimedPaidWaitlistForSlot(slotId);
   for (const w of waiters) {
     try {
-      await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
+      // Gratis wachtlijstplekken hebben geen payment intent — alleen mailen
+      if (w.stripe_payment_intent_id) {
+        await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
+        refunds++;
+      }
       await queries.markWaitlistRefunded(w.id);
-      refunds++;
       try {
-        await sendBookingCancelledEmail(w, { refunded: true });
+        await sendBookingCancelledEmail(w, { refunded: !!w.stripe_payment_intent_id });
       } catch (e) {
         console.error(`Cancellation email failed for waitlist #${w.id} (non-fatal):`, e.message);
       }
