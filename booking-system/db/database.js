@@ -428,6 +428,12 @@ async function initializeDB() {
     created_at               TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS punch_pass_id INTEGER REFERENCES punch_passes(id)');
+  await pool.query('ALTER TABLE punch_passes ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ');
+  // Eenmalige correctie: testaankoop van Tobias die vóór de refunded_at-kolom via Stripe is terugbetaald
+  await pool.query(`
+    UPDATE punch_passes SET refunded_at = NOW(), credits_remaining = 0
+    WHERE stripe_payment_intent_id = 'pi_3UD3ENHCJKqTExAc1G5fiAkX' AND refunded_at IS NULL
+  `);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS staff_users (
     id            SERIAL      PRIMARY KEY,
@@ -1300,7 +1306,7 @@ const queries = {
 
   getUserPunchPasses: async (userId) => {
     const { rows } = await pool.query(`
-      SELECT * FROM punch_passes WHERE user_id = $1 ORDER BY created_at DESC
+      SELECT * FROM punch_passes WHERE user_id = $1 AND refunded_at IS NULL ORDER BY created_at DESC
     `, [userId]);
     return rows;
   },
@@ -1323,7 +1329,7 @@ const queries = {
     const { rows } = await pool.query(`
       UPDATE punch_passes
       SET credits_remaining = LEAST(credits_remaining + $2, credits)
-      WHERE id = $1 RETURNING *
+      WHERE id = $1 AND refunded_at IS NULL RETURNING *
     `, [punchPassId, credits]);
     return rows[0] || null;
   },
@@ -1331,7 +1337,7 @@ const queries = {
   revokePunchPassByPaymentIntent: async (paymentIntentId) => {
     const { rows } = await pool.query(`
       UPDATE punch_passes
-      SET credits_remaining = 0
+      SET credits_remaining = 0, refunded_at = COALESCE(refunded_at, NOW())
       WHERE stripe_payment_intent_id = $1 RETURNING *
     `, [paymentIntentId]);
     return rows[0] || null;
@@ -1745,7 +1751,7 @@ const queries = {
         FROM bookings WHERE status = 'confirmed' AND stripe_payment_intent_id IS NOT NULL
       `),
       pool.query('SELECT COALESCE(SUM(initial_amount_cents),0)::int AS n FROM gift_cards WHERE stripe_payment_intent_id IS NOT NULL'),
-      pool.query('SELECT COALESCE(SUM(price_cents),0)::int AS n FROM punch_passes WHERE stripe_payment_intent_id IS NOT NULL'),
+      pool.query('SELECT COALESCE(SUM(price_cents),0)::int AS n FROM punch_passes WHERE stripe_payment_intent_id IS NOT NULL AND refunded_at IS NULL'),
       pool.query(`
         SELECT st.name, COUNT(b.id)::int AS count
         FROM session_types st

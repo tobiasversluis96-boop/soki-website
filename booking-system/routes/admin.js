@@ -559,6 +559,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
           0 AS bookings
         FROM punch_passes p
         WHERE p.stripe_payment_intent_id IS NOT NULL
+          AND p.refunded_at IS NULL
           AND p.created_at >= CURRENT_DATE - INTERVAL '11 weeks'
       ) x
       GROUP BY week
@@ -706,6 +707,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
           0 AS bookings
         FROM punch_passes p
         WHERE p.stripe_payment_intent_id IS NOT NULL
+          AND p.refunded_at IS NULL
           AND p.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months')
       ) x
       GROUP BY month
