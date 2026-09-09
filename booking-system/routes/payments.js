@@ -36,24 +36,16 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     const passes = await queries.getActivePunchPasses(req.user.userId);
     const groupSize  = booking.group_size || 1;
     const perPerson  = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
-    const fullCredits = perPerson * groupSize;
-    const subCovers = perPerson === 0 || (sub && (Number(sub.credits_remaining) || 0) >= fullCredits);
-    if (subCovers) {
-      // Abonnement dekt de hele groep: alleen het diner afrekenen
-      if (!(booking.kantine_addon_cents > 0))
-        return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
-      amount = booking.kantine_addon_cents;
-      extraMetadata.credits_to_use = String(fullCredits);
-    } else if (passes.some(p => Number(p.credits_remaining) >= perPerson)) {
-      // Strippenkaart is persoonlijk: eigen plek op credits, extra personen (en evt. diner) bijbetalen
-      amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
-      if (!(amount > 0))
-        return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
-      extraMetadata.credits_to_use = String(perPerson);
-      extraMetadata.credit_source = 'pass';
-    } else {
+    // Credits zijn persoonlijk: ze dekken alleen de eigen plek. Extra personen
+    // (en evt. diner) worden via Stripe bijbetaald.
+    const covered = (sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= perPerson) : false)
+      || passes.some(p => Number(p.credits_remaining) >= perPerson);
+    if (!covered)
       return res.status(400).json({ error: 'Onvoldoende credits voor deze sessie.' });
-    }
+    amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
+    if (!(amount > 0))
+      return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
+    extraMetadata.credits_to_use = String(perPerson);
     extraMetadata.type = 'member_combi';
     extraMetadata.user_id = String(req.user.userId);
   }
@@ -104,7 +96,7 @@ async function settleMemberCombi(intent) {
     return { ok: false };
   }
 
-  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.metadata.credit_source);
+  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id);
   if (result.insufficient) {
     // Credits verdwenen tussen intent en betaling (zeldzaam): diner terugbetalen + boeking annuleren
     console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle — refund + annulering`);

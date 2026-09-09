@@ -71,7 +71,7 @@
     state.paymentIntentId = null;
     state.promoCode       = null;
     state.memberCombi     = null;
-    state.passPartial     = null;
+    state.creditPartial   = null;
   }
 
   // Combi-deal De Kantine geldt alleen bij betaalde losse sessies
@@ -140,13 +140,14 @@
         rows.push([t('booking.summary.credits'), state.memberCombi.is_unlimited ? 'Unlimited ✓' : state.memberCombi.credits_cost + ' credits ✓']);
         finalTotal = kantineCents();
       }
-      if (state.passPartial) {
-        // Strippenkaart: eigen plek op credits, extra personen (en evt. diner) worden afgerekend
-        var cc = state.passPartial.credits_cost;
-        rows.push([t('booking.summary.credits.self'), cc + ' credit' + (cc === 1 ? '' : 's') + ' ✓']);
+      if (state.creditPartial) {
+        // Credits zijn persoonlijk: eigen plek op credits, extra personen (en evt. diner) worden afgerekend
+        var cc = state.creditPartial.credits_cost;
+        rows.push([t('booking.summary.credits.self'),
+          state.creditPartial.is_unlimited ? 'Unlimited ✓' : cc + ' credit' + (cc === 1 ? '' : 's') + ' ✓']);
         finalTotal = perPerson * (state.groupSize - 1) + kantineCents();
       }
-      if (state.cotenantCents > 0 && finalTotal > 0 && !state.memberCombi && !state.passPartial) {
+      if (state.cotenantCents > 0 && finalTotal > 0 && !state.memberCombi && !state.creditPartial) {
         rows.push([t('booking.summary.discount'), '−' + eur(state.cotenantCents)]);
       }
       rows.push([t('booking.summary.total'), finalTotal === 0 ? t('booking.free') : eur(finalTotal)]);
@@ -824,10 +825,11 @@
         } else if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
-        } else if (data.pass_partial) {
-          // Strippenkaart: eigen plek met credits, extra personen (en evt. diner) bijbetalen.
-          // Promocodes gelden hier niet, net als bij de andere hybride creditsflow.
-          state.passPartial = { credits_cost: data.credits_cost_self };
+        } else if (data.credit_partial) {
+          // Groepsboeking met credits: eigen plek met credits, extra personen (en
+          // evt. diner) bijbetalen. Promocodes gelden hier niet, net als bij de
+          // andere hybride creditsflow.
+          state.creditPartial = { credits_cost: data.credits_cost, is_unlimited: data.is_unlimited };
           document.getElementById('promo-toggle').style.display = 'none';
           document.getElementById('promo-field').style.display = 'none';
           ensureBooking(function() { initStripePayment(); });
@@ -914,7 +916,7 @@
       }
       api('/payments/create-intent', {
         method: 'POST',
-        body: JSON.stringify({ booking_id: state.bookingId, use_credits: !!(state.memberCombi || state.passPartial) }),
+        body: JSON.stringify({ booking_id: state.bookingId, use_credits: !!(state.memberCombi || state.creditPartial) }),
       }).then(function (pRes) {
         if (pRes.error) { showPaymentError(pRes.error); return; }
         try {

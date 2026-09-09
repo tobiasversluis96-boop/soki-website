@@ -93,26 +93,23 @@ router.post('/cancel', requireAuth, async (req, res) => {
 // POST /api/subscriptions/credit-cost  -- returns cost for a slot
 router.post('/credit-cost', requireAuth, async (req, res) => {
   const { session_type_id } = req.body;
-  // Credits gelden per persoon — zelfde rekensom als confirm-member
   const groupSize = Math.min(Math.max(parseInt(req.body.group_size) || 1, 1), 20);
-  const cost = (CREDIT_COST[session_type_id] || 1.5) * groupSize;
   const sub  = await queries.getActiveSubscription(req.user.userId);
   const passes = await queries.getActivePunchPasses(req.user.userId);
   const passTotal = passes.reduce((sum, p) => sum + Number(p.credits_remaining), 0);
-  const subCanBook = sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= cost) : false;
-  // Geen mixen van bronnen per boeking: één enkele kaart moet de kosten dekken.
-  // Strippenkaart-credits zijn bovendien persoonlijk: alleen voor boekingen voor 1 persoon.
-  const passCovers = groupSize === 1 && passes.some(p => Number(p.credits_remaining) >= cost);
+  // Credits (abonnement én strippenkaart) zijn persoonlijk: ze dekken alleen de eigen
+  // plek. Bij een groepsboeking worden de extra personen via Stripe bijbetaald.
+  const cost = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[session_type_id] || 1.5);
+  const covered = (sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= cost) : false)
+    || passes.some(p => Number(p.credits_remaining) >= cost);
   res.json({
     has_subscription: !!sub || passes.length > 0,
     credits_cost: cost,
     credits_remaining: (sub ? Number(sub.credits_remaining) || 0 : 0) + passTotal,
     is_unlimited: sub ? sub.credits_per_month === null : false,
-    can_book: subCanBook || passCovers,
-    // Strippenkaart bij groepsboeking: eigen plek op credits, extra personen bijbetalen
-    pass_partial: !subCanBook && groupSize > 1
-      && passes.some(p => Number(p.credits_remaining) >= (CREDIT_COST[session_type_id] || 1.5)),
-    credits_cost_self: CREDIT_COST[session_type_id] || 1.5,
+    can_book: groupSize === 1 && covered,
+    // Groepsboeking: eigen plek op credits, extra personen (en evt. diner) bijbetalen
+    credit_partial: groupSize > 1 && covered,
   });
 });
 

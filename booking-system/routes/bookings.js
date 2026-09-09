@@ -360,6 +360,9 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
   if (booking.kantine_addon_cents > 0)
     return res.status(400).json({ error: 'Het combi ticket met De Kantine kan niet met credits worden geboekt.' });
+  // Credits zijn persoonlijk: groepsboekingen lopen via de deelbetaling (create-intent)
+  if ((booking.group_size || 1) > 1)
+    return res.status(400).json({ error: 'Credits gelden alleen voor je eigen plek. Boek een groep via de gewone betaling.' });
 
   // Verify subscription or punch pass
   const sub = await queries.getActiveSubscription(req.user.userId);
@@ -373,9 +376,8 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
     return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
-  // Credits gelden per persoon, niet per boeking (unlimited membership = 0 credits)
-  const perPerson = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
-  const creditsToUse = perPerson * (booking.group_size || 1);
+  // Unlimited membership = 0 credits
+  const creditsToUse = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
 
   // Deduct credits + confirm booking in a single transaction
   const pool = getPool();
@@ -390,11 +392,6 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
         [creditsToUse, req.user.userId]
       );
       if (!rows[0]) {
-        // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
-        if ((booking.group_size || 1) > 1) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Strippenkaart-credits zijn persoonlijk en gelden alleen voor een boeking voor 1 persoon.' });
-        }
         const pp = await client.query(`
           UPDATE punch_passes SET credits_remaining = credits_remaining - $1
           WHERE id = (
