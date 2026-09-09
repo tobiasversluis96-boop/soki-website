@@ -23,31 +23,39 @@ router.post('/create-intent', requireAuth, async (req, res) => {
   if (booking.status !== 'pending')
     return res.status(400).json({ error: 'Booking is not in pending state' });
 
-  // Hybride combi-boeking: sessie met credits, alleen het dinerdeel afrekenen.
+  // Hybride creditsboeking: (deel van) de sessie met credits, de rest afrekenen.
   // Credits worden pas afgeschreven zodra de betaling slaagt (settleMemberCombi).
   let amount = booking.total_cents;
   const extraMetadata = {};
   if (req.body.use_credits === true) {
-    if (!(booking.kantine_addon_cents > 0))
-      return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
     const { CREDIT_COST } = require('./subscriptions');
     const slot = await queries.getSlotById(booking.time_slot_id);
     if (!slot || slot.is_private)
       return res.status(400).json({ error: 'Deze sessie kan niet met credits worden geboekt.' });
     const sub    = await queries.getActiveSubscription(req.user.userId);
     const passes = await queries.getActivePunchPasses(req.user.userId);
-    const perPerson = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
-    const creditsToUse = perPerson * (booking.group_size || 1);
-    const covered = creditsToUse === 0
-      || (sub && (Number(sub.credits_remaining) || 0) >= creditsToUse)
-      // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
-      || ((booking.group_size || 1) === 1 && passes.some(p => Number(p.credits_remaining) >= creditsToUse));
-    if (!covered)
+    const groupSize  = booking.group_size || 1;
+    const perPerson  = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+    const fullCredits = perPerson * groupSize;
+    const subCovers = perPerson === 0 || (sub && (Number(sub.credits_remaining) || 0) >= fullCredits);
+    if (subCovers) {
+      // Abonnement dekt de hele groep: alleen het diner afrekenen
+      if (!(booking.kantine_addon_cents > 0))
+        return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
+      amount = booking.kantine_addon_cents;
+      extraMetadata.credits_to_use = String(fullCredits);
+    } else if (passes.some(p => Number(p.credits_remaining) >= perPerson)) {
+      // Strippenkaart is persoonlijk: eigen plek op credits, extra personen (en evt. diner) bijbetalen
+      amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
+      if (!(amount > 0))
+        return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
+      extraMetadata.credits_to_use = String(perPerson);
+      extraMetadata.credit_source = 'pass';
+    } else {
       return res.status(400).json({ error: 'Onvoldoende credits voor deze sessie.' });
-    amount = booking.kantine_addon_cents;
+    }
     extraMetadata.type = 'member_combi';
     extraMetadata.user_id = String(req.user.userId);
-    extraMetadata.credits_to_use = String(creditsToUse);
   }
 
   try {
@@ -96,7 +104,7 @@ async function settleMemberCombi(intent) {
     return { ok: false };
   }
 
-  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id);
+  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.metadata.credit_source);
   if (result.insufficient) {
     // Credits verdwenen tussen intent en betaling (zeldzaam): diner terugbetalen + boeking annuleren
     console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle — refund + annulering`);

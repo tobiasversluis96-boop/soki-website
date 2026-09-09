@@ -865,7 +865,8 @@ const queries = {
 
   // Hybride combi-boeking: sessie met credits, diner al via Stripe betaald.
   // Idempotent: alleen een pending boeking wordt bevestigd.
-  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId) => {
+  // source 'pass' = strippenkaart betaalt alleen de eigen plek (deelbetaling via Stripe)
+  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId, source) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -877,13 +878,18 @@ const queries = {
       let punchPassId = null;
       if (creditsToUse > 0) {
         // Eerst het abonnement proberen, anders één strippenkaart (vroegst-verlopend) met genoeg saldo
-        const { rows } = await client.query(
-          "UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN ('active', 'past_due') AND credits_remaining >= $1 RETURNING id",
-          [creditsToUse, userId]
-        );
-        if (!rows[0]) {
-          // Strippenkaart-credits zijn persoonlijk: alleen voor een boeking voor 1 persoon
-          if ((bk.rows[0].group_size || 1) > 1) {
+        let subPaid = false;
+        if (source !== 'pass') {
+          const { rows } = await client.query(
+            "UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN ('active', 'past_due') AND credits_remaining >= $1 RETURNING id",
+            [creditsToUse, userId]
+          );
+          subPaid = !!rows[0];
+        }
+        if (!subPaid) {
+          // Strippenkaart-credits zijn persoonlijk: bij source 'pass' dekken ze alleen de
+          // eigen plek (rest al via Stripe betaald); anders alleen boekingen voor 1 persoon
+          if (source !== 'pass' && (bk.rows[0].group_size || 1) > 1) {
             await client.query('ROLLBACK');
             return { ok: false, insufficient: true };
           }

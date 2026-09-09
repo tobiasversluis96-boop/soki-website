@@ -109,8 +109,10 @@ router.post('/credit-cost', requireAuth, async (req, res) => {
     credits_remaining: (sub ? Number(sub.credits_remaining) || 0 : 0) + passTotal,
     is_unlimited: sub ? sub.credits_per_month === null : false,
     can_book: subCanBook || passCovers,
-    pass_group_limited: !subCanBook && groupSize > 1
+    // Strippenkaart bij groepsboeking: eigen plek op credits, extra personen bijbetalen
+    pass_partial: !subCanBook && groupSize > 1
       && passes.some(p => Number(p.credits_remaining) >= (CREDIT_COST[session_type_id] || 1.5)),
+    credits_cost_self: CREDIT_COST[session_type_id] || 1.5,
   });
 });
 

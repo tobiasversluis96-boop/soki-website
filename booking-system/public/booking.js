@@ -71,6 +71,7 @@
     state.paymentIntentId = null;
     state.promoCode       = null;
     state.memberCombi     = null;
+    state.passPartial     = null;
   }
 
   // Combi-deal De Kantine geldt alleen bij betaalde losse sessies
@@ -139,7 +140,13 @@
         rows.push([t('booking.summary.credits'), state.memberCombi.is_unlimited ? 'Unlimited ✓' : state.memberCombi.credits_cost + ' credits ✓']);
         finalTotal = kantineCents();
       }
-      if (state.cotenantCents > 0 && finalTotal > 0 && !state.memberCombi) {
+      if (state.passPartial) {
+        // Strippenkaart: eigen plek op credits, extra personen (en evt. diner) worden afgerekend
+        var cc = state.passPartial.credits_cost;
+        rows.push([t('booking.summary.credits.self'), cc + ' credit' + (cc === 1 ? '' : 's') + ' ✓']);
+        finalTotal = perPerson * (state.groupSize - 1) + kantineCents();
+      }
+      if (state.cotenantCents > 0 && finalTotal > 0 && !state.memberCombi && !state.passPartial) {
         rows.push([t('booking.summary.discount'), '−' + eur(state.cotenantCents)]);
       }
       rows.push([t('booking.summary.total'), finalTotal === 0 ? t('booking.free') : eur(finalTotal)]);
@@ -817,9 +824,13 @@
         } else if (data.can_book) {
           // Ensure booking exists before showing member payment
           ensureBooking(function() { showMemberPayment(data); });
-        } else if (data.pass_group_limited) {
-          document.getElementById('stripe-errors').textContent = t('booking.member.passgroup');
-          initStripePayment();
+        } else if (data.pass_partial) {
+          // Strippenkaart: eigen plek met credits, extra personen (en evt. diner) bijbetalen.
+          // Promocodes gelden hier niet, net als bij de andere hybride creditsflow.
+          state.passPartial = { credits_cost: data.credits_cost_self };
+          document.getElementById('promo-toggle').style.display = 'none';
+          document.getElementById('promo-field').style.display = 'none';
+          ensureBooking(function() { initStripePayment(); });
         } else if (data.has_subscription && !data.is_unlimited) {
           document.getElementById('stripe-errors').textContent =
             t('booking.member.insufficient').replace('{r}', data.credits_remaining).replace('{n}', data.credits_cost);
@@ -903,7 +914,7 @@
       }
       api('/payments/create-intent', {
         method: 'POST',
-        body: JSON.stringify({ booking_id: state.bookingId, use_credits: !!state.memberCombi }),
+        body: JSON.stringify({ booking_id: state.bookingId, use_credits: !!(state.memberCombi || state.passPartial) }),
       }).then(function (pRes) {
         if (pRes.error) { showPaymentError(pRes.error); return; }
         try {
