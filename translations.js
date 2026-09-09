@@ -133,7 +133,7 @@ var SOKI_I18N = {
     /* --- Homepage upcoming --- */
     'home.upcoming.eyebrow': "What's on",
     'home.upcoming.h2':      'Upcoming sessions',
-    'home.upcoming.lead':    'Reserve your spot. Live availability updated in real time.',
+    'home.upcoming.lead':    'Reserve your spot.',
     'home.upcoming.viewfull':'View full programme',
 
     /* --- Homepage newsletter --- */
@@ -645,7 +645,7 @@ var SOKI_I18N = {
     /* --- Homepage upcoming --- */
     'home.upcoming.eyebrow': 'Op het programma',
     'home.upcoming.h2':      'Aankomende sessies',
-    'home.upcoming.lead':    'Reserveer je plek. Live beschikbaarheid wordt in real time bijgewerkt.',
+    'home.upcoming.lead':    'Reserveer je plek.',
     'home.upcoming.viewfull':'Bekijk het volledige programma',
 
     /* --- Homepage newsletter --- */
