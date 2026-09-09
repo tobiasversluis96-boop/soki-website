@@ -530,13 +530,15 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
     revenuePerMonth,
   ] = await Promise.all([
 
-    // 1. Weekly revenue for last 12 weeks (confirmed bookings + gift card sales)
+    // 1. Weekly revenue for last 12 weeks (confirmed bookings + gift card + punch pass sales)
     pool.query(`
       SELECT week, SUM(revenue_cents)::int AS revenue_cents, SUM(bookings)::int AS bookings
       FROM (
         SELECT
           TO_CHAR(ts.date::date, 'IYYY-"W"IW') AS week,
-          CASE WHEN b.stripe_payment_intent_id IS NOT NULL THEN b.total_cents ELSE 0 END AS revenue_cents,
+          CASE WHEN b.stripe_payment_intent_id IS NULL THEN 0
+               WHEN b.credits_used > 0 THEN COALESCE(b.kantine_addon_cents, 0)
+               ELSE b.total_cents END AS revenue_cents,
           1 AS bookings
         FROM bookings b
         JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -550,6 +552,14 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
         FROM gift_cards g
         WHERE g.stripe_payment_intent_id IS NOT NULL
           AND g.created_at >= CURRENT_DATE - INTERVAL '11 weeks'
+        UNION ALL
+        SELECT
+          TO_CHAR(p.created_at::date, 'IYYY-"W"IW') AS week,
+          p.price_cents AS revenue_cents,
+          0 AS bookings
+        FROM punch_passes p
+        WHERE p.stripe_payment_intent_id IS NOT NULL
+          AND p.created_at >= CURRENT_DATE - INTERVAL '11 weeks'
       ) x
       GROUP BY week
       ORDER BY week
@@ -666,13 +676,15 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       ORDER BY month
     `),
 
-    // 8. Monthly revenue for last 12 months (confirmed bookings + gift card sales)
+    // 8. Monthly revenue for last 12 months (confirmed bookings + gift card + punch pass sales)
     pool.query(`
       SELECT month, SUM(revenue_cents)::int AS revenue_cents, SUM(bookings)::int AS bookings
       FROM (
         SELECT
           TO_CHAR(DATE_TRUNC('month', ts.date::date), 'YYYY-MM') AS month,
-          CASE WHEN b.stripe_payment_intent_id IS NOT NULL THEN b.total_cents ELSE 0 END AS revenue_cents,
+          CASE WHEN b.stripe_payment_intent_id IS NULL THEN 0
+               WHEN b.credits_used > 0 THEN COALESCE(b.kantine_addon_cents, 0)
+               ELSE b.total_cents END AS revenue_cents,
           1 AS bookings
         FROM bookings b
         JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -687,6 +699,14 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
         FROM gift_cards g
         WHERE g.stripe_payment_intent_id IS NOT NULL
           AND g.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months')
+        UNION ALL
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', p.created_at), 'YYYY-MM') AS month,
+          p.price_cents AS revenue_cents,
+          0 AS bookings
+        FROM punch_passes p
+        WHERE p.stripe_payment_intent_id IS NOT NULL
+          AND p.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months')
       ) x
       GROUP BY month
       ORDER BY month

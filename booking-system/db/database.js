@@ -1735,12 +1735,17 @@ const queries = {
   },
 
   getAnalytics: async () => {
-    const [total, confirmed, revenue, giftRevenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
+    const [total, confirmed, revenue, giftRevenue, punchRevenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status = 'confirmed'"),
-      // Alleen echt via Stripe betaalde boekingen; credits/cadeaubon-boekingen zijn geen kasomzet
-      pool.query("SELECT COALESCE(SUM(total_cents),0)::int AS n FROM bookings WHERE status = 'confirmed' AND stripe_payment_intent_id IS NOT NULL"),
+      // Alleen echt via Stripe betaalde boekingen; credits/cadeaubon-boekingen zijn geen kasomzet.
+      // Hybride combi (sessie met credits + diner via Stripe): alleen het dinerdeel telt.
+      pool.query(`
+        SELECT COALESCE(SUM(CASE WHEN credits_used > 0 THEN COALESCE(kantine_addon_cents, 0) ELSE total_cents END), 0)::int AS n
+        FROM bookings WHERE status = 'confirmed' AND stripe_payment_intent_id IS NOT NULL
+      `),
       pool.query('SELECT COALESCE(SUM(initial_amount_cents),0)::int AS n FROM gift_cards WHERE stripe_payment_intent_id IS NOT NULL'),
+      pool.query('SELECT COALESCE(SUM(price_cents),0)::int AS n FROM punch_passes WHERE stripe_payment_intent_id IS NOT NULL'),
       pool.query(`
         SELECT st.name, COUNT(b.id)::int AS count
         FROM session_types st
@@ -1762,8 +1767,9 @@ const queries = {
     return {
       totalBookings:     total.rows[0].n,
       confirmedBookings: confirmed.rows[0].n,
-      totalRevenue:      revenue.rows[0].n + giftRevenue.rows[0].n,
+      totalRevenue:      revenue.rows[0].n + giftRevenue.rows[0].n + punchRevenue.rows[0].n,
       giftCardRevenue:   giftRevenue.rows[0].n,
+      punchPassRevenue:  punchRevenue.rows[0].n,
       bookingsPerType:   perType.rows,
       bookingsPerWeek:   perWeek.rows,
       avgGroupSize:      avgGroup.rows[0].n,
