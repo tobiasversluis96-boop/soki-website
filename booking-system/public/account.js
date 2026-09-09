@@ -72,6 +72,7 @@
         '<div class="history-item__meta">' +
           fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
           ' · ' + personStr(b.group_size) +
+          (b.kantine_addon_cents > 0 ? ' · ' + t('account.kantine') : '') +
         '</div>' +
         statusBadge(b.status) +
         cancelBtn +
@@ -172,6 +173,7 @@
                 '<div class="history-item__meta">' +
                   fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
                   ' · ' + personStr(b.group_size) +
+                  (b.kantine_addon_cents > 0 ? ' · ' + t('account.kantine') : '') +
                 '</div>' +
                 '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
                   statusBadge(b.status) +
