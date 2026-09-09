@@ -429,6 +429,19 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// PATCH /api/admin/customers/:id/discount — vaste korting op losse sessies (bv. medehuurders)
+router.patch('/customers/:id/discount', requireAdmin, async (req, res) => {
+  const pct = Number(req.body.pct);
+  if (!Number.isInteger(pct) || pct < 0 || pct > 100)
+    return res.status(400).json({ error: 'Kortingspercentage moet een geheel getal tussen 0 en 100 zijn.' });
+
+  const user = await queries.getUserById(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Klant niet gevonden.' });
+
+  await queries.setUserDiscount(user.id, pct);
+  res.json({ ok: true, discount_pct: pct });
+});
+
 // POST /api/admin/customers/:id/credits — gratis credits geven als €0-punchpass
 router.post('/customers/:id/credits', requireAdmin, async (req, res) => {
   const credits = Number(req.body.credits);

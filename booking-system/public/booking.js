@@ -28,6 +28,7 @@
     user:          null,
     bookingId:     null,
     totalCents:    null,
+    cotenantCents: 0,
     stripe:         null,
     stripeElements: null,
     clientSecret:   null,
@@ -114,6 +115,9 @@
       var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
       var computedTotal = (state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize;
       var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
+      if (state.cotenantCents > 0 && finalTotal > 0) {
+        rows.push([t('booking.summary.discount'), '−' + eur(state.cotenantCents)]);
+      }
       rows.push([t('booking.summary.total'), finalTotal === 0 ? t('booking.free') : eur(finalTotal)]);
     }
     var html = '<div class="booking-summary-box__label">' + t('booking.summary.title') + '</div>';
@@ -742,6 +746,7 @@
         }
         state.bookingId  = bRes.booking_id;
         state.totalCents = bRes.total_cents;
+        state.cotenantCents = bRes.cotenant_discount_cents || 0;
         showConfirmation();
       });
       return;
@@ -785,6 +790,7 @@
       if (bRes.error) { document.getElementById('stripe-errors').textContent = bRes.error; return; }
       state.bookingId  = bRes.booking_id;
       state.totalCents = bRes.total_cents;
+      state.cotenantCents = bRes.cotenant_discount_cents || 0;
       callback();
     });
   }
@@ -850,6 +856,7 @@
         state.clientSecret    = pRes.client_secret;
         state.paymentIntentId = pRes.payment_intent_id;
         state.totalCents      = pRes.amount;
+        document.getElementById('payment-summary').innerHTML = summaryHTML();
 
         if (!state.stripe) state.stripe = Stripe(pRes.publishable_key);
         state.stripeElements = state.stripe.elements({
@@ -967,6 +974,7 @@
       if (bRes.error) { showPaymentError(bRes.error); return; }
       state.bookingId  = bRes.booking_id;
       state.totalCents = bRes.total_cents;
+      state.cotenantCents = bRes.cotenant_discount_cents || 0;
       doInit();
     });
   }
@@ -1217,6 +1225,7 @@
         } else if (res.discount_cents > 0) {
           state.bookingId  = res.booking_id;
           state.totalCents = res.total_cents;
+          state.cotenantCents = res.cotenant_discount_cents || 0;
           state.promoCode  = code;
           msgEl.style.color = '#2E7D32';
           var saved = (res.discount_cents / 100).toFixed(2).replace('.', ',');

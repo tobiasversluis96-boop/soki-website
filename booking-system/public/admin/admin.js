@@ -942,7 +942,10 @@
     const waiverBadge = c.waiver_signed_at
       ? `<span style="background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">✓ Waiver</span>`
       : `<span style="background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">⚠ Geen waiver</span>`;
-    document.getElementById('customer-modal-meta').innerHTML = escapeHtml(c.email) + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '') + waiverBadge;
+    const discountBadge = Number(c.discount_pct) > 0
+      ? `<span style="background:#E3F2FD;color:#1565C0;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:8px;">${c.discount_pct}% korting</span>`
+      : '';
+    document.getElementById('customer-modal-meta').innerHTML = escapeHtml(c.email) + ' · Lid sinds ' + formatDate(c.created_at ? c.created_at.slice(0, 10) : '') + waiverBadge + discountBadge;
     document.getElementById('customer-modal-bookings').innerHTML = '<div class="loading">Laden…</div>';
     document.getElementById('customer-modal').classList.add('open');
 
@@ -954,6 +957,27 @@
         document.getElementById('customer-modal').classList.remove('open');
         loadCustomers();
       } catch { alert('Verwijderen mislukt.'); }
+    };
+
+    // Wire discount toggle (medehuurders: 20% op losse sessies, alleen eigen plek)
+    const discountBtn = document.getElementById('customer-modal-discount-btn');
+    discountBtn.textContent = Number(c.discount_pct) > 0 ? `Korting uitzetten (${c.discount_pct}%)` : '20% korting aanzetten';
+    discountBtn.onclick = async function () {
+      const newPct = Number(c.discount_pct) > 0 ? 0 : 20;
+      const msg = newPct > 0
+        ? '20% medehuurderskorting aanzetten voor ' + c.name + '?\n\nGeldt alleen voor losse sessies en alleen voor de eigen plek (niet voor extra personen in de groep). Blijft actief tot je hem uitzet.'
+        : 'Korting uitzetten voor ' + c.name + '?';
+      if (!confirm(msg)) return;
+      try {
+        await api('/customers/' + c.id + '/discount', {
+          method: 'PATCH',
+          body: JSON.stringify({ pct: newPct }),
+        });
+        c.discount_pct = newPct;
+        openCustomerDetail(id);
+      } catch (e) {
+        alert('Korting wijzigen mislukt: ' + (e.message || 'onbekende fout'));
+      }
     };
 
     // Wire free-credits button (giveaways etc. — creates a €0 punch pass)

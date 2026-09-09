@@ -66,8 +66,17 @@ router.post('/', requireAuth, async (req, res) => {
   // Privéverhuur: price_cents is de totaalprijs voor de hele groep, niet per persoon
   const grossTotal = slot.is_private ? slot.price_cents : slot.price_cents * group_size;
 
+  // Medehuurderskorting: percentage over ÉÉN plek (alleen de eigen plek van de
+  // accounthouder), niet bij privéverhuur of gratis sessies.
+  let cotenantCents = 0;
+  if (!isFree && !slot.is_private && slot.price_cents > 0) {
+    const bookingUser = await queries.getUserById(req.user.userId);
+    const pct = bookingUser ? Number(bookingUser.discount_pct) || 0 : 0;
+    if (pct > 0) cotenantCents = Math.round(slot.price_cents * pct / 100);
+  }
+
   if (!isFree && promo_code) {
-    const bookingTotal = grossTotal;
+    const bookingTotal = grossTotal - cotenantCents;
 
     // Check gift card first
     giftCard = await queries.getGiftCardByCode(promo_code.trim());
@@ -113,7 +122,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
   }
 
-  const totalCents = isFree ? 0 : Math.max(0, grossTotal - discountCents);
+  const totalCents = isFree ? 0 : Math.max(0, grossTotal - cotenantCents - discountCents);
   let booking;
   try {
     booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents);
@@ -163,6 +172,7 @@ router.post('/', requireAuth, async (req, res) => {
     booking_id:     booking.id,
     total_cents:    totalCents,
     discount_cents: discountCents,
+    cotenant_discount_cents: cotenantCents,
     gift_card_remaining: giftCard ? Math.max(0, giftCard.remaining_amount_cents - discountCents) : undefined,
     slot,
     group_size,

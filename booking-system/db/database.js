@@ -294,6 +294,7 @@ async function initializeDB() {
   await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS discount_pct INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
@@ -547,7 +548,7 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct FROM users WHERE id = $1', [id]);
     return rows[0] || null;
   },
 
@@ -600,7 +601,7 @@ const queries = {
 
   getAllUsers: async () => {
     const { rows } = await pool.query(`
-      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.waiver_signed_at,
+      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.waiver_signed_at, u.discount_pct,
              COUNT(b.id)::int AS booking_count
       FROM users u
       LEFT JOIN bookings b ON b.user_id = u.id AND b.status != 'cancelled'
@@ -612,6 +613,10 @@ const queries = {
 
   updateUserAdminNotes: async (userId, notes) => {
     await pool.query('UPDATE users SET admin_notes = $1 WHERE id = $2', [notes, userId]);
+  },
+
+  setUserDiscount: async (userId, pct) => {
+    await pool.query('UPDATE users SET discount_pct = $1 WHERE id = $2', [pct, userId]);
   },
 
   getScheduleByDate: async (date) => {
