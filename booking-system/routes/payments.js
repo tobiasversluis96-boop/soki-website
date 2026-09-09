@@ -96,7 +96,7 @@ async function settleMemberCombi(intent) {
     return { ok: false };
   }
 
-  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id);
+  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.amount_received || intent.amount);
   if (result.insufficient) {
     // Credits verdwenen tussen intent en betaling (zeldzaam): diner terugbetalen + boeking annuleren
     console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle — refund + annulering`);

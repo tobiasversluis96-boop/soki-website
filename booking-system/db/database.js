@@ -429,6 +429,8 @@ async function initializeDB() {
   )`);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS punch_pass_id INTEGER REFERENCES punch_passes(id)');
   await pool.query('ALTER TABLE punch_passes ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ');
+  // Werkelijk via Stripe betaald bedrag bij hybride creditsboekingen (voor de omzetstatistieken)
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paid_cents INTEGER');
   // Eenmalige correctie: testaankoop van Tobias die vóór de refunded_at-kolom via Stripe is terugbetaald
   await pool.query(`
     UPDATE punch_passes SET refunded_at = NOW(), credits_remaining = 0
@@ -865,7 +867,7 @@ const queries = {
 
   // Hybride combi-boeking: eigen plek met credits, de rest al via Stripe betaald.
   // Idempotent: alleen een pending boeking wordt bevestigd.
-  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId) => {
+  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId, paidCents) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -898,8 +900,8 @@ const queries = {
         }
       }
       await client.query(
-        "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($4, stripe_payment_intent_id) WHERE id = $1",
-        [bookingId, creditsToUse, punchPassId, paymentIntentId]
+        "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($4, stripe_payment_intent_id), paid_cents = $5 WHERE id = $1",
+        [bookingId, creditsToUse, punchPassId, paymentIntentId, paidCents ?? null]
       );
       await client.query('COMMIT');
       return { ok: true };
@@ -1745,9 +1747,10 @@ const queries = {
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status = 'confirmed'"),
       // Alleen echt via Stripe betaalde boekingen; credits/cadeaubon-boekingen zijn geen kasomzet.
-      // Hybride combi (sessie met credits + diner via Stripe): alleen het dinerdeel telt.
+      // Hybride creditsboeking: alleen het via Stripe betaalde deel (paid_cents) telt;
+      // oudere hybride boekingen zonder paid_cents vallen terug op het dinerbedrag.
       pool.query(`
-        SELECT COALESCE(SUM(CASE WHEN credits_used > 0 THEN COALESCE(kantine_addon_cents, 0) ELSE total_cents END), 0)::int AS n
+        SELECT COALESCE(SUM(CASE WHEN credits_used > 0 THEN COALESCE(paid_cents, kantine_addon_cents, 0) ELSE total_cents END), 0)::int AS n
         FROM bookings WHERE status = 'confirmed' AND stripe_payment_intent_id IS NOT NULL
       `),
       pool.query('SELECT COALESCE(SUM(initial_amount_cents),0)::int AS n FROM gift_cards WHERE stripe_payment_intent_id IS NOT NULL'),

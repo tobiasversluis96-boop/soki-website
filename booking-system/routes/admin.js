@@ -537,7 +537,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
         SELECT
           TO_CHAR(ts.date::date, 'IYYY-"W"IW') AS week,
           CASE WHEN b.stripe_payment_intent_id IS NULL THEN 0
-               WHEN b.credits_used > 0 THEN COALESCE(b.kantine_addon_cents, 0)
+               WHEN b.credits_used > 0 THEN COALESCE(b.paid_cents, b.kantine_addon_cents, 0)
                ELSE b.total_cents END AS revenue_cents,
           1 AS bookings
         FROM bookings b
@@ -684,7 +684,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
         SELECT
           TO_CHAR(DATE_TRUNC('month', ts.date::date), 'YYYY-MM') AS month,
           CASE WHEN b.stripe_payment_intent_id IS NULL THEN 0
-               WHEN b.credits_used > 0 THEN COALESCE(b.kantine_addon_cents, 0)
+               WHEN b.credits_used > 0 THEN COALESCE(b.paid_cents, b.kantine_addon_cents, 0)
                ELSE b.total_cents END AS revenue_cents,
           1 AS bookings
         FROM bookings b
