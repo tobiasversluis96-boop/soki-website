@@ -431,6 +431,30 @@ async function initializeDB() {
   await pool.query('ALTER TABLE punch_passes ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ');
   // Werkelijk via Stripe betaald bedrag bij hybride creditsboekingen (voor de omzetstatistieken)
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paid_cents INTEGER');
+
+  // Kortingscodes (admin-beheerd): vast bedrag óf percentage, voor boekingen en/of strippenkaart
+  await pool.query(`CREATE TABLE IF NOT EXISTS discount_codes (
+    id                SERIAL PRIMARY KEY,
+    code              TEXT UNIQUE NOT NULL,
+    discount_pct      INTEGER,
+    discount_cents    INTEGER,
+    applies_to        TEXT NOT NULL DEFAULT 'both',
+    valid_until       DATE,
+    max_uses          INTEGER,
+    use_count         INTEGER NOT NULL DEFAULT 0,
+    once_per_customer BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS discount_code_uses (
+    id            SERIAL PRIMARY KEY,
+    code_id       INTEGER NOT NULL REFERENCES discount_codes(id),
+    user_id       INTEGER NOT NULL REFERENCES users(id),
+    booking_id    INTEGER REFERENCES bookings(id),
+    punch_pass_id INTEGER REFERENCES punch_passes(id),
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pending_discount_code_id INTEGER REFERENCES discount_codes(id)');
   // Eenmalige correctie: testaankoop van Tobias die vóór de refunded_at-kolom via Stripe is terugbetaald
   await pool.query(`
     UPDATE punch_passes SET refunded_at = NOW(), credits_remaining = 0
@@ -770,12 +794,64 @@ const queries = {
     return rows[0] || null;
   },
 
-  setBookingPendingPromo: async (bookingId, giftCardId, milestoneId, discountCents) => {
+  setBookingPendingPromo: async (bookingId, giftCardId, milestoneId, discountCents, discountCodeId) => {
     await pool.query(
       `UPDATE bookings
-       SET pending_gift_card_id = $2, pending_milestone_id = $3, pending_discount_cents = $4
+       SET pending_gift_card_id = $2, pending_milestone_id = $3, pending_discount_cents = $4,
+           pending_discount_code_id = $5
        WHERE id = $1`,
-      [bookingId, giftCardId, milestoneId, discountCents]
+      [bookingId, giftCardId, milestoneId, discountCents, discountCodeId || null]
+    );
+  },
+
+  // ── Kortingscodes (admin-beheerd) ──
+  getDiscountCodeByCode: async (code) => {
+    const { rows } = await pool.query('SELECT * FROM discount_codes WHERE UPPER(code) = UPPER($1)', [String(code).trim()]);
+    return rows[0] || null;
+  },
+
+  getAllDiscountCodes: async () => {
+    const { rows } = await pool.query('SELECT * FROM discount_codes ORDER BY created_at DESC');
+    return rows;
+  },
+
+  createDiscountCode: async ({ code, discount_pct, discount_cents, applies_to, valid_until, max_uses, once_per_customer }) => {
+    const { rows } = await pool.query(
+      `INSERT INTO discount_codes (code, discount_pct, discount_cents, applies_to, valid_until, max_uses, once_per_customer)
+       VALUES (UPPER($1), $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [code.trim(), discount_pct || null, discount_cents || null, applies_to, valid_until || null, max_uses || null, !!once_per_customer]
+    );
+    return rows[0];
+  },
+
+  setDiscountCodeActive: async (id, isActive) => {
+    const { rows } = await pool.query(
+      'UPDATE discount_codes SET is_active = $2 WHERE id = $1 RETURNING *',
+      [id, !!isActive]
+    );
+    return rows[0] || null;
+  },
+
+  hasUserUsedDiscountCode: async (codeId, userId) => {
+    const { rows } = await pool.query(
+      'SELECT 1 FROM discount_code_uses WHERE code_id = $1 AND user_id = $2 LIMIT 1',
+      [codeId, userId]
+    );
+    return !!rows[0];
+  },
+
+  // Gebruik registreren ná geslaagde betaling. De teller is een guard tegen max_uses,
+  // maar een al betaalde korting wordt nooit teruggedraaid — alleen luid gelogd.
+  redeemDiscountCode: async (codeId, userId, { bookingId = null, punchPassId = null } = {}) => {
+    const { rows } = await pool.query(
+      `UPDATE discount_codes SET use_count = use_count + 1
+       WHERE id = $1 AND (max_uses IS NULL OR use_count < max_uses) RETURNING id`,
+      [codeId]
+    );
+    if (!rows[0]) console.error(`Kortingscode ${codeId}: max_uses overschreden bij inwisselen (boeking ${bookingId}, pass ${punchPassId})`);
+    await pool.query(
+      'INSERT INTO discount_code_uses (code_id, user_id, booking_id, punch_pass_id) VALUES ($1, $2, $3, $4)',
+      [codeId, userId, bookingId, punchPassId]
     );
   },
 
@@ -785,20 +861,28 @@ const queries = {
   redeemPendingPromo: async (bookingId) => {
     const { rows } = await pool.query(
       `UPDATE bookings b
-       SET pending_gift_card_id = NULL, pending_milestone_id = NULL, pending_discount_cents = NULL
-       FROM (SELECT id, pending_gift_card_id, pending_milestone_id, pending_discount_cents
+       SET pending_gift_card_id = NULL, pending_milestone_id = NULL, pending_discount_cents = NULL,
+           pending_discount_code_id = NULL
+       FROM (SELECT id, user_id, pending_gift_card_id, pending_milestone_id, pending_discount_cents,
+                    pending_discount_code_id
              FROM bookings WHERE id = $1 FOR UPDATE) old
        WHERE b.id = old.id
-         AND (old.pending_gift_card_id IS NOT NULL OR old.pending_milestone_id IS NOT NULL)
-       RETURNING old.pending_gift_card_id AS gift_card_id,
+         AND (old.pending_gift_card_id IS NOT NULL OR old.pending_milestone_id IS NOT NULL
+              OR old.pending_discount_code_id IS NOT NULL)
+       RETURNING old.user_id,
+                 old.pending_gift_card_id AS gift_card_id,
                  old.pending_milestone_id AS milestone_id,
-                 old.pending_discount_cents AS discount_cents`,
+                 old.pending_discount_cents AS discount_cents,
+                 old.pending_discount_code_id AS discount_code_id`,
       [bookingId]
     );
     const p = rows[0];
     if (!p) return null;
     if (p.milestone_id) {
       await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [p.milestone_id]);
+    }
+    if (p.discount_code_id) {
+      await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId });
     }
     if (p.gift_card_id) {
       const { rows: debited } = await pool.query(

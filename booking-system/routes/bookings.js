@@ -62,6 +62,7 @@ router.post('/', requireAuth, async (req, res) => {
   // Validate milestone reward code or gift card
   let milestoneEntry = null;
   let giftCard       = null;
+  let discountCode   = null;
   let discountCents  = 0;
   // Privéverhuur: price_cents is de totaalprijs voor de hele groep, niet per persoon
   const grossTotal = slot.is_private ? slot.price_cents : slot.price_cents * group_size;
@@ -114,21 +115,32 @@ router.post('/', requireAuth, async (req, res) => {
     } else {
       // Try milestone code
       milestoneEntry = await queries.getMilestoneByCode(promo_code.trim());
-      if (!milestoneEntry) {
-        return res.status(400).json({ error: 'Ongeldige promotiecode.' });
-      }
-      if (slot.is_private)
-        return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
-      const { MILESTONES } = require('../utils/milestones');
-      const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
-      if (milestoneDef) {
-        if (milestoneEntry.milestone === 5) {
-          if (group_size < 2)
-            return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
-          discountCents = slot.price_cents;
-        } else if (milestoneEntry.milestone === 25) {
-          discountCents = grossTotal;
+      if (milestoneEntry) {
+        if (slot.is_private)
+          return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
+        const { MILESTONES } = require('../utils/milestones');
+        const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
+        if (milestoneDef) {
+          if (milestoneEntry.milestone === 5) {
+            if (group_size < 2)
+              return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
+            discountCents = slot.price_cents;
+          } else if (milestoneEntry.milestone === 25) {
+            discountCents = grossTotal;
+          }
         }
+      } else {
+        // Try admin-managed discount code
+        const { validateDiscountCode, discountAmount } = require('../utils/discount-codes');
+        const result = await validateDiscountCode(promo_code, req.user.userId, 'booking');
+        if (result.notFound)
+          return res.status(400).json({ error: 'Ongeldige promotiecode.' });
+        if (result.error)
+          return res.status(400).json({ error: result.error });
+        if (slot.is_private)
+          return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
+        discountCode = result.code;
+        discountCents = discountAmount(discountCode, bookingTotal);
       }
     }
   }
@@ -156,6 +168,7 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
     if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
+    if (discountCode) await queries.redeemDiscountCode(discountCode.id, req.user.userId, { bookingId: booking.id });
     await pool.query(
       "UPDATE bookings SET status = 'confirmed', stripe_payment_status = 'free', confirmation_sent = TRUE WHERE id = $1",
       [booking.id]
@@ -170,12 +183,13 @@ router.post('/', requireAuth, async (req, res) => {
   // Partial discount: store the promo on the booking — it is only actually
   // redeemed once payment succeeds (payments /confirm or the Stripe webhook),
   // so an abandoned checkout never costs the customer their code/balance.
-  if (milestoneEntry || giftCard) {
+  if (milestoneEntry || giftCard || discountCode) {
     await queries.setBookingPendingPromo(
       booking.id,
       giftCard ? giftCard.id : null,
       milestoneEntry ? milestoneEntry.id : null,
-      discountCents
+      discountCents,
+      discountCode ? discountCode.id : null
     );
   }
 

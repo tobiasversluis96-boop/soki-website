@@ -83,6 +83,11 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
           if (pass) {
             console.log(`✓ Punch pass created for user ${ppUserId} (${credits} credits)`);
+            if (session.metadata.discount_code_id) {
+              try {
+                await queries.redeemDiscountCode(parseInt(session.metadata.discount_code_id), ppUserId, { punchPassId: pass.id });
+              } catch (e) { console.error('Discount code redeem failed (non-fatal):', e.message); }
+            }
             try {
               const user = await queries.getUserById(ppUserId);
               if (user) {

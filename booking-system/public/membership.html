@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Membership — SOKI Social Sauna Utrecht</title>
+  <title>Membership - SOKI Social Sauna Utrecht</title>
   <meta name="description" content="Become a member at SOKI Social Sauna. Save with monthly memberships from €49/month.">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/booking.css">
@@ -233,7 +233,7 @@
     <ul class="plan-card__features">
       <li>Everyday &amp; Social Sauna = 1 credit</li>
       <li>Ambient &amp; Aufguss = 1.5 credits</li>
-      <li>Personal &mdash; for your own spot only</li>
+      <li>Personal - for your own spot only</li>
       <li>Skip the payment step when booking</li>
       <li>Credits reset monthly (a leftover half credit carries over)</li>
       <li>Cancel anytime</li>
@@ -249,7 +249,7 @@
     <ul class="plan-card__features">
       <li>Unlimited sessions, all types</li>
       <li>No credits to track</li>
-      <li>Personal &mdash; for your own spot only</li>
+      <li>Personal - for your own spot only</li>
       <li>Skip the payment step when booking</li>
       <li>Best value for regulars</li>
       <li>Cancel anytime</li>
@@ -262,14 +262,20 @@
     <div class="plan-card__price" id="pp-price">&euro;150 <span>one-time</span></div>
     <div class="plan-card__credits" id="pp-credits">10 credits</div>
     <ul class="plan-card__features">
-      <li>Buy credits once &mdash; no subscription</li>
+      <li>Buy credits once - no subscription</li>
       <li>Everyday &amp; Social Sauna = 1 credit</li>
       <li>Ambient &amp; Aufguss = 1.5 credits</li>
       <li>Credits valid for 1 year</li>
-      <li>Personal &mdash; for your own spot only</li>
+      <li>Personal - for your own spot only</li>
       <li>Skip the payment step when booking</li>
     </ul>
     <button class="btn btn--outline" id="btn-punchpass">Buy punch pass</button>
+    <div style="margin-top:12px;">
+      <a href="#" id="pp-promo-toggle" style="font-size:13px;color:inherit;text-decoration:underline;">Have a promo code?</a>
+      <input type="text" id="pp-promo-input" placeholder="Promo code" autocomplete="off"
+             style="display:none;margin-top:8px;width:100%;padding:10px 12px;border:1px solid rgba(0,0,0,.2);border-radius:8px;font-size:14px;text-transform:uppercase;box-sizing:border-box;" />
+      <div id="pp-promo-err" style="display:none;margin-top:6px;font-size:13px;color:#C62828;"></div>
+    </div>
   </div>
 </div>
 
@@ -289,7 +295,7 @@
   <div class="faq-item">
     <div class="faq-item__q">Can I cancel my membership?</div>
     <div class="faq-item__a">
-      Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period — you won't be charged again after cancelling.
+      Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period - you won't be charged again after cancelling.
     </div>
   </div>
   <div class="faq-item">
@@ -369,18 +375,36 @@
     document.getElementById('btn-punchpass').onclick = function() { buyPunchPass(bundle.id); };
   }).catch(function() {});
 
+  var ppPromoToggle = document.getElementById('pp-promo-toggle');
+  var ppPromoInput = document.getElementById('pp-promo-input');
+  var ppPromoErr = document.getElementById('pp-promo-err');
+  ppPromoToggle.addEventListener('click', function(e) {
+    e.preventDefault();
+    ppPromoToggle.style.display = 'none';
+    ppPromoInput.style.display = '';
+    ppPromoInput.focus();
+  });
+
   function buyPunchPass(bundleId) {
     var token = localStorage.getItem('soki_token');
     if (!token) {
       window.location.href = '/login?redirect=/membership';
       return;
     }
+    ppPromoErr.style.display = 'none';
+    var body = { bundle_id: bundleId };
+    var promo = ppPromoInput.value.trim();
+    if (promo) body.promo_code = promo;
     fetch('/api/punch-passes/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ bundle_id: bundleId }),
+      body: JSON.stringify(body),
     }).then(function(r) { return r.json(); }).then(function(res) {
-      if (res.error) { alert(res.error); return; }
+      if (res.error) {
+        ppPromoErr.textContent = res.error;
+        ppPromoErr.style.display = '';
+        return;
+      }
       window.location.href = res.url;
     });
   }

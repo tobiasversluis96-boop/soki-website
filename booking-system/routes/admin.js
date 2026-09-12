@@ -885,6 +885,51 @@ router.put('/punch-bundles/:id', requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
+// ─── Discount codes (kortingscodes) ──────────────────────────────────────
+
+router.get('/discount-codes', requireAdmin, async (req, res) => {
+  const codes = await queries.getAllDiscountCodes();
+  res.json(codes);
+});
+
+router.post('/discount-codes', requireAdmin, async (req, res) => {
+  const code = String(req.body.code || '').trim();
+  if (!/^[A-Za-z0-9-]{3,30}$/.test(code))
+    return res.status(400).json({ error: 'Code moet 3-30 tekens zijn (letters, cijfers, streepjes).' });
+
+  const isPct = req.body.discount_type === 'pct';
+  const value = parseInt(req.body.value);
+  if (!(value > 0)) return res.status(400).json({ error: 'Vul een kortingswaarde boven 0 in.' });
+  if (isPct && value > 100) return res.status(400).json({ error: 'Percentage kan maximaal 100 zijn.' });
+
+  const appliesTo = ['booking', 'punch_pass', 'both'].includes(req.body.applies_to) ? req.body.applies_to : 'both';
+  const maxUses = req.body.max_uses ? parseInt(req.body.max_uses) : null;
+  if (maxUses !== null && !(maxUses > 0)) return res.status(400).json({ error: 'Max. gebruik moet boven 0 zijn.' });
+
+  const existing = await queries.getDiscountCodeByCode(code);
+  if (existing) return res.status(409).json({ error: 'Deze code bestaat al.' });
+
+  const created = await queries.createDiscountCode({
+    code,
+    discount_pct:      isPct ? value : null,
+    discount_cents:    isPct ? null : value * 100,
+    applies_to:        appliesTo,
+    valid_until:       req.body.valid_until || null,
+    max_uses:          maxUses,
+    once_per_customer: !!req.body.once_per_customer,
+  });
+  queries.auditLog({ ...actorOf(req), action: 'discount_code_created', target: `discount_code:${created.id}`, detail: created.code, ip: req.ip });
+  res.status(201).json(created);
+});
+
+// PATCH /api/admin/discount-codes/:id  { is_active }
+router.patch('/discount-codes/:id', requireAdmin, async (req, res) => {
+  const updated = await queries.setDiscountCodeActive(parseInt(req.params.id), !!req.body.is_active);
+  if (!updated) return res.status(404).json({ error: 'Code not found' });
+  queries.auditLog({ ...actorOf(req), action: 'discount_code_updated', target: `discount_code:${updated.id}`, detail: `active=${updated.is_active}`, ip: req.ip });
+  res.json(updated);
+});
+
 // Helper: build pause_collection payload for Stripe
 function pausePayload(resumesAt) {
   const payload = { pause_collection: { behavior: 'void' } };

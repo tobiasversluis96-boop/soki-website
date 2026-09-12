@@ -34,6 +34,21 @@ router.post('/checkout', requireAuth, async (req, res) => {
   const bundle = await queries.getPunchPassBundleById(bundleId);
   if (!bundle || !bundle.is_active) return res.status(404).json({ error: 'Bundle not found' });
 
+  // Optionele kortingscode
+  let priceCents = bundle.price_cents;
+  let discountCode = null;
+  if (req.body.promo_code && String(req.body.promo_code).trim()) {
+    const { validateDiscountCode, discountAmount } = require('../utils/discount-codes');
+    const result = await validateDiscountCode(req.body.promo_code, req.user.userId, 'punch_pass');
+    if (result.notFound) return res.status(400).json({ error: 'Ongeldige kortingscode.' });
+    if (result.error)    return res.status(400).json({ error: result.error });
+    discountCode = result.code;
+    priceCents = bundle.price_cents - discountAmount(discountCode, bundle.price_cents);
+    // Stripe Checkout accepteert geen (bijna) gratis betalingen
+    if (priceCents < 100)
+      return res.status(400).json({ error: 'Deze kortingscode kan niet op deze bundel worden gebruikt.' });
+  }
+
   const user = await queries.getUserById(req.user.userId);
 
   const metadata = {
@@ -42,8 +57,9 @@ router.post('/checkout', requireAuth, async (req, res) => {
     bundle_id:   String(bundle.id),
     bundle_name: bundle.name,
     credits:     String(bundle.credits),
-    price_cents: String(bundle.price_cents),
+    price_cents: String(priceCents),
   };
+  if (discountCode) metadata.discount_code_id = String(discountCode.id);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -51,7 +67,7 @@ router.post('/checkout', requireAuth, async (req, res) => {
     line_items: [{
       price_data: {
         currency: 'eur',
-        unit_amount: bundle.price_cents,
+        unit_amount: priceCents,
         product_data: {
           name: `SOKI ${bundle.name} - ${Number(bundle.credits)} credits`,
         },

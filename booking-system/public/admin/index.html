@@ -579,6 +579,9 @@
         <button class="nav-item" data-view="giftcards">
           <span class="nav-item__icon">🎁</span> Cadeaubonnen
         </button>
+        <button class="nav-item" data-view="discounts">
+          <span class="nav-item__icon">%</span> Kortingscodes
+        </button>
         <button class="nav-item" data-view="staff">
           <span class="nav-item__icon">👥</span> Medewerkers
         </button>
@@ -1027,6 +1030,84 @@
           </div>
         </div>
 
+        <!-- ── Discount codes view ── -->
+        <div class="view" id="view-discounts">
+
+          <!-- Create form -->
+          <div class="table-card" style="margin-bottom:28px;">
+            <div class="table-card__header">
+              <span class="table-card__title">Kortingscode aanmaken</span>
+            </div>
+            <div style="padding:24px;">
+              <form id="discount-create-form">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end;">
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Code</label>
+                    <input class="form-input" type="text" id="dc-code" required placeholder="bv. TRYOUT25" maxlength="30" style="text-transform:uppercase;">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Korting</label>
+                    <div style="display:flex;gap:6px;">
+                      <input class="form-input" type="number" id="dc-value" required min="1" placeholder="25" style="width:80px;">
+                      <select class="form-input" id="dc-type" style="flex:1;">
+                        <option value="eur">€ (vast bedrag)</option>
+                        <option value="pct">% (percentage)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Geldig bij</label>
+                    <select class="form-input" id="dc-applies">
+                      <option value="both">Boekingen én strippenkaart</option>
+                      <option value="booking">Alleen boekingen</option>
+                      <option value="punch_pass">Alleen strippenkaart</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Geldig t/m (optioneel)</label>
+                    <input class="form-input" type="date" id="dc-valid-until">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Max. gebruik (optioneel)</label>
+                    <input class="form-input" type="number" id="dc-max-uses" min="1" placeholder="onbeperkt">
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="dc-once" style="width:auto;">
+                    Elke klant mag deze code maar één keer gebruiken
+                  </label>
+                  <button class="btn btn--primary btn--sm" type="submit">Aanmaken</button>
+                </div>
+                <div id="discount-create-err" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
+              </form>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="table-card">
+            <div class="table-card__header"><span class="table-card__title">Alle kortingscodes</span></div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Korting</th>
+                    <th>Geldig bij</th>
+                    <th>Geldig t/m</th>
+                    <th>Gebruikt</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="discounts-table-body">
+                  <tr><td colspan="7" class="loading">Laden…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Staff view ── -->
         <div class="view" id="view-staff">
 
@@ -1220,7 +1301,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/admin/admin.js?v=20260909-4"></script>
+<script src="/admin/admin.js?v=20260912-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

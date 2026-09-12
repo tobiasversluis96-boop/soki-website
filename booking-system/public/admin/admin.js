@@ -124,6 +124,7 @@
       if (view === 'staff') { btn.style.display = isAdminUser ? '' : 'none'; return; }
       if (view === 'generate') { btn.style.display = isAdminUser ? '' : 'none'; return; }
       if (view === 'giftcards') { btn.style.display = isAdminUser ? '' : 'none'; return; }
+      if (view === 'discounts') { btn.style.display = isAdminUser ? '' : 'none'; return; }
       const perm = PERM_NAV[view];
       btn.style.display = (!perm || hasPermission(perm)) ? '' : 'none';
     });
@@ -177,7 +178,7 @@
     const navBtn = document.querySelector('.nav-item[data-view="' + name + '"]');
     if (navBtn) navBtn.classList.add('active');
 
-    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', giftcards: 'Cadeaubonnen', staff: 'Medewerkers' };
+    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', giftcards: 'Cadeaubonnen', discounts: 'Kortingscodes', staff: 'Medewerkers' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
 
     if (name === 'dashboard') loadDashboard();
@@ -191,6 +192,7 @@
     if (name === 'walkin')        resetWalkin();
     if (name === 'subscriptions') { loadSubscriptions(); loadPunchBundles(); }
     if (name === 'giftcards')     loadGiftCards();
+    if (name === 'discounts')     loadDiscounts();
     if (name === 'staff') {
       // Admin sees full staff management; staff only sees own password change
       const createSection = document.querySelector('#view-staff .table-card');
@@ -1749,6 +1751,94 @@
         <tbody>${rows}</tbody>
       </table>`;
   }
+
+  // ─── Kortingscodes ────────────────────────────────────────────────────────
+  async function loadDiscounts() {
+    const body = document.getElementById('discounts-table-body');
+    body.innerHTML = '<tr><td colspan="7" style="padding:24px;color:var(--text-muted);">Laden…</td></tr>';
+
+    let codes;
+    try {
+      codes = await api('/discount-codes');
+    } catch { return; }
+
+    if (!Array.isArray(codes) || !codes.length) {
+      body.innerHTML = '<tr><td colspan="7" style="padding:24px;color:var(--text-muted);font-size:14px;">Nog geen kortingscodes aangemaakt.</td></tr>';
+      return;
+    }
+
+    const fmtD = d => d ? new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '–';
+    const appliesLabel = { both: 'Boekingen + strippenkaart', booking: 'Alleen boekingen', punch_pass: 'Alleen strippenkaart' };
+    const td = 'padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);';
+
+    body.innerHTML = codes.map(c => {
+      const expired = c.valid_until && new Date(c.valid_until).setHours(23, 59, 59, 999) < Date.now();
+      const depleted = c.max_uses !== null && c.use_count >= c.max_uses;
+      let label, color;
+      if (!c.is_active)      { label = 'Inactief';   color = 'var(--text-muted)'; }
+      else if (expired)      { label = 'Verlopen';   color = '#C62828'; }
+      else if (depleted)     { label = 'Opgebruikt'; color = 'var(--text-muted)'; }
+      else                   { label = 'Actief';     color = '#2E7D32'; }
+
+      const korting = c.discount_pct ? `${c.discount_pct}%` : formatEur(c.discount_cents || 0);
+      const gebruikt = c.max_uses !== null ? `${c.use_count} / ${c.max_uses}` : String(c.use_count);
+      const onceTag = c.once_per_customer ? ' <span style="font-size:11px;color:var(--text-muted);">1x p.k.</span>' : '';
+
+      return `
+        <tr>
+          <td style="${td}font-family:monospace;font-weight:600;">${escapeHtml(c.code)}</td>
+          <td style="${td}">${korting}</td>
+          <td style="${td}">${appliesLabel[c.applies_to] || c.applies_to}</td>
+          <td style="${td}">${fmtD(c.valid_until)}</td>
+          <td style="${td}">${gebruikt}${onceTag}</td>
+          <td style="${td}"><span style="color:${color};font-weight:600;font-size:13px;">${label}</span></td>
+          <td style="${td}"><button class="btn btn--sm" data-discount-toggle="${c.id}" data-active="${c.is_active ? '1' : '0'}">${c.is_active ? 'Deactiveren' : 'Activeren'}</button></td>
+        </tr>`;
+    }).join('');
+
+    body.querySelectorAll('[data-discount-toggle]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const res = await api(`/discount-codes/${btn.dataset.discountToggle}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ is_active: btn.dataset.active !== '1' }),
+        });
+        btn.disabled = false;
+        if (res && res.error) { alert('Wijzigen mislukt: ' + res.error); return; }
+        loadDiscounts();
+      });
+    });
+  }
+
+  const discountForm = document.getElementById('discount-create-form');
+  if (discountForm) discountForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('discount-create-err');
+    errEl.textContent = '';
+
+    const payload = {
+      code: document.getElementById('dc-code').value.trim(),
+      discount_type: document.getElementById('dc-type').value,
+      value: parseFloat(document.getElementById('dc-value').value),
+      applies_to: document.getElementById('dc-applies').value,
+      valid_until: document.getElementById('dc-valid-until').value || null,
+      max_uses: document.getElementById('dc-max-uses').value ? parseInt(document.getElementById('dc-max-uses').value) : null,
+      once_per_customer: document.getElementById('dc-once').checked,
+    };
+
+    const submitBtn = discountForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      const res = await api('/discount-codes', { method: 'POST', body: JSON.stringify(payload) });
+      if (res && res.error) { errEl.textContent = res.error; return; }
+      discountForm.reset();
+      loadDiscounts();
+    } catch (err) {
+      errEl.textContent = err.message || 'Aanmaken mislukt';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 
   async function pauseSubscription(id) {
     if (!confirm('Weet je zeker dat je dit abonnement wilt pauzeren?')) return;
