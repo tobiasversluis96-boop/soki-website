@@ -22,10 +22,13 @@ async function requireAdmin(req, res, next) {
   let payload;
   try {
     payload = jwt.verify(token, JWT_SECRET);
-    if (payload.type !== 'admin') throw new Error('Not an admin token');
   } catch {
     return res.status(401).json({ error: 'Invalid or expired admin token' });
   }
+  // Geldig staff-token maar geen admin: 403, géén 401 — de frontend logt bij
+  // elke 401 automatisch uit, wat medewerkers uit hun sessie gooide
+  if (payload.type !== 'admin')
+    return res.status(403).json({ error: 'Alleen voor beheerders' });
   try {
     // Revocation check against the DB — bumped token_version kills old tokens
     const currentVersion = await queries.getAdminTokenVersion(payload.adminId);
@@ -388,7 +391,7 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
 
 // ─── Session types ────────────────────────────────────────────────────────────
 
-router.get('/session-types', requireAdmin, async (req, res) => {
+router.get('/session-types', requireStaff(null), async (req, res) => {
   const types = await queries.getAllSessionTypes();
   res.json(types);
 });
@@ -494,7 +497,7 @@ router.get('/messages', requireStaff('messages'), async (req, res) => {
 });
 
 // GET /api/admin/messages/unread-count
-router.get('/messages/unread-count', requireAdmin, async (req, res) => {
+router.get('/messages/unread-count', requireStaff('messages'), async (req, res) => {
   const count = await queries.getUnreadMessageCount();
   res.json({ count });
 });

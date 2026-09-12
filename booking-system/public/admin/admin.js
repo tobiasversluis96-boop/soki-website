@@ -121,13 +121,14 @@
   function applyPermissions() {
     document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
       const view = btn.dataset.view;
-      if (view === 'staff') { btn.style.display = isAdminUser ? '' : 'none'; return; }
-      if (view === 'generate') { btn.style.display = isAdminUser ? '' : 'none'; return; }
-      if (view === 'giftcards') { btn.style.display = isAdminUser ? '' : 'none'; return; }
-      if (view === 'discounts') { btn.style.display = isAdminUser ? '' : 'none'; return; }
+      if (['staff', 'generate', 'giftcards', 'discounts', 'walkin', 'subscriptions'].includes(view)) {
+        btn.style.display = isAdminUser ? '' : 'none'; return;
+      }
       const perm = PERM_NAV[view];
       btn.style.display = (!perm || hasPermission(perm)) ? '' : 'none';
     });
+    const addSlotBtn = document.getElementById('add-slot-btn');
+    if (addSlotBtn) addSlotBtn.style.display = isAdminUser ? '' : 'none';
     // Show user name in topbar for staff
     const payload = parseJwt(adminToken);
     const nameEl = document.getElementById('topbar-user-name');
@@ -530,7 +531,7 @@
         <td>${formatEur(b.total_cents)}</td>
         <td>${statusBadge(b.status)}</td>
         <td>
-          ${b.status !== 'cancelled'
+          ${b.status !== 'cancelled' && isAdminUser
             ? `<button class="btn btn--danger btn--sm" onclick="cancelBooking(${b.id})">Annuleren</button>`
             : ''}
         </td>
@@ -589,13 +590,13 @@
         <td>${s.max_capacity || s.type_capacity}</td>
         <td>${s.booked}${wBadge}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn--outline btn--sm" onclick="editSlot(${s.id})">Bewerken</button>
+          ${isAdminUser ? `<button class="btn btn--outline btn--sm" onclick="editSlot(${s.id})">Bewerken</button>` : ''}
           ${s.is_private && !s.is_cancelled
             ? `<button class="btn btn--outline btn--sm" onclick="copySlotLink(${s.id}, this)">Kopieer link</button>`
             : ''}
           ${s.is_cancelled
             ? '<span style="font-size:12px;color:var(--muted)">Geannuleerd</span>'
-            : `<button class="btn btn--danger btn--sm" onclick="cancelSlot(${s.id})">Annuleren</button>`}
+            : (isAdminUser ? `<button class="btn btn--danger btn--sm" onclick="cancelSlot(${s.id})">Annuleren</button>` : '')}
         </td>
       </tr>`;
     }).join('');
