@@ -999,7 +999,7 @@ const queries = {
 
   // Admin
   getAdminByEmail: async (email) => {
-    const { rows } = await pool.query('SELECT * FROM admin_users WHERE email = $1', [email]);
+    const { rows } = await pool.query('SELECT * FROM admin_users WHERE LOWER(email) = LOWER(TRIM($1))', [email]);
     return rows[0] || null;
   },
 
@@ -1877,7 +1877,7 @@ const queries = {
   },
 
   getStaffByEmail: async (email) => {
-    const { rows } = await pool.query('SELECT * FROM staff_users WHERE email = $1', [email]);
+    const { rows } = await pool.query('SELECT * FROM staff_users WHERE LOWER(email) = LOWER(TRIM($1))', [email]);
     return rows[0] || null;
   },
 
@@ -1907,6 +1907,11 @@ const queries = {
         perm_messages  = $9
       WHERE id = $1
     `, [id, fields.is_active, fields.perm_revenue, fields.perm_bookings, fields.perm_slots, fields.perm_generate, fields.perm_schedule, fields.perm_customers, fields.perm_messages]);
+  },
+
+  deleteStaff: async (id) => {
+    const { rowCount } = await pool.query('DELETE FROM staff_users WHERE id = $1', [id]);
+    return rowCount > 0;
   },
 
   updateStaffPassword: async (id, passwordHash) => {

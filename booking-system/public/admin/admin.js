@@ -69,7 +69,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email:    document.getElementById('admin-email').value,
+        email:    document.getElementById('admin-email').value.trim(),
         password: document.getElementById('admin-password').value,
       }),
     }).then(r => r.json());
@@ -1478,6 +1478,7 @@
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
               <button class="btn btn--outline btn--sm" data-staff-reset="${s.id}" data-staff-name="${escapeHtml(s.name)}">Wachtwoord resetten</button>
+              <button class="btn btn--outline btn--sm" data-staff-delete="${s.id}" data-staff-name="${escapeHtml(s.name)}" style="color:#C62828;border-color:#C62828;">Verwijderen</button>
             </div>
             <div id="staff-msg-${s.id}" style="font-size:13px;margin-top:10px;min-height:16px;"></div>
           </div>
@@ -1489,7 +1490,18 @@
     container.querySelectorAll('[data-staff-reset]').forEach(btn => {
       btn.addEventListener('click', () => window.resetStaffPassword(parseInt(btn.dataset.staffReset), btn.dataset.staffName));
     });
+    container.querySelectorAll('[data-staff-delete]').forEach(btn => {
+      btn.addEventListener('click', () => window.deleteStaffMember(parseInt(btn.dataset.staffDelete), btn.dataset.staffName));
+    });
   }
+
+  window.deleteStaffMember = async function(id, name) {
+    if (!confirm(`Weet je zeker dat je ${name} wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
+    const msgEl = document.getElementById('staff-msg-' + id);
+    const res = await api('/staff/' + id, { method: 'DELETE' });
+    if (res.error) { msgEl.style.color = '#C62828'; msgEl.textContent = res.error; return; }
+    loadStaff();
+  };
 
   window.toggleStaffRow = function(id) {
     const row = document.getElementById('staff-row-' + id);

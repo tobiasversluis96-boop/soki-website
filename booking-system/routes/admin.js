@@ -788,7 +788,8 @@ router.get('/staff', requireAdmin, async (req, res) => {
 });
 
 router.post('/staff', requireAdmin, async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, password } = req.body;
+  const email = String(req.body.email || '').trim().toLowerCase();
   if (!name || !email || !password)
     return res.status(400).json({ error: 'name, email, and password are required' });
   if (String(password).length < 8)
@@ -809,6 +810,14 @@ router.patch('/staff/:id', requireAdmin, async (req, res) => {
     is_active, perm_revenue, perm_bookings, perm_slots, perm_generate, perm_schedule, perm_customers, perm_messages,
   });
   queries.auditLog({ ...actorOf(req), action: is_active === false ? 'staff_deactivated' : 'staff_updated', target: `staff:${req.params.id}`, ip: req.ip });
+  res.json({ ok: true });
+});
+
+router.delete('/staff/:id', requireAdmin, async (req, res) => {
+  const staff = await queries.getStaffById(req.params.id);
+  if (!staff) return res.status(404).json({ error: 'Staff not found' });
+  await queries.deleteStaff(req.params.id);
+  queries.auditLog({ ...actorOf(req), action: 'staff_deleted', target: `staff:${req.params.id}`, detail: staff.email, ip: req.ip });
   res.json({ ok: true });
 });
 
