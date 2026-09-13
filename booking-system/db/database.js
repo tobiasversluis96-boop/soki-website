@@ -90,7 +90,7 @@ async function seedSessionTypes() {
   `;
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
   await pool.query(sql, ['Social Sauna',         'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
-  await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           70,  2500,  12, '#D94D1A']);
+  await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           80,  2500,  14, '#D94D1A']);
   await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#6B2E18']);
 }
 
@@ -292,6 +292,56 @@ async function initializeDB() {
   // Fix session type prices/durations if they were seeded with wrong values
   await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Social Sauna'`);
   await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
+  // Ambient: 3-uursblok met 80 minuten saunatijd, twee groepen van 14 per avond (sinds sept 2026)
+  await pool.query(`UPDATE session_types SET duration_min=80, max_capacity=14 WHERE name='Ambient Sauna'`);
+  // Eenmalige herindeling van de al geplande Ambient-avonden (19 sep t/m 3 okt 2026):
+  // 3 slots van 70 min (19:00/20:20/21:40) worden 2 groepen — 20:00-21:20 (sauna
+  // eerst) en 21:30-23:00 (sauna als afsluiting). Bestaande boekingen en wachtlijst
+  // gaan naar groep 1. Datumbereik is bewust begrensd zodat nieuw gegenereerde
+  // slots nooit geraakt worden.
+  await pool.query(`
+    UPDATE bookings b SET time_slot_id = g1.id
+    FROM time_slots old
+    JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
+    JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
+                      AND g1.date = old.date AND g1.start_time = '19:00'
+    WHERE b.time_slot_id = old.id
+      AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND old.start_time IN ('20:20', '21:40')`);
+  await pool.query(`
+    UPDATE waitlist w SET time_slot_id = g1.id
+    FROM time_slots old
+    JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
+    JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
+                      AND g1.date = old.date AND g1.start_time = '19:00'
+    WHERE w.time_slot_id = old.id
+      AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND old.start_time IN ('20:20', '21:40')
+      AND NOT EXISTS (SELECT 1 FROM waitlist w2
+                      WHERE w2.user_id = w.user_id AND w2.time_slot_id = g1.id)`);
+  await pool.query(`
+    DELETE FROM waitlist w USING time_slots ts, session_types st
+    WHERE w.time_slot_id = ts.id AND ts.session_type_id = st.id
+      AND st.name = 'Ambient Sauna'
+      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND ts.start_time = '21:40'`);
+  await pool.query(`
+    DELETE FROM time_slots ts USING session_types st
+    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND ts.start_time = '21:40'`);
+  await pool.query(`
+    UPDATE time_slots ts SET start_time = '21:30', end_time = '23:00', max_capacity = 14
+    FROM session_types st
+    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND ts.start_time = '20:20'`);
+  await pool.query(`
+    UPDATE time_slots ts SET start_time = '20:00', end_time = '21:20', max_capacity = 14
+    FROM session_types st
+    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+      AND ts.start_time = '19:00'`);
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS discount_pct INTEGER NOT NULL DEFAULT 0');
