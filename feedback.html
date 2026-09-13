@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Jouw feedback | SOKI Social Sauna Utrecht</title>
+  <link rel="stylesheet" href="styles.css?v=20260902-1" />
+  <link rel="icon" type="image/png" href="images/favicon.png" />
+  <style>
+    .fb-hero {
+      min-height: 100svh;
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      position: relative;
+      overflow: hidden;
+      padding: var(--space-xl) var(--space-md);
+    }
+    .fb-hero__bg { position: absolute; inset: 0; z-index: 0; }
+    .fb-hero__bg img { width: 100%; height: 100%; object-fit: cover; }
+    .fb-hero__bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(74, 28, 12, 0.92) 0%, rgba(74, 28, 12, 0.7) 60%, rgba(74, 28, 12, 0.45) 100%);
+    }
+    .fb-card {
+      position: relative;
+      z-index: 1;
+      background: rgba(242, 242, 242, 0.05);
+      border: 1px solid rgba(242, 194, 153, 0.2);
+      border-radius: 24px;
+      padding: var(--space-xl);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      max-width: 520px;
+      width: 100%;
+    }
+    .fb-card h1 { color: var(--white); font-size: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: var(--space-sm); }
+    .fb-card .lead { color: rgba(242, 194, 153, 0.85); margin-bottom: var(--space-lg); font-size: 1rem; }
+    .fb-stars { display: flex; gap: 8px; margin-bottom: var(--space-lg); }
+    .fb-star {
+      font-size: 2.4rem;
+      line-height: 1;
+      cursor: pointer;
+      color: rgba(242, 194, 153, 0.35);
+      background: none;
+      border: none;
+      padding: 4px;
+      transition: transform 0.15s ease, color 0.15s ease;
+    }
+    .fb-star:hover { transform: scale(1.15); }
+    .fb-star.active { color: #F2C299; }
+    .fb-field { margin-bottom: var(--space-md); }
+    .fb-field label { display: block; color: rgba(242, 242, 242, 0.85); font-size: 0.85rem; margin-bottom: 6px; }
+    .fb-field input, .fb-field textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(242, 194, 153, 0.3);
+      background: rgba(242, 242, 242, 0.08);
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    .fb-field input::placeholder, .fb-field textarea::placeholder { color: rgba(242, 242, 242, 0.4); }
+    .fb-field textarea { min-height: 120px; resize: vertical; }
+    .fb-submit {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 100px;
+      background: #D94D1A;
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .fb-submit:disabled { opacity: 0.6; cursor: default; }
+    .fb-err { color: #FFAB91; font-size: 0.9rem; min-height: 20px; margin-top: 10px; }
+    .fb-hp { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
+    #fb-success { display: none; text-align: center; }
+    #fb-success h1 { margin-bottom: var(--space-sm); }
+  </style>
+</head>
+<body>
+  <section class="fb-hero">
+    <div class="fb-hero__bg"><img src="images/lounge-interior.jpg" alt="" /></div>
+    <div class="fb-card">
+      <div id="fb-form-wrap">
+        <h1>Help ons beter worden</h1>
+        <p class="lead">Bedankt voor je bezoek aan SOKI. Vertel ons eerlijk wat er beter kan &mdash; we lezen alles zelf en gaan ermee aan de slag.</p>
+        <div class="fb-stars" id="fb-stars" role="radiogroup" aria-label="Aantal sterren">
+          <button type="button" class="fb-star" data-star="1" aria-label="1 ster">&#9733;</button>
+          <button type="button" class="fb-star" data-star="2" aria-label="2 sterren">&#9733;</button>
+          <button type="button" class="fb-star" data-star="3" aria-label="3 sterren">&#9733;</button>
+          <button type="button" class="fb-star" data-star="4" aria-label="4 sterren">&#9733;</button>
+          <button type="button" class="fb-star" data-star="5" aria-label="5 sterren">&#9733;</button>
+        </div>
+        <form id="fb-form">
+          <div class="fb-field">
+            <label for="fb-message">Wat kunnen we verbeteren?</label>
+            <textarea id="fb-message" placeholder="Jouw ervaring, tips of suggesties&hellip;" required maxlength="5000"></textarea>
+          </div>
+          <div class="fb-field">
+            <label for="fb-name">Naam (optioneel)</label>
+            <input type="text" id="fb-name" autocomplete="name" maxlength="200" />
+          </div>
+          <div class="fb-field">
+            <label for="fb-email">E-mailadres (optioneel, als we mogen reageren)</label>
+            <input type="email" id="fb-email" autocomplete="email" maxlength="200" />
+          </div>
+          <div class="fb-hp" aria-hidden="true">
+            <label>Website<input type="text" id="fb-website" tabindex="-1" autocomplete="off" /></label>
+          </div>
+          <button type="submit" class="fb-submit" id="fb-submit">Feedback versturen</button>
+          <div class="fb-err" id="fb-err"></div>
+        </form>
+      </div>
+      <div id="fb-success">
+        <h1 style="color:var(--white);">Dankjewel &#10084;&#65039;</h1>
+        <p class="lead" style="margin-bottom:0;">We hebben je feedback ontvangen en nemen hem serieus. Tot snel bij SOKI!</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var rating = 0;
+      var stars = document.querySelectorAll('.fb-star');
+
+      function paint(n) {
+        stars.forEach(function (s) {
+          s.classList.toggle('active', parseInt(s.dataset.star, 10) <= n);
+        });
+      }
+
+      stars.forEach(function (s) {
+        s.addEventListener('click', function () {
+          rating = parseInt(s.dataset.star, 10);
+          paint(rating);
+        });
+      });
+
+      var params = new URLSearchParams(location.search);
+      var pre = parseInt(params.get('sterren') || params.get('stars') || '', 10);
+      if (pre >= 1 && pre <= 5) { rating = pre; paint(pre); }
+      var preEmail = params.get('email');
+      if (preEmail) document.getElementById('fb-email').value = preEmail;
+
+      document.getElementById('fb-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var err = document.getElementById('fb-err');
+        err.textContent = '';
+        if (!rating) { err.textContent = 'Kies eerst een aantal sterren.'; return; }
+        var btn = document.getElementById('fb-submit');
+        btn.disabled = true;
+        fetch('/api/messages/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rating: rating,
+            name: document.getElementById('fb-name').value,
+            email: document.getElementById('fb-email').value,
+            message: document.getElementById('fb-message').value,
+            website: document.getElementById('fb-website').value,
+          }),
+        }).then(function (r) { return r.json(); }).then(function (res) {
+          btn.disabled = false;
+          if (res.error) { err.textContent = res.error; return; }
+          document.getElementById('fb-form-wrap').style.display = 'none';
+          document.getElementById('fb-success').style.display = 'block';
+        }).catch(function () {
+          btn.disabled = false;
+          err.textContent = 'Er ging iets mis. Probeer het later opnieuw.';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

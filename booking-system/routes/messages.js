@@ -39,6 +39,36 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(msg);
 });
 
+// POST /api/messages/feedback — publiek feedbackformulier (geen login vereist)
+router.post('/feedback', async (req, res) => {
+  const { rating, name, email, message, website } = req.body;
+  if (website) return res.status(201).json({ ok: true }); // honeypot: stil negeren
+
+  const stars = parseInt(rating, 10);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5)
+    return res.status(400).json({ error: 'Kies een aantal sterren.' });
+  if (!message || !String(message).trim())
+    return res.status(400).json({ error: 'Schrijf kort wat we kunnen verbeteren.' });
+  if (String(message).length > 5000 || String(name || '').length > 200 || String(email || '').length > 200)
+    return res.status(400).json({ error: 'Bericht te lang.' });
+
+  const guestName  = String(name || '').trim() || null;
+  const guestEmail = String(email || '').trim().toLowerCase() || null;
+
+  let userId = null;
+  if (guestEmail) {
+    const user = await queries.getUserByEmail(guestEmail);
+    if (user) userId = user.id;
+  }
+
+  const subject = `Feedback: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (${stars}/5)`;
+  const msg = await queries.createFeedbackMessage({
+    userId, guestName, guestEmail, rating: stars,
+    subject, body: String(message).trim(),
+  });
+  res.status(201).json({ ok: true, id: msg.id });
+});
+
 // GET /api/messages — customer gets their own messages + replies
 router.get('/', requireAuth, async (req, res) => {
   const msgs = await queries.getMessagesByUser(req.user.userId);

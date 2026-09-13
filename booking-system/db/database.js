@@ -309,6 +309,11 @@ async function initializeDB() {
     is_read     BOOLEAN     DEFAULT FALSE,
     created_at  TIMESTAMPTZ DEFAULT NOW()
   )`);
+  // Feedbackformulier: berichten van gasten zonder account toestaan
+  await pool.query('ALTER TABLE messages ALTER COLUMN user_id DROP NOT NULL');
+  await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS guest_name TEXT');
+  await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS guest_email TEXT');
+  await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS rating INTEGER');
   await pool.query(`CREATE TABLE IF NOT EXISTS message_replies (
     id          SERIAL      PRIMARY KEY,
     message_id  INTEGER     NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
@@ -1209,6 +1214,14 @@ const queries = {
   },
 
   // Messages
+  createFeedbackMessage: async ({ userId, guestName, guestEmail, rating, subject, body }) => {
+    const { rows } = await pool.query(
+      'INSERT INTO messages (user_id, guest_name, guest_email, rating, subject, body) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [userId, guestName, guestEmail, rating, subject, body]
+    );
+    return rows[0];
+  },
+
   createMessage: async (userId, subject, body) => {
     const { rows } = await pool.query(
       'INSERT INTO messages (user_id, subject, body) VALUES ($1, $2, $3) RETURNING *',
@@ -1233,11 +1246,12 @@ const queries = {
   getAllMessages: async () => {
     const { rows } = await pool.query(`
       SELECT m.*,
-             u.name AS user_name, u.email AS user_email,
+             COALESCE(u.name, m.guest_name, 'Anoniem')  AS user_name,
+             COALESCE(u.email, m.guest_email)           AS user_email,
              COALESCE(json_agg(r ORDER BY r.created_at) FILTER (WHERE r.id IS NOT NULL), '[]') AS replies,
              COUNT(r.id) FILTER (WHERE r.id IS NOT NULL)::int AS reply_count
       FROM messages m
-      JOIN users u ON u.id = m.user_id
+      LEFT JOIN users u ON u.id = m.user_id
       LEFT JOIN message_replies r ON r.message_id = m.id
       GROUP BY m.id, u.name, u.email
       ORDER BY m.is_read ASC, m.created_at DESC
@@ -1247,7 +1261,8 @@ const queries = {
 
   getMessageById: async (messageId) => {
     const { rows } = await pool.query(
-      'SELECT m.*, u.name AS user_name, u.email AS user_email FROM messages m JOIN users u ON u.id = m.user_id WHERE m.id = $1',
+      `SELECT m.*, COALESCE(u.name, m.guest_name, 'Anoniem') AS user_name, COALESCE(u.email, m.guest_email) AS user_email
+       FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.id = $1`,
       [messageId]
     );
     return rows[0] || null;
