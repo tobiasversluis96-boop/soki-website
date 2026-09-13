@@ -1467,6 +1467,16 @@ const queries = {
     return rows;
   },
 
+  getAllPunchPasses: async () => {
+    const { rows } = await pool.query(`
+      SELECT pp.*, u.name AS user_name, u.email AS user_email
+      FROM punch_passes pp
+      JOIN users u ON u.id = pp.user_id
+      ORDER BY pp.created_at DESC
+    `);
+    return rows;
+  },
+
   deductPunchPassCredits: async (userId, creditsToUse) => {
     const { rows } = await pool.query(`
       UPDATE punch_passes

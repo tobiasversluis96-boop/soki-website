@@ -191,7 +191,7 @@
     if (name === 'generate')  loadGenerate();
     if (name === 'messages')  loadMessages();
     if (name === 'walkin')        resetWalkin();
-    if (name === 'subscriptions') { loadSubscriptions(); loadPunchBundles(); }
+    if (name === 'subscriptions') { loadSubscriptions(); loadPunchBundles(); loadPunchPasses(); }
     if (name === 'giftcards')     loadGiftCards();
     if (name === 'discounts')     loadDiscounts();
     if (name === 'staff') {
@@ -1657,6 +1657,65 @@
     listEl.querySelectorAll('[data-sub-resume]').forEach(btn => {
       btn.addEventListener('click', () => resumeSubscription(btn.dataset.subResume));
     });
+  }
+
+  // ─── Verkochte strippenkaarten ────────────────────────────────────────────
+  async function loadPunchPasses() {
+    const el = document.getElementById('punch-passes-list');
+    el.innerHTML = '<div class="loading" style="padding:24px;">Laden…</div>';
+
+    let passes;
+    try {
+      passes = await api('/punch-passes');
+    } catch { return; }
+
+    if (!Array.isArray(passes) || !passes.length) {
+      el.innerHTML = '<div style="padding:24px;color:var(--text-muted);font-size:14px;">Nog geen strippenkaarten verkocht.</div>';
+      return;
+    }
+
+    const fmtCredits = (n) => {
+      const v = parseFloat(n);
+      return Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ',');
+    };
+    const td = 'padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.05);';
+    const th = 'text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);';
+
+    const rows = passes.map(p => {
+      const expired = new Date(p.expires_at) < new Date();
+      const status = p.refunded_at ? ['Terugbetaald', 'var(--text-muted)']
+        : expired ? ['Verlopen', '#C62828']
+        : parseFloat(p.credits_remaining) <= 0 ? ['Op', 'var(--text-muted)']
+        : ['Actief', '#2E7D32'];
+      const dateFmt = (d) => new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `
+        <tr>
+          <td style="${td}">
+            <div style="font-weight:600;">${escapeHtml(p.user_name || '–')}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(p.user_email || '')}</div>
+          </td>
+          <td style="${td}"><strong>${fmtCredits(p.credits_remaining)}</strong> van ${fmtCredits(p.credits)}</td>
+          <td style="${td}">${formatEur(p.price_cents)}</td>
+          <td style="${td}">${dateFmt(p.created_at)}</td>
+          <td style="${td}">${dateFmt(p.expires_at)}</td>
+          <td style="${td}"><span style="color:${status[1]};font-weight:600;font-size:13px;">${status[0]}</span></td>
+        </tr>`;
+    }).join('');
+
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f7f2ec;">
+            <th style="${th}">Klant</th>
+            <th style="${th}">Credits over</th>
+            <th style="${th}">Betaald</th>
+            <th style="${th}">Gekocht op</th>
+            <th style="${th}">Geldig tot</th>
+            <th style="${th}">Status</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
   // ─── Punch pass bundles (strippenkaart) ───────────────────────────────────

@@ -864,6 +864,12 @@ router.get('/subscriptions', requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
+// GET /api/admin/punch-passes — alle verkochte strippenkaarten met klantinfo
+router.get('/punch-passes', requireAdmin, async (req, res) => {
+  const rows = await queries.getAllPunchPasses();
+  res.json(rows);
+});
+
 router.get('/gift-cards', requireAdmin, async (req, res) => {
   const cards = await queries.getAllGiftCards();
   res.json(cards);
