@@ -6,7 +6,7 @@
 const express = require('express');
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
-const { sendMessageReceivedEmail } = require('../utils/email');
+const { sendMessageReceivedEmail, sendContactFormEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -66,6 +66,39 @@ router.post('/feedback', async (req, res) => {
     userId, guestName, guestEmail, rating: stars,
     subject, body: String(message).trim(),
   });
+  res.status(201).json({ ok: true, id: msg.id });
+});
+
+// POST /api/messages/contact — publiek contact-/samenwerkingsformulier (About-pagina)
+router.post('/contact', async (req, res) => {
+  const { name, email, message, website } = req.body;
+  if (website) return res.status(201).json({ ok: true }); // honeypot: stil negeren
+
+  const guestName  = String(name || '').trim();
+  const guestEmail = String(email || '').trim().toLowerCase();
+  const body       = String(message || '').trim();
+  if (!guestName) return res.status(400).json({ error: 'Vul je naam in.' });
+  if (!guestEmail || !guestEmail.includes('@')) return res.status(400).json({ error: 'Vul een geldig e-mailadres in.' });
+  if (!body) return res.status(400).json({ error: 'Schrijf een bericht.' });
+  if (body.length > 5000 || guestName.length > 200 || guestEmail.length > 200)
+    return res.status(400).json({ error: 'Bericht te lang.' });
+
+  let userId = null;
+  const user = await queries.getUserByEmail(guestEmail);
+  if (user) userId = user.id;
+
+  const msg = await queries.createFeedbackMessage({
+    userId, guestName, guestEmail, rating: null,
+    subject: `Contactformulier: ${guestName}`,
+    body,
+  });
+
+  try {
+    await sendContactFormEmail({ name: guestName, email: guestEmail, message: body });
+  } catch (e) {
+    console.error('Contact notification email failed (non-fatal):', e.message);
+  }
+
   res.status(201).json({ ok: true, id: msg.id });
 });
 

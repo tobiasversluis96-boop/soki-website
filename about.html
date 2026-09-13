@@ -1135,10 +1135,14 @@
             </div>
             <div class="form-group">
               <label for="contact-msg" style="font-family:var(--font-sub); font-size:0.7rem; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);" data-i18n="about.msg.label">Message</label>
-              <textarea id="contact-msg" name="message" placeholder="Tell us what's on your mind…" rows="5" data-i18n-placeholder="about.msg.placeholder"></textarea>
+              <textarea id="contact-msg" name="message" placeholder="Tell us what's on your mind…" rows="5" required data-i18n-placeholder="about.msg.placeholder"></textarea>
+            </div>
+            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+              <input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off" />
             </div>
             <div>
               <button type="submit" class="btn btn--primary" data-i18n="send.message">Send message</button>
+              <p id="contact-error" style="display:none;color:#c0392b;margin-top:0.75rem;font-size:0.85rem;"></p>
             </div>
           </form>
         </div>
@@ -1218,11 +1222,36 @@
     /* ===== CONTACT FORM ===== */
     function handleContact(e) {
       e.preventDefault();
-      document.getElementById('contactForm').innerHTML =
-        '<div style="padding: 1.5rem 0;">' +
-        '<p style="font-family:var(--font-display); font-size:1.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--terra);">Message sent!</p>' +
-        '<p style="color:var(--text-muted); margin-top:0.5rem;">Thanks — we\'ll be in touch soon.</p>' +
-        '</div>';
+      var isNL = (localStorage.getItem('soki_lang') || 'en') === 'nl';
+      var btn = document.querySelector('#contactForm button[type="submit"]');
+      var errEl = document.getElementById('contact-error');
+      btn.disabled = true;
+      errEl.style.display = 'none';
+      fetch('/api/messages/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    document.getElementById('contact-name').value,
+          email:   document.getElementById('contact-email').value,
+          message: document.getElementById('contact-msg').value,
+          website: document.getElementById('contact-website').value,
+        }),
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+      }).then(function (res) {
+        if (!res.ok) throw new Error(res.d && res.d.error || '');
+        document.getElementById('contactForm').innerHTML =
+          '<div style="padding: 1.5rem 0;">' +
+          '<p style="font-family:var(--font-display); font-size:1.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--terra);">' +
+          (isNL ? 'Bericht verzonden!' : 'Message sent!') + '</p>' +
+          '<p style="color:var(--text-muted); margin-top:0.5rem;">' +
+          (isNL ? 'Dankjewel — we nemen snel contact met je op.' : 'Thanks — we\'ll be in touch soon.') + '</p>' +
+          '</div>';
+      }).catch(function (err) {
+        btn.disabled = false;
+        errEl.textContent = err.message || (isNL ? 'Versturen is niet gelukt. Probeer het later opnieuw of mail hello@sokisocialsauna.nl.' : 'Something went wrong. Please try again later or email hello@sokisocialsauna.nl.');
+        errEl.style.display = 'block';
+      });
     }
   </script>
 

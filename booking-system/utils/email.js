@@ -471,6 +471,23 @@ async function sendBookingCancelledEmail(booking, { refunded = false, creditsRes
   });
 }
 
+async function sendContactFormEmail({ name, email, message }) {
+  await getClient().transactionalEmails.sendTransacEmail({
+    to: [{ email: 'hello@sokisocialsauna.nl', name: 'SOKI Social Sauna' }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    replyTo: { email, name },
+    subject: `Contactformulier: ${name}`,
+    htmlContent: emailLayout('Nieuw bericht via het contactformulier', `
+        <p style="margin:0 0 16px;"><strong>Naam:</strong> ${escapeHtml(name)}<br>
+           <strong>E-mail:</strong> ${escapeHtml(email)}</p>
+        <div style="background-color:#faf3ec;padding:16px 20px;border-radius:4px;margin:0 0 20px;white-space:pre-wrap;">${escapeHtml(message)}</div>
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Beantwoorden kan direct met reply op deze mail, of via Berichten in het admin-dashboard.</p>`),
+  });
+}
+
 module.exports = {
   sendBookingConfirmation,
   sendBookingCancelledEmail,
@@ -490,5 +507,6 @@ module.exports = {
   sendMemberCancelledEmail,
   sendPaymentFailedEmail,
   sendPunchPassEmail,
+  sendContactFormEmail,
   generateCheckinSig,
 };
