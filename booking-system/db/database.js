@@ -1021,7 +1021,12 @@ const queries = {
     if (filters.to)              { sql += ` AND ts.date <= $${p++}`;  params.push(filters.to); }
     if (filters.session_type_id) { sql += ` AND st.id = $${p++}`;    params.push(filters.session_type_id); }
     if (filters.status)          { sql += ` AND b.status = $${p++}`; params.push(filters.status); }
-    sql += ' ORDER BY ts.date ASC, ts.start_time ASC';
+    if (filters.recent) {
+      sql += ` ORDER BY b.created_at DESC LIMIT $${p++}`;
+      params.push(Math.min(parseInt(filters.recent, 10) || 10, 100));
+    } else {
+      sql += ' ORDER BY ts.date ASC, ts.start_time ASC';
+    }
     const { rows } = await pool.query(sql, params);
     return rows;
   },

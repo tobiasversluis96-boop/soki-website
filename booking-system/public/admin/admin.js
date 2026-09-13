@@ -207,6 +207,31 @@
   }
 
   // ─── Dashboard ────────────────────────────────────────────────────────────
+  async function loadRecentBookings() {
+    const card = document.getElementById('recent-bookings-card');
+    const el   = document.getElementById('recent-bookings');
+    if (!hasPermission('bookings')) { card.style.display = 'none'; return; }
+    try {
+      const bookings = await api('/bookings?recent=10');
+      if (bookings.error) { el.innerHTML = '–'; return; }
+      if (!bookings.length) { el.innerHTML = '<p style="color:var(--muted);padding:12px 0;">Nog geen boekingen.</p>'; return; }
+      el.innerHTML = bookings.map(b => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.05);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:14px;">${escapeHtml(b.customer_name)}
+              <span style="font-weight:400;color:var(--muted)">· ${escapeHtml(b.session_name)}${b.group_size > 1 ? ` · ${b.group_size} pers.` : ''}</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted)">Sessie: ${formatDate(typeof b.date === 'string' ? b.date.slice(0, 10) : b.date)} ${b.start_time ? b.start_time.slice(0, 5) : ''} · Geboekt: ${fmtDateTime(b.created_at)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:13px;font-weight:600;">${formatEur(b.total_cents)}</div>
+            ${statusBadge(b.status)}
+          </div>
+        </div>
+      `).join('');
+    } catch { el.innerHTML = '–'; }
+  }
+
   async function loadDashboard() {
     const canSeeRevenue = isAdminUser || hasPermission('revenue');
 
@@ -232,6 +257,8 @@
         }).join('');
       return;
     }
+
+    loadRecentBookings();
 
     let data, enhanced;
     try {

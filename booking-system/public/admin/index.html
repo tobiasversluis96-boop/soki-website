@@ -618,6 +618,12 @@
 
           <!-- Revenue charts (hidden for staff without revenue permission) -->
           <div id="revenue-charts">
+            <!-- Recent bookings -->
+            <div class="table-card" style="margin-bottom:20px;margin-top:20px;" id="recent-bookings-card">
+              <div class="table-card__header"><span class="table-card__title">Laatste boekingen</span></div>
+              <div style="padding:8px 20px 12px;max-height:420px;overflow-y:auto;" id="recent-bookings"><div class="loading">Laden&hellip;</div></div>
+            </div>
+
             <!-- Monthly revenue chart -->
             <div class="table-card" style="margin-bottom:20px;margin-top:20px;" id="chart-monthly-revenue">
               <div class="table-card__header">
@@ -1301,7 +1307,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/admin/admin.js?v=20260912-3"></script>
+<script src="/admin/admin.js?v=20260913-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>
