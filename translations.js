@@ -132,7 +132,7 @@ var SOKI_I18N = {
 
     /* --- Homepage upcoming --- */
     'home.upcoming.eyebrow': "What's on",
-    'home.upcoming.h2':      'Upcoming sessions',
+    'home.upcoming.h2':      'Upcoming available sessions',
     'home.upcoming.lead':    'Reserve your spot.',
     'home.upcoming.viewfull':'View full programme',
 
@@ -644,7 +644,7 @@ var SOKI_I18N = {
 
     /* --- Homepage upcoming --- */
     'home.upcoming.eyebrow': 'Op het programma',
-    'home.upcoming.h2':      'Aankomende sessies',
+    'home.upcoming.h2':      'Aankomende beschikbare sessies',
     'home.upcoming.lead':    'Reserveer je plek.',
     'home.upcoming.viewfull':'Bekijk het volledige programma',
 
