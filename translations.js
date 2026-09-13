@@ -117,7 +117,7 @@ var SOKI_I18N = {
     /* --- Session type descriptions (shared across home + sessions page) --- */
     'type.everyday.desc': '50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge. A free-flow experience: no fixed programme, just move at your own pace.',
     'type.social.desc':   '1hr 20 minutes of access to our sauna and ice baths, plus unlimited lounge time. Curl up with a book, meditate, catch up with friends or meet someone new.',
-    'type.ambient.desc':  'A curated DJ transforms the sauna into an immersive listening lounge. A 3-hour evening with 80 minutes of sauna time — one group opens the night in the sauna, the other closes with it.',
+    'type.ambient.desc':  'A curated DJ transforms the sauna into an immersive listening lounge. A 3-hour evening with 80 minutes of sauna time, one group opens the night in the sauna, the other closes with it.',
     'type.aufguss.desc':  'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation or meditation.',
 
     /* --- Homepage values --- */
@@ -150,7 +150,7 @@ var SOKI_I18N = {
     'sessions.social.p1':   'Enjoy 1hr 20 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge where you can listen to music, read a book or simply socialise.',
     'sessions.social.p2':   'Free-flow experience: no fixed programme, just move between sauna and ice baths at your own pace.',
     'sessions.ambient.p1':  'Every Saturday night: a curated DJ lineup transforms the sauna into an immersive listening lounge.',
-    'sessions.ambient.p2':  'A 3-hour experience with 80 minutes of sauna and ice bath access — one group starts in the sauna, the other closes the night with it, with live music all evening.',
+    'sessions.ambient.p2':  'A 3-hour experience with 80 minutes of sauna and ice bath access, one group starts in the sauna, the other closes the night with it, with live music all evening.',
     'sessions.aufguss.p1':  'A traditional ritual led by our sauna masters: essential oils poured over hot stones create a burst of steam that carries you through a guided, sensory journey.',
     'sessions.aufguss.p2':  'Includes a visualisation or meditation, with full sauna and ice bath access woven in.',
 
@@ -629,7 +629,7 @@ var SOKI_I18N = {
     /* --- Session type descriptions --- */
     'type.everyday.desc': '50 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge. Een vrije ervaring: geen vast programma, beweeg op jouw eigen tempo.',
     'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, praat bij met vrienden of ontmoet iemand nieuw.',
-    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. Een avond van 3 uur met 80 minuten saunatijd — de ene groep opent de avond in de sauna, de andere sluit ermee af.',
+    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. Een avond van 3 uur met 80 minuten saunatijd, de ene groep opent de avond in de sauna, de andere sluit ermee af.',
     'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie of meditatie.',
 
     /* --- Homepage values --- */
@@ -662,7 +662,7 @@ var SOKI_I18N = {
     'sessions.social.p1':   'Geniet van 1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge om te luisteren naar muziek, een boek te lezen of gewoon te socialiseren.',
     'sessions.social.p2':   'Vrije invulling: geen vast programma, beweeg gewoon op je eigen tempo.',
     'sessions.ambient.p1':  'Iedere zaterdagavond: een gecureerde DJ-line-up transformeert de sauna in een meeslepende luisterlounge.',
-    'sessions.ambient.p2':  'Een ervaring van 3 uur met 80 minuten sauna- en ijsbadtoegang — de ene groep begint in de sauna, de andere sluit de avond ermee af, met livemuziek de hele avond.',
+    'sessions.ambient.p2':  'Een ervaring van 3 uur met 80 minuten sauna- en ijsbadtoegang, de ene groep begint in de sauna, de andere sluit de avond ermee af, met livemuziek de hele avond.',
     'sessions.aufguss.p1':  'Een traditioneel ritueel geleid door onze saunameesters: essentiële oliën over hete stenen creëren een stoomstoot die je meeneemt op een begeleide, zintuiglijke reis.',
     'sessions.aufguss.p2':  'Inclusief een visualisatie of meditatie, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
 
