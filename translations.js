@@ -554,6 +554,42 @@ var SOKI_I18N = {
     'nl.perk3': 'News from the SOKI community',
     'nl.perk4': 'No spam, unsubscribe any time',
     'nl.note':  'By subscribing you agree to receive our newsletter. You can unsubscribe at any time.',
+
+    /* --- Gallery captions --- */
+    'gallery.cap.inside':   'Inside the sauna',
+    'gallery.cap.plunge':   'Cold plunge',
+    'gallery.cap.warmdown': 'Warm-down space',
+    'gallery.cap.community':'Community session',
+    'gallery.cap.tea':      'Herbal tea ritual',
+    'gallery.cap.sound':    'Sauna & Sound evening',
+    'gallery.cap.dusk':     'The space at dusk',
+    'gallery.cap.wood':     'Wood & steam',
+    'gallery.cap.morning':  'Cold plunge morning',
+    'gallery.cap.ritual':   'Sauna ritual',
+    'gallery.cap.built':    'Community built',
+
+    /* --- Booking GDPR --- */
+    'booking.gdpr.label':   'I agree to the <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">Privacy Policy</a> and consent to my data being stored to process my booking.',
+
+    /* --- Account extras --- */
+    'account.datarights':   'Your data rights',
+    'account.cancelinfo':   'Cancellations are only possible up to 24 hours before the session. Confirmed bookings will be refunded.',
+
+    /* --- Reset password --- */
+    'reset.title':       'Set new password',
+    'reset.sub':         'Enter your new password below.',
+    'reset.newpw':       'New password',
+    'reset.newpw.ph':    'At least 8 characters',
+    'reset.confirm':     'Confirm password',
+    'reset.confirm.ph':  'Repeat password',
+    'reset.submit':      'Set new password',
+    'reset.nomatch':     'Passwords do not match',
+    'reset.done.h2':     'Password updated',
+    'reset.done.p':      'You can now log in with your new password.',
+    'reset.done.btn':    'Go to booking',
+    'reset.invalid.h2':  'Link expired',
+    'reset.invalid.p':   'This reset link is invalid or has expired. Request a new one.',
+    'reset.invalid.btn': 'Back to login',
   },
 
   nl: {
@@ -1107,5 +1143,41 @@ var SOKI_I18N = {
     'nl.perk3': 'Nieuws uit de SOKI-community',
     'nl.perk4': 'Geen spam, altijd uitschrijven mogelijk',
     'nl.note':  'Door je aan te melden ga je akkoord met het ontvangen van onze nieuwsbrief. Je kunt je op elk moment uitschrijven.',
+
+    /* --- Gallery captions --- */
+    'gallery.cap.inside':   'Binnen in de sauna',
+    'gallery.cap.plunge':   'IJsbad',
+    'gallery.cap.warmdown': 'Rustruimte',
+    'gallery.cap.community':'Community-sessie',
+    'gallery.cap.tea':      'Kruidentheeritueel',
+    'gallery.cap.sound':    'Sauna & Sound-avond',
+    'gallery.cap.dusk':     'De ruimte in de schemering',
+    'gallery.cap.wood':     'Hout & stoom',
+    'gallery.cap.morning':  'IJsbad in de ochtend',
+    'gallery.cap.ritual':   'Saunaritueel',
+    'gallery.cap.built':    'Samen opgebouwd',
+
+    /* --- Booking GDPR --- */
+    'booking.gdpr.label':   'Ik ga akkoord met het <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">privacybeleid</a> en geef toestemming om mijn gegevens op te slaan voor het verwerken van mijn boeking.',
+
+    /* --- Account extras --- */
+    'account.datarights':   'Jouw gegevensrechten',
+    'account.cancelinfo':   'Annuleren kan tot 24 uur voor de sessie. Bevestigde boekingen worden terugbetaald.',
+
+    /* --- Reset password --- */
+    'reset.title':       'Nieuw wachtwoord instellen',
+    'reset.sub':         'Voer hieronder je nieuwe wachtwoord in.',
+    'reset.newpw':       'Nieuw wachtwoord',
+    'reset.newpw.ph':    'Minimaal 8 tekens',
+    'reset.confirm':     'Bevestig wachtwoord',
+    'reset.confirm.ph':  'Herhaal wachtwoord',
+    'reset.submit':      'Nieuw wachtwoord instellen',
+    'reset.nomatch':     'Wachtwoorden komen niet overeen',
+    'reset.done.h2':     'Wachtwoord bijgewerkt',
+    'reset.done.p':      'Je kunt nu inloggen met je nieuwe wachtwoord.',
+    'reset.done.btn':    'Naar boeken',
+    'reset.invalid.h2':  'Link verlopen',
+    'reset.invalid.p':   'Deze herstellink is ongeldig of verlopen. Vraag een nieuwe aan.',
+    'reset.invalid.btn': 'Terug naar inloggen',
   }
 };

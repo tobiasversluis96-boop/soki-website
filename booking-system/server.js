@@ -56,6 +56,16 @@ app.set('trust proxy', 1);
 // Webhook route must come before express.json() — Stripe needs the raw body
 app.use('/api/webhooks', webhookRoutes);
 
+// Oude railway.app-URL staat nog in Google: stuur bezoekers 301 door naar het
+// eigen domein (alleen GET-paginaverkeer, API-calls blijven ongemoeid)
+app.use((req, res, next) => {
+  const host = req.headers.host || '';
+  if (host.endsWith('.railway.app') && req.method === 'GET' && !req.path.startsWith('/api/')) {
+    return res.redirect(301, 'https://www.sokisocialsauna.nl' + req.originalUrl);
+  }
+  next();
+});
+
 // ─── Security headers ─────────────────────────────────────────────────────────
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
