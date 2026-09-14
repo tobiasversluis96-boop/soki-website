@@ -59,7 +59,8 @@ app.use('/api/webhooks', webhookRoutes);
 // Oude railway.app-URL staat nog in Google: stuur bezoekers 301 door naar het
 // eigen domein (alleen GET-paginaverkeer, API-calls blijven ongemoeid)
 app.use((req, res, next) => {
-  const host = req.headers.host || '';
+  // req.hostname leest X-Forwarded-Host (Railway's proxy herschrijft de Host-header)
+  const host = req.hostname || '';
   if (host.endsWith('.railway.app') && req.method === 'GET' && !req.path.startsWith('/api/')) {
     return res.redirect(301, 'https://www.sokisocialsauna.nl' + req.originalUrl);
   }
