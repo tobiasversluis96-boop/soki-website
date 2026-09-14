@@ -1,0 +1,39 @@
+<!--
+  Sterrenblok voor in de Brevo bedank-mail.
+  Plakken via een "HTML"-blok in de Brevo drag & drop editor.
+
+  Werking:
+  - Ster 1 t/m 3  -> feedback.html (interne feedbackpagina, sterren vooraf ingevuld, in het Nederlands)
+  - Ster 4 en 5   -> Google review
+
+  LET OP: vervang JOUW-GOOGLE-REVIEW-LINK (2x) door je echte Google-reviewlink
+  uit Google Bedrijfsprofiel ("Om reviews vragen").
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+  <tr>
+    <td align="center" style="background-color:#faf3ec;border-radius:12px;padding:28px 20px;">
+      <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#4A1C0C;">
+        Hoe was je bezoek?
+      </p>
+      <p style="margin:0 0 18px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#8a6a57;">
+        Klik op het aantal sterren dat bij jouw ervaring past.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+          <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=1&amp;lang=nl&amp;email={{ contact.EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+          <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=2&amp;lang=nl&amp;email={{ contact.EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+          <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=3&amp;lang=nl&amp;email={{ contact.EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+          <td><a href="JOUW-GOOGLE-REVIEW-LINK" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+          <td><a href="JOUW-GOOGLE-REVIEW-LINK" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+        </tr>
+        <tr>
+          <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">1</td>
+          <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">2</td>
+          <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">3</td>
+          <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">4</td>
+          <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">5</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

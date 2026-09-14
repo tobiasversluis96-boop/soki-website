@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Jouw feedback | SOKI Social Sauna Utrecht</title>
+  <title>Your feedback | SOKI Social Sauna Utrecht</title>
   <link rel="stylesheet" href="styles.css?v=20260902-1" />
   <link rel="icon" type="image/png" href="images/favicon.png" />
   <style>
@@ -81,6 +81,22 @@
     .fb-submit:disabled { opacity: 0.6; cursor: default; }
     .fb-err { color: #FFAB91; font-size: 0.9rem; min-height: 20px; margin-top: 10px; }
     .fb-hp { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
+    .fb-lang {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: rgba(242, 242, 242, 0.1);
+      border: 1px solid rgba(242, 194, 153, 0.3);
+      color: #F2C299;
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .fb-lang:hover { background: rgba(242, 194, 153, 0.2); }
     #fb-success { display: none; text-align: center; }
     #fb-success h1 { margin-bottom: var(--space-sm); }
   </style>
@@ -89,9 +105,10 @@
   <section class="fb-hero">
     <div class="fb-hero__bg"><img src="images/lounge-interior.jpg" alt="" /></div>
     <div class="fb-card">
+      <button type="button" class="fb-lang" id="fb-lang" aria-label="Taal / Language">NL</button>
       <div id="fb-form-wrap">
-        <h1>Help ons beter worden</h1>
-        <p class="lead">Bedankt voor je bezoek aan SOKI. Vertel ons eerlijk wat er beter kan &mdash; we lezen alles zelf en gaan ermee aan de slag.</p>
+        <h1 data-i18n="title">Help us improve</h1>
+        <p class="lead" data-i18n="lead">Thank you for visiting SOKI. Tell us honestly what we could do better, we read everything ourselves and get to work on it.</p>
         <div class="fb-stars" id="fb-stars" role="radiogroup" aria-label="Aantal sterren">
           <button type="button" class="fb-star" data-star="1" aria-label="1 ster">&#9733;</button>
           <button type="button" class="fb-star" data-star="2" aria-label="2 sterren">&#9733;</button>
@@ -101,33 +118,89 @@
         </div>
         <form id="fb-form">
           <div class="fb-field">
-            <label for="fb-message">Wat kunnen we verbeteren?</label>
-            <textarea id="fb-message" placeholder="Jouw ervaring, tips of suggesties&hellip;" required maxlength="5000"></textarea>
+            <label for="fb-message" data-i18n="msgLabel">What can we improve?</label>
+            <textarea id="fb-message" data-i18n-ph="msgPh" placeholder="Your experience, tips or suggestions&hellip;" required maxlength="5000"></textarea>
           </div>
           <div class="fb-field">
-            <label for="fb-name">Naam (optioneel)</label>
+            <label for="fb-name" data-i18n="nameLabel">Name (optional)</label>
             <input type="text" id="fb-name" autocomplete="name" maxlength="200" />
           </div>
           <div class="fb-field">
-            <label for="fb-email">E-mailadres (optioneel, als we mogen reageren)</label>
+            <label for="fb-email" data-i18n="emailLabel">Email address (optional, in case we may reply)</label>
             <input type="email" id="fb-email" autocomplete="email" maxlength="200" />
           </div>
           <div class="fb-hp" aria-hidden="true">
             <label>Website<input type="text" id="fb-website" tabindex="-1" autocomplete="off" /></label>
           </div>
-          <button type="submit" class="fb-submit" id="fb-submit">Feedback versturen</button>
+          <button type="submit" class="fb-submit" id="fb-submit" data-i18n="submit">Send feedback</button>
           <div class="fb-err" id="fb-err"></div>
         </form>
       </div>
       <div id="fb-success">
-        <h1 style="color:var(--white);">Dankjewel &#10084;&#65039;</h1>
-        <p class="lead" style="margin-bottom:0;">We hebben je feedback ontvangen en nemen hem serieus. Tot snel bij SOKI!</p>
+        <h1 style="color:var(--white);" data-i18n="thanksTitle">Thank you &#10084;&#65039;</h1>
+        <p class="lead" style="margin-bottom:0;" data-i18n="thanksBody">We have received your feedback and take it seriously. See you soon at SOKI!</p>
       </div>
     </div>
   </section>
 
   <script>
     (function () {
+      var I18N = {
+        en: {
+          docTitle: 'Your feedback | SOKI Social Sauna Utrecht',
+          title: 'Help us improve',
+          lead: 'Thank you for visiting SOKI. Tell us honestly what we could do better, we read everything ourselves and get to work on it.',
+          msgLabel: 'What can we improve?',
+          msgPh: 'Your experience, tips or suggestions…',
+          nameLabel: 'Name (optional)',
+          emailLabel: 'Email address (optional, in case we may reply)',
+          submit: 'Send feedback',
+          thanksTitle: 'Thank you ❤️',
+          thanksBody: 'We have received your feedback and take it seriously. See you soon at SOKI!',
+          errStars: 'Please choose a number of stars first.',
+          errGeneric: 'Something went wrong. Please try again later.',
+        },
+        nl: {
+          docTitle: 'Jouw feedback | SOKI Social Sauna Utrecht',
+          title: 'Help ons beter worden',
+          lead: 'Bedankt voor je bezoek aan SOKI. Vertel ons eerlijk wat er beter kan, we lezen alles zelf en gaan ermee aan de slag.',
+          msgLabel: 'Wat kunnen we verbeteren?',
+          msgPh: 'Jouw ervaring, tips of suggesties…',
+          nameLabel: 'Naam (optioneel)',
+          emailLabel: 'E-mailadres (optioneel, als we mogen reageren)',
+          submit: 'Feedback versturen',
+          thanksTitle: 'Dankjewel ❤️',
+          thanksBody: 'We hebben je feedback ontvangen en nemen hem serieus. Tot snel bij SOKI!',
+          errStars: 'Kies eerst een aantal sterren.',
+          errGeneric: 'Er ging iets mis. Probeer het later opnieuw.',
+        },
+      };
+
+      var params = new URLSearchParams(location.search);
+      var stored = '';
+      try { stored = localStorage.getItem('soki_lang') || ''; } catch (e) {}
+      var lang = (params.get('lang') || params.get('taal') || stored || 'en').toLowerCase() === 'nl' ? 'nl' : 'en';
+
+      var langBtn = document.getElementById('fb-lang');
+      function applyLang() {
+        var t = I18N[lang];
+        document.documentElement.lang = lang;
+        document.title = t.docTitle;
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+          if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
+        });
+        document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+          if (t[el.dataset.i18nPh]) el.placeholder = t[el.dataset.i18nPh];
+        });
+        langBtn.textContent = lang === 'nl' ? 'EN' : 'NL';
+      }
+      langBtn.addEventListener('click', function () {
+        lang = lang === 'nl' ? 'en' : 'nl';
+        try { localStorage.setItem('soki_lang', lang); } catch (e) {}
+        applyLang();
+      });
+      applyLang();
+
       var rating = 0;
       var stars = document.querySelectorAll('.fb-star');
 
@@ -144,7 +217,6 @@
         });
       });
 
-      var params = new URLSearchParams(location.search);
       var pre = parseInt(params.get('sterren') || params.get('stars') || '', 10);
       if (pre >= 1 && pre <= 5) { rating = pre; paint(pre); }
       var preEmail = params.get('email');
@@ -154,7 +226,7 @@
         e.preventDefault();
         var err = document.getElementById('fb-err');
         err.textContent = '';
-        if (!rating) { err.textContent = 'Kies eerst een aantal sterren.'; return; }
+        if (!rating) { err.textContent = I18N[lang].errStars; return; }
         var btn = document.getElementById('fb-submit');
         btn.disabled = true;
         fetch('/api/messages/feedback', {
@@ -174,7 +246,7 @@
           document.getElementById('fb-success').style.display = 'block';
         }).catch(function () {
           btn.disabled = false;
-          err.textContent = 'Er ging iets mis. Probeer het later opnieuw.';
+          err.textContent = I18N[lang].errGeneric;
         });
       });
     })();
