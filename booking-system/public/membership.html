@@ -218,9 +218,9 @@
 <!-- ===== HERO ===== -->
 <div class="membership-hero">
   <div class="container">
-    <span class="eyebrow">Membership</span>
-    <h1>Become a member</h1>
-    <p>Save on every session with a monthly membership. Flexible plans, cancel anytime.</p>
+    <span class="eyebrow" data-i18n="membership.eyebrow">Membership</span>
+    <h1 data-i18n="membership.title">Become a member</h1>
+    <p data-i18n="membership.sub">Save on every session with a monthly membership. Flexible plans, cancel anytime.</p>
   </div>
 </div>
 
@@ -228,51 +228,51 @@
 <div class="plans-grid" id="plans-grid">
   <div class="plan-card" id="plan-everyday">
     <div class="plan-card__name">SOKI Weekly</div>
-    <div class="plan-card__price">&euro;49 <span>/month</span></div>
-    <div class="plan-card__credits">4 credits per month</div>
+    <div class="plan-card__price">&euro;49 <span data-i18n="membership.price.month">/month</span></div>
+    <div class="plan-card__credits" data-i18n="membership.weekly.credits">4 credits per month</div>
     <ul class="plan-card__features">
-      <li>Everyday &amp; Social Sauna = 1 credit</li>
-      <li>Ambient &amp; Aufguss = 1.5 credits</li>
-      <li>Personal - for your own spot only</li>
-      <li>Skip the payment step when booking</li>
-      <li>Credits reset monthly (a leftover half credit carries over)</li>
-      <li>Cancel anytime</li>
+      <li data-i18n="membership.feat.credit1">Everyday &amp; Social Sauna = 1 credit</li>
+      <li data-i18n="membership.feat.credit15">Ambient &amp; Aufguss = 1.5 credits</li>
+      <li data-i18n="membership.feat.personal">Personal - for your own spot only</li>
+      <li data-i18n="membership.feat.skippay">Skip the payment step when booking</li>
+      <li data-i18n="membership.feat.reset">Credits reset monthly (a leftover half credit carries over)</li>
+      <li data-i18n="membership.feat.cancel">Cancel anytime</li>
     </ul>
-    <button class="btn btn--outline" id="btn-everyday" onclick="subscribe(null)">Subscribe</button>
+    <button class="btn btn--outline" id="btn-everyday" onclick="subscribe(null)" data-i18n="membership.subscribe">Subscribe</button>
   </div>
 
   <div class="plan-card plan-card--popular" id="plan-unlimited">
-    <div class="plan-card__badge">Most popular</div>
+    <div class="plan-card__badge" data-i18n="membership.popular">Most popular</div>
     <div class="plan-card__name">SOKI Unlimited</div>
-    <div class="plan-card__price">&euro;99 <span>/month</span></div>
-    <div class="plan-card__credits">Unlimited access</div>
+    <div class="plan-card__price">&euro;99 <span data-i18n="membership.price.month">/month</span></div>
+    <div class="plan-card__credits" data-i18n="membership.unlimited.credits">Unlimited access</div>
     <ul class="plan-card__features">
-      <li>Unlimited sessions, all types</li>
-      <li>No credits to track</li>
-      <li>Personal - for your own spot only</li>
-      <li>Skip the payment step when booking</li>
-      <li>Best value for regulars</li>
-      <li>Cancel anytime</li>
+      <li data-i18n="membership.feat.unlsessions">Unlimited sessions, all types</li>
+      <li data-i18n="membership.feat.notrack">No credits to track</li>
+      <li data-i18n="membership.feat.personal">Personal - for your own spot only</li>
+      <li data-i18n="membership.feat.skippay">Skip the payment step when booking</li>
+      <li data-i18n="membership.feat.bestvalue">Best value for regulars</li>
+      <li data-i18n="membership.feat.cancel">Cancel anytime</li>
     </ul>
-    <button class="btn btn--primary" id="btn-unlimited" onclick="subscribe(null)">Subscribe</button>
+    <button class="btn btn--primary" id="btn-unlimited" onclick="subscribe(null)" data-i18n="membership.subscribe">Subscribe</button>
   </div>
 
   <div class="plan-card" id="plan-punchpass" style="display:none">
     <div class="plan-card__name">Punch Pass</div>
-    <div class="plan-card__price" id="pp-price">&euro;150 <span>one-time</span></div>
+    <div class="plan-card__price" id="pp-price">&euro;150 <span data-i18n="membership.pp.once">one-time</span></div>
     <div class="plan-card__credits" id="pp-credits">10 credits</div>
     <ul class="plan-card__features">
-      <li>Buy credits once - no subscription</li>
-      <li>Everyday &amp; Social Sauna = 1 credit</li>
-      <li>Ambient &amp; Aufguss = 1.5 credits</li>
-      <li>Credits valid for 1 year</li>
-      <li>Personal - for your own spot only</li>
-      <li>Skip the payment step when booking</li>
+      <li data-i18n="membership.pp.feat.once">Buy credits once - no subscription</li>
+      <li data-i18n="membership.feat.credit1">Everyday &amp; Social Sauna = 1 credit</li>
+      <li data-i18n="membership.feat.credit15">Ambient &amp; Aufguss = 1.5 credits</li>
+      <li data-i18n="membership.pp.feat.valid">Credits valid for 1 year</li>
+      <li data-i18n="membership.feat.personal">Personal - for your own spot only</li>
+      <li data-i18n="membership.feat.skippay">Skip the payment step when booking</li>
     </ul>
-    <button class="btn btn--outline" id="btn-punchpass">Buy punch pass</button>
+    <button class="btn btn--outline" id="btn-punchpass" data-i18n="membership.pp.buy">Buy punch pass</button>
     <div style="margin-top:12px;">
-      <a href="#" id="pp-promo-toggle" style="font-size:13px;color:inherit;text-decoration:underline;">Have a promo code?</a>
-      <input type="text" id="pp-promo-input" placeholder="Promo code" autocomplete="off"
+      <a href="#" id="pp-promo-toggle" style="font-size:13px;color:inherit;text-decoration:underline;" data-i18n="membership.pp.promo">Have a promo code?</a>
+      <input type="text" id="pp-promo-input" placeholder="Promo code" autocomplete="off" data-i18n-placeholder="membership.pp.promo.ph"
              style="display:none;margin-top:8px;width:100%;padding:10px 12px;border:1px solid rgba(0,0,0,.2);border-radius:8px;font-size:14px;text-transform:uppercase;box-sizing:border-box;" />
       <div id="pp-promo-err" style="display:none;margin-top:6px;font-size:13px;color:#C62828;"></div>
     </div>
@@ -282,31 +282,31 @@
 <!-- ===== FAQ ===== -->
 <div class="faq-section">
   <div class="section-header">
-    <span class="eyebrow">FAQ</span>
-    <h2>Frequently asked questions</h2>
+    <span class="eyebrow" data-i18n="faq.eyebrow">FAQ</span>
+    <h2 data-i18n="faq.title">Frequently asked questions</h2>
   </div>
 
   <div class="faq-item">
-    <div class="faq-item__q">How do credits work?</div>
-    <div class="faq-item__a">
+    <div class="faq-item__q" data-i18n="membership.faq.q1">How do credits work?</div>
+    <div class="faq-item__a" data-i18n="membership.faq.a1">
       With the SOKI Weekly plan you get 4 credits per month. Everyday Sauna and Social Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.
     </div>
   </div>
   <div class="faq-item">
-    <div class="faq-item__q">Can I cancel my membership?</div>
-    <div class="faq-item__a">
+    <div class="faq-item__q" data-i18n="membership.faq.q2">Can I cancel my membership?</div>
+    <div class="faq-item__a" data-i18n="membership.faq.a2">
       Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period - you won't be charged again after cancelling.
     </div>
   </div>
   <div class="faq-item">
-    <div class="faq-item__q">When do credits reset?</div>
-    <div class="faq-item__a">
+    <div class="faq-item__q" data-i18n="membership.faq.q3">When do credits reset?</div>
+    <div class="faq-item__a" data-i18n="membership.faq.a3">
       Credits reset at the start of each billing cycle (the date you subscribed). Whole unused credits do not roll over, but a leftover half credit carries over to the next month.
     </div>
   </div>
   <div class="faq-item">
-    <div class="faq-item__q">What if I run out of credits?</div>
-    <div class="faq-item__a">
+    <div class="faq-item__q" data-i18n="membership.faq.q4">What if I run out of credits?</div>
+    <div class="faq-item__a" data-i18n="membership.faq.a4">
       If you don't have enough credits for a session, you can still book and pay with card as usual. Or consider upgrading to the SOKI Unlimited plan for worry-free access.
     </div>
   </div>
@@ -344,7 +344,7 @@
   </div>
 </footer>
 
-<script src="/translations.js?v=20260913-3"></script>
+<script src="/translations.js?v=20260914-1"></script>
 <script src="/main.js?v=20260906-5"></script>
 <script>
 (function() {
@@ -369,7 +369,8 @@
     if (!bundle) return;
     var euros = bundle.price_cents / 100;
     var priceStr = (euros % 1 === 0) ? String(euros) : euros.toFixed(2).replace('.', ',');
-    document.getElementById('pp-price').innerHTML = '&euro;' + priceStr + ' <span>one-time</span>';
+    var onceTxt = (window.SOKI_I18N && SOKI_I18N[window.SOKI_LANG || 'en'] && SOKI_I18N[window.SOKI_LANG || 'en']['membership.pp.once']) || 'one-time';
+    document.getElementById('pp-price').innerHTML = '&euro;' + priceStr + ' <span data-i18n="membership.pp.once">' + onceTxt + '</span>';
     document.getElementById('pp-credits').textContent = bundle.credits + ' credits';
     document.getElementById('plan-punchpass').style.display = '';
     document.getElementById('btn-punchpass').onclick = function() { buyPunchPass(bundle.id); };

@@ -117,7 +117,8 @@ var SOKI_I18N = {
     /* --- Session type descriptions (shared across home + sessions page) --- */
     'type.everyday.desc': '50 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge. A free-flow experience: no fixed programme, just move at your own pace.',
     'type.social.desc':   '1hr 20 minutes of access to our sauna and ice baths, plus unlimited lounge time. Curl up with a book, meditate, catch up with friends or meet someone new.',
-    'type.ambient.desc':  'A curated DJ transforms the sauna into an immersive listening lounge. A 3-hour evening with 80 minutes of sauna time, one group opens the night in the sauna, the other closes with it.',
+    'type.ambient.desc':  'A curated DJ transforms the sauna into an immersive listening lounge. A 3-hour evening including 80 minutes of sauna time, one group opens the night in the sauna, the other closes with it.',
+    'type.ambient.label': '€25 · 3 hrs',
     'type.aufguss.desc':  'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation or meditation.',
 
     /* --- Homepage values --- */
@@ -150,7 +151,7 @@ var SOKI_I18N = {
     'sessions.social.p1':   'Enjoy 1hr 20 minutes of access to our sauna and ice baths, plus unlimited time to unwind in our lounge where you can listen to music, read a book or simply socialise.',
     'sessions.social.p2':   'Free-flow experience: no fixed programme, just move between sauna and ice baths at your own pace.',
     'sessions.ambient.p1':  'Every Saturday night: a curated DJ lineup transforms the sauna into an immersive listening lounge.',
-    'sessions.ambient.p2':  'A 3-hour experience with 80 minutes of sauna and ice bath access, one group starts in the sauna, the other closes the night with it, with live music all evening.',
+    'sessions.ambient.p2':  'A 3-hour experience including 80 minutes of sauna and ice bath access, one group starts in the sauna, the other closes the night with it, with live music all evening.',
     'sessions.aufguss.p1':  'A traditional ritual led by our sauna masters: essential oils poured over hot stones create a burst of steam that carries you through a guided, sensory journey.',
     'sessions.aufguss.p2':  'Includes a visualisation or meditation, with full sauna and ice bath access woven in.',
 
@@ -513,6 +514,46 @@ var SOKI_I18N = {
     'booking.pay.divider':    'or pay with card',
     'promo.saved':            '✓ Code accepted! You save €{amt}.',
     'promo.remaining':        ' Remaining balance: €{amt}.',
+
+    /* --- Membership page --- */
+    'membership.eyebrow':        'Membership',
+    'membership.title':          'Become a member',
+    'membership.sub':            'Save on every session with a monthly membership. Flexible plans, cancel anytime.',
+    'membership.price.month':    '/month',
+    'membership.weekly.credits': '4 credits per month',
+    'membership.feat.credit1':   'Everyday & Social Sauna = 1 credit',
+    'membership.feat.credit15':  'Ambient & Aufguss = 1.5 credits',
+    'membership.feat.personal':  'Personal - for your own spot only',
+    'membership.feat.skippay':   'Skip the payment step when booking',
+    'membership.feat.reset':     'Credits reset monthly (a leftover half credit carries over)',
+    'membership.feat.cancel':    'Cancel anytime',
+    'membership.subscribe':      'Subscribe',
+    'membership.popular':        'Most popular',
+    'membership.unlimited.credits': 'Unlimited access',
+    'membership.feat.unlsessions': 'Unlimited sessions, all types',
+    'membership.feat.notrack':   'No credits to track',
+    'membership.feat.bestvalue': 'Best value for regulars',
+    'membership.pp.once':        'one-time',
+    'membership.pp.feat.once':   'Buy credits once - no subscription',
+    'membership.pp.feat.valid':  'Credits valid for 1 year',
+    'membership.pp.buy':         'Buy punch pass',
+    'membership.pp.promo':       'Have a promo code?',
+    'membership.pp.promo.ph':    'Promo code',
+    'membership.faq.q1':         'How do credits work?',
+    'membership.faq.a1':         'With the SOKI Weekly plan you get 4 credits per month. Everyday Sauna and Social Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.',
+    'membership.faq.q2':         'Can I cancel my membership?',
+    'membership.faq.a2':         "Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period - you won't be charged again after cancelling.",
+    'membership.faq.q3':         'When do credits reset?',
+    'membership.faq.a3':         'Credits reset at the start of each billing cycle (the date you subscribed). Whole unused credits do not roll over, but a leftover half credit carries over to the next month.',
+    'membership.faq.q4':         'What if I run out of credits?',
+    'membership.faq.a4':         "If you don't have enough credits for a session, you can still book and pay with card as usual. Or consider upgrading to the SOKI Unlimited plan for worry-free access.",
+
+    /* --- Newsletter perks --- */
+    'nl.perk1': 'Early access to new sessions before they go public',
+    'nl.perk2': 'Upcoming events, DJ announcements and Aufguss dates',
+    'nl.perk3': 'News from the SOKI community',
+    'nl.perk4': 'No spam, unsubscribe any time',
+    'nl.note':  'By subscribing you agree to receive our newsletter. You can unsubscribe at any time.',
   },
 
   nl: {
@@ -628,8 +669,9 @@ var SOKI_I18N = {
 
     /* --- Session type descriptions --- */
     'type.everyday.desc': '50 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge. Een vrije ervaring: geen vast programma, beweeg op jouw eigen tempo.',
-    'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, praat bij met vrienden of ontmoet iemand nieuw.',
-    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. Een avond van 3 uur met 80 minuten saunatijd, de ene groep opent de avond in de sauna, de andere sluit ermee af.',
+    'type.social.desc':   '1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte loungetijd. Pak een boek, mediteer, praat bij met vrienden of ontmoet nieuwe mensen.',
+    'type.ambient.desc':  'Een gecureerde DJ transformeert de sauna in een meeslepende luisterlounge. Een avond van 3 uur met daarin 80 minuten saunatijd, de ene groep opent de avond in de sauna, de andere sluit ermee af.',
+    'type.ambient.label': '€25 · 3 uur',
     'type.aufguss.desc':  'Een traditioneel saunaritueel geleid door onze saunameesters. Essentiële oliën over hete stenen creëren een stoomstoot. Verwacht een visualisatie of meditatie.',
 
     /* --- Homepage values --- */
@@ -662,7 +704,7 @@ var SOKI_I18N = {
     'sessions.social.p1':   'Geniet van 1 uur en 20 minuten toegang tot onze sauna en ijsbaden, plus onbeperkte tijd in onze lounge om te luisteren naar muziek, een boek te lezen of gewoon te socialiseren.',
     'sessions.social.p2':   'Vrije invulling: geen vast programma, beweeg gewoon op je eigen tempo.',
     'sessions.ambient.p1':  'Iedere zaterdagavond: een gecureerde DJ-line-up transformeert de sauna in een meeslepende luisterlounge.',
-    'sessions.ambient.p2':  'Een ervaring van 3 uur met 80 minuten sauna- en ijsbadtoegang, de ene groep begint in de sauna, de andere sluit de avond ermee af, met livemuziek de hele avond.',
+    'sessions.ambient.p2':  'Een ervaring van 3 uur met daarin 80 minuten sauna- en ijsbadtoegang, de ene groep begint in de sauna, de andere sluit de avond ermee af, met livemuziek de hele avond.',
     'sessions.aufguss.p1':  'Een traditioneel ritueel geleid door onze saunameesters: essentiële oliën over hete stenen creëren een stoomstoot die je meeneemt op een begeleide, zintuiglijke reis.',
     'sessions.aufguss.p2':  'Inclusief een visualisatie of meditatie, met volledige sauna- en ijsbadtoegang verweven in de sessie.',
 
@@ -1025,5 +1067,45 @@ var SOKI_I18N = {
     'booking.pay.divider':    'of betaal met kaart',
     'promo.saved':            '✓ Code geaccepteerd! Je bespaart €{amt}.',
     'promo.remaining':        ' Resterend saldo: €{amt}.',
+
+    /* --- Membership page --- */
+    'membership.eyebrow':        'Membership',
+    'membership.title':          'Word member',
+    'membership.sub':            'Bespaar op elke sessie met een maandelijks membership. Flexibele plannen, maandelijks opzegbaar.',
+    'membership.price.month':    '/maand',
+    'membership.weekly.credits': '4 credits per maand',
+    'membership.feat.credit1':   'Everyday & Social Sauna = 1 credit',
+    'membership.feat.credit15':  'Ambient & Aufguss = 1,5 credit',
+    'membership.feat.personal':  'Persoonlijk, alleen voor je eigen plek',
+    'membership.feat.skippay':   'Sla de betaalstap over bij het boeken',
+    'membership.feat.reset':     'Credits vernieuwen maandelijks (een overgebleven halve credit gaat mee)',
+    'membership.feat.cancel':    'Maandelijks opzegbaar',
+    'membership.subscribe':      'Word member',
+    'membership.popular':        'Meest gekozen',
+    'membership.unlimited.credits': 'Onbeperkte toegang',
+    'membership.feat.unlsessions': 'Onbeperkt sessies, alle soorten',
+    'membership.feat.notrack':   'Geen credits om bij te houden',
+    'membership.feat.bestvalue': 'Voordeligst voor vaste gasten',
+    'membership.pp.once':        'eenmalig',
+    'membership.pp.feat.once':   'Koop credits in één keer, geen abonnement',
+    'membership.pp.feat.valid':  'Credits 1 jaar geldig',
+    'membership.pp.buy':         'Koop strippenkaart',
+    'membership.pp.promo':       'Heb je een kortingscode?',
+    'membership.pp.promo.ph':    'Kortingscode',
+    'membership.faq.q1':         'Hoe werken credits?',
+    'membership.faq.a1':         'Met SOKI Weekly krijg je 4 credits per maand. Everyday Sauna en Social Sauna kosten 1 credit, Ambient Sauna en Aufguss kosten 1,5 credit. Bij het boeken worden credits automatisch gebruikt in plaats van betalen met kaart.',
+    'membership.faq.q2':         'Kan ik mijn membership opzeggen?',
+    'membership.faq.a2':         'Ja, je kunt op elk moment opzeggen via je accountpagina. Je membership blijft actief tot het einde van je huidige betaalperiode, daarna wordt er niets meer afgeschreven.',
+    'membership.faq.q3':         'Wanneer vernieuwen mijn credits?',
+    'membership.faq.a3':         'Credits vernieuwen aan het begin van elke betaalcyclus (de datum waarop je member werd). Hele ongebruikte credits gaan niet mee naar de volgende maand, maar een overgebleven halve credit wel.',
+    'membership.faq.q4':         'Wat als mijn credits op zijn?',
+    'membership.faq.a4':         'Heb je niet genoeg credits voor een sessie? Dan kun je gewoon boeken en betalen met iDEAL of kaart. Of upgrade naar SOKI Unlimited voor onbeperkte toegang.',
+
+    /* --- Newsletter perks --- */
+    'nl.perk1': 'Vroege toegang tot nieuwe sessies voordat ze online komen',
+    'nl.perk2': 'Aankomende evenementen, dj-aankondigingen en Aufguss-data',
+    'nl.perk3': 'Nieuws uit de SOKI-community',
+    'nl.perk4': 'Geen spam, altijd uitschrijven mogelijk',
+    'nl.note':  'Door je aan te melden ga je akkoord met het ontvangen van onze nieuwsbrief. Je kunt je op elk moment uitschrijven.',
   }
 };
