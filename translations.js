@@ -694,7 +694,7 @@ var SOKI_I18N = {
 
     /* --- Homepage intro --- */
     'home.intro.h2':      'De sauna opnieuw uitgevonden',
-    'home.intro.p1':      'Stap naar binnen en laat de drukte achter je. Dit is een plek om te vertragen, jezelf te herverbinden, anderen te ontmoeten en te ontsnappen aan de dagelijkse druk.',
+    'home.intro.p1':      'Stap naar binnen en laat de drukte achter je. Dit is een plek om te vertragen, te verbinden met jezelf, anderen te ontmoeten en te ontsnappen aan de dagelijkse druk.',
     'home.intro.p2':      'In plaats van een stille, anonieme spa, bouwen we een levend, bruisend podium waar je kunt zweten, ontspannen én kunst, talks, DJ-sets of kleine optredens kunt ontdekken.',
     'home.intro.p3':      'Ons doel is een echt alternatief te bieden voor de gebruikelijke sociale ruimtes zoals bars en clubs: een warme, inspirerende plek waar welzijn, creativiteit en echte verbinding centraal staan.',
 
