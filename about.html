@@ -659,6 +659,12 @@
       gap: var(--space-lg);
     }
 
+    /* Na de basisregel: eerdere media queries verderop in het bestand
+       verliezen anders van repeat(3, 1fr) door de bronvolgorde */
+    @media (max-width: 860px) {
+      .plan-grid { grid-template-columns: 1fr; }
+    }
+
     .plan-step {
       background: var(--white);
       border-radius: 20px;
