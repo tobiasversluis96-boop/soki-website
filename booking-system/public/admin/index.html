@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin – Soki Social Sauna</title>
+  <link rel="manifest" href="/admin/manifest.json">
+  <meta name="theme-color" content="#2E0F06">
+  <link rel="apple-touch-icon" href="/images/admin-icon-180.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SOKI Admin">
   <link rel="stylesheet" href="/styles.css">
   <style>
     /* Admin-specific overrides — layout, sidebar, tables */
@@ -489,6 +496,22 @@
       gap: 5px;
     }
     .menu-toggle span { display: block; width: 22px; height: 2px; background: var(--brown); border-radius: 2px; }
+    /* ── Ticketscanner ── */
+    .scan-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 20px; max-width: 520px; }
+    .scan-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 300; }
+    .scan-overlay.open { display: block; }
+    .scan-overlay video { width: 100%; height: 100%; object-fit: cover; }
+    .scan-frame { position: absolute; top: 50%; left: 50%; width: 240px; height: 240px; transform: translate(-50%,-50%); border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+    #scan-cancel { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); padding: 12px 28px; border: none; border-radius: 999px; background: #fff; color: var(--brown); font-weight: 700; cursor: pointer; font-family: inherit; font-size: 15px; }
+    .scan-result { margin-top: 14px; border-radius: 10px; padding: 14px; font-size: 14px; line-height: 1.5; }
+    .scan-result.ok { background: #E8F5E9; color: #1B5E20; }
+    .scan-result.warn { background: #FFF3E0; color: #B45309; }
+    .scan-result.bad { background: #FFEBEE; color: #C62828; }
+    .scan-result .big { font-size: 17px; font-weight: 700; display: block; margin-bottom: 4px; }
+    .scan-result table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .scan-result td { padding: 2px 0; vertical-align: top; }
+    .scan-result td:first-child { color: inherit; opacity: .7; width: 110px; }
+
     .sidebar-backdrop {
       display: none;
       position: fixed;
@@ -561,6 +584,9 @@
         </button>
         <button class="nav-item" data-view="schedule">
           <span class="nav-item__icon">◈</span> Rooster
+        </button>
+        <button class="nav-item" data-view="scan">
+          <span class="nav-item__icon">▣</span> Scan tickets
         </button>
         <button class="nav-item" data-view="customers">
           <span class="nav-item__icon">◉</span> Klanten
@@ -797,6 +823,15 @@
         </div>
 
         <!-- ── Customers view ── -->
+        <!-- ── Scan tickets view ── -->
+        <div class="view" id="view-scan">
+          <div class="scan-card">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Scan de QR-code op het ticket van de gast om in te checken. Werkt ook voor de combi-check: je ziet direct of er een diner bij zit.</p>
+            <button class="btn btn--primary" id="scan-start" style="width:100%;">📷 Scan ticket</button>
+            <div id="scan-result"></div>
+          </div>
+        </div>
+
         <div class="view" id="view-customers">
           <div class="table-card">
             <div class="table-card__header">
@@ -1314,8 +1349,15 @@
   </div>
 </div>
 
+<div class="scan-overlay" id="scan-overlay">
+  <video id="scan-video" autoplay muted playsinline></video>
+  <div class="scan-frame"></div>
+  <button id="scan-cancel">Annuleren</button>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/admin/admin.js?v=20260913-2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="/admin/admin.js?v=20260916-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

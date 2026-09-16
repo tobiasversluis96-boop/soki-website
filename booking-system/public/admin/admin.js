@@ -179,7 +179,7 @@
     const navBtn = document.querySelector('.nav-item[data-view="' + name + '"]');
     if (navBtn) navBtn.classList.add('active');
 
-    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', giftcards: 'Cadeaubonnen', discounts: 'Kortingscodes', staff: 'Medewerkers' };
+    const titles = { dashboard: 'Dashboard', revenue: 'Omzet & Analytics', bookings: 'Boekingen', slots: 'Tijdslots', schedule: 'Rooster', scan: 'Scan tickets', customers: 'Klanten', generate: 'Slots genereren', messages: 'Berichten', walkin: 'Walk-in boeken', subscriptions: 'Abonnementen', giftcards: 'Cadeaubonnen', discounts: 'Kortingscodes', staff: 'Medewerkers' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
 
     if (name === 'dashboard') loadDashboard();
@@ -187,6 +187,7 @@
     if (name === 'bookings')  loadBookings();
     if (name === 'slots')     loadSlots();
     if (name === 'schedule')  loadSchedule();
+    if (name === 'scan')      resetTicketScan();
     if (name === 'customers') loadCustomers();
     if (name === 'generate')  loadGenerate();
     if (name === 'messages')  loadMessages();
@@ -2120,6 +2121,128 @@
   }
 
   bindWalkin();
+
+  // ─── Ticketscanner (check-in via camera) ──────────────────────────────────
+  const scanOverlayEl = document.getElementById('scan-overlay');
+  const scanVideoEl   = document.getElementById('scan-video');
+  const scanCanvasEl  = document.createElement('canvas');
+  const scanCtx       = scanCanvasEl.getContext('2d', { willReadFrequently: true });
+  let scanStream = null, scanActive = false;
+
+  function resetTicketScan() {
+    document.getElementById('scan-result').innerHTML = '';
+  }
+
+  document.getElementById('scan-start').addEventListener('click', startTicketScan);
+  document.getElementById('scan-cancel').addEventListener('click', stopTicketScan);
+
+  function startTicketScan() {
+    resetTicketScan();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showScanResult('bad', 'Camera niet beschikbaar', 'Gebruik een telefoon of tablet met camera.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(s => {
+        scanStream = s;
+        scanVideoEl.srcObject = s;
+        scanVideoEl.play();
+        scanOverlayEl.classList.add('open');
+        scanActive = true;
+        requestAnimationFrame(scanTick);
+      })
+      .catch(() => showScanResult('bad', 'Geen toegang tot camera', 'Geef de browser/app toestemming om de camera te gebruiken en probeer opnieuw.'));
+  }
+
+  function stopTicketScan() {
+    scanActive = false;
+    scanOverlayEl.classList.remove('open');
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  }
+
+  function scanTick() {
+    if (!scanActive) return;
+    if (scanVideoEl.readyState === scanVideoEl.HAVE_ENOUGH_DATA && window.jsQR) {
+      scanCanvasEl.width  = scanVideoEl.videoWidth;
+      scanCanvasEl.height = scanVideoEl.videoHeight;
+      scanCtx.drawImage(scanVideoEl, 0, 0);
+      const img  = scanCtx.getImageData(0, 0, scanCanvasEl.width, scanCanvasEl.height);
+      const code = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) { stopTicketScan(); handleTicketCode(code.data); return; }
+    }
+    requestAnimationFrame(scanTick);
+  }
+
+  async function handleTicketCode(text) {
+    let bid = null, sig = null;
+    try {
+      const u = new URL(text, location.origin);
+      bid = u.searchParams.get('bid');
+      sig = u.searchParams.get('sig');
+    } catch {}
+    if (!bid || !sig) { showScanResult('bad', 'Geen SOKI-ticket', 'Deze QR-code is geen geldig SOKI-ticket.'); return; }
+
+    document.getElementById('scan-result').innerHTML = '<div class="scan-result warn">Controleren…</div>';
+    let b;
+    try {
+      const res = await fetch(`/api/checkin/${encodeURIComponent(bid)}?sig=${encodeURIComponent(sig)}`);
+      b = await res.json();
+      if (!res.ok) {
+        const msg = b.status === 'cancelled' ? 'Deze boeking is geannuleerd.' : (b.error || 'Ongeldig ticket.');
+        showScanResult('bad', 'Ticket niet geldig', escapeHtml(msg));
+        return;
+      }
+    } catch {
+      showScanResult('bad', 'Verbindingsfout', 'Probeer opnieuw.');
+      return;
+    }
+
+    const day     = String(b.date).slice(0, 10);
+    const today   = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+    const d       = day.split('-').map(Number);
+    const dateStr = new Date(d[0], d[1] - 1, d[2]).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const details =
+      '<table>' +
+      '<tr><td>Naam</td><td><strong>' + escapeHtml(b.customer_name) + '</strong></td></tr>' +
+      '<tr><td>Sessie</td><td>' + escapeHtml(b.session_name) + '</td></tr>' +
+      '<tr><td>Wanneer</td><td>' + escapeHtml(dateStr) + ' · ' + escapeHtml(String(b.start_time).slice(0, 5)) + '–' + escapeHtml(String(b.end_time).slice(0, 5)) + '</td></tr>' +
+      '<tr><td>Personen</td><td>' + b.group_size + '</td></tr>' +
+      ((b.kantine_addon_cents || 0) > 0 ? '<tr><td>Combi</td><td>Diner Kantine ✓ (' + b.group_size + 'x)</td></tr>' : '') +
+      '</table>' +
+      (day !== today ? '<strong>Let op: dit ticket is voor ' + escapeHtml(dateStr) + ', niet vandaag.</strong>' : '');
+
+    if (b.checked_in) {
+      showScanResult('warn', 'Al ingecheckt', details);
+    } else {
+      showScanResult('ok', 'Geldig ticket', details, { bid, sig, name: b.customer_name });
+    }
+  }
+
+  function showScanResult(type, title, bodyHtml, checkin) {
+    let html = '<div class="scan-result ' + type + '"><span class="big">' + title + '</span>' + bodyHtml + '</div>';
+    if (checkin) html += '<button class="btn btn--primary" id="scan-checkin-btn" style="width:100%;margin-top:10px;">✓ Inchecken</button>';
+    html += '<button class="btn btn--outline" id="scan-again-btn" style="width:100%;margin-top:10px;">Scan volgende</button>';
+    document.getElementById('scan-result').innerHTML = html;
+    const cb = document.getElementById('scan-checkin-btn');
+    if (cb) cb.addEventListener('click', () => doTicketCheckin(checkin, cb));
+    document.getElementById('scan-again-btn').addEventListener('click', startTicketScan);
+  }
+
+  async function doTicketCheckin(c, btnEl) {
+    btnEl.disabled = true;
+    try {
+      const res = await fetch(`/api/checkin/${encodeURIComponent(c.bid)}?sig=${encodeURIComponent(c.sig)}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + adminToken },
+      });
+      const out = await res.json();
+      if (!res.ok) { btnEl.disabled = false; showScanResult('bad', 'Inchecken mislukt', escapeHtml(out.error || 'Probeer opnieuw.')); return; }
+      showScanResult('ok', '✓ Ingecheckt', escapeHtml(c.name) + ' is ingecheckt. Fijne sessie!');
+    } catch {
+      btnEl.disabled = false;
+      showScanResult('bad', 'Verbindingsfout', 'Probeer opnieuw.');
+    }
+  }
 
   // ─── Init ─────────────────────────────────────────────────────────────────
   if (adminToken) {

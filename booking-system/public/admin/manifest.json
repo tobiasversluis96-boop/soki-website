@@ -1,0 +1,13 @@
+{
+  "name": "SOKI Admin",
+  "short_name": "SOKI Admin",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#2E0F06",
+  "theme_color": "#2E0F06",
+  "icons": [
+    { "src": "/images/admin-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/images/admin-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
