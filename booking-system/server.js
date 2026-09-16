@@ -78,7 +78,7 @@ app.use((_req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   // Report-only: eerst kijken wat er zou breken voordat we echt gaan blokkeren
   res.setHeader('Content-Security-Policy-Report-Only',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com; frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://www.google.com; connect-src 'self' https://api.stripe.com https://*.sanity.io https://accounts.google.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com");
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com; frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://www.google.com; connect-src 'self' https://api.stripe.com https://accounts.google.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com");
   next();
 });
 
@@ -142,8 +142,6 @@ app.use('/api/punch-passes', punchPassRoutes);
 // Public config (non-secret values for frontend)
 app.get('/api/config', (_req, res) => {
   res.json({
-    sanityProjectId:  process.env.SANITY_PROJECT_ID  || '',
-    sanityDataset:    process.env.SANITY_DATASET      || 'production',
     googleClientId:   process.env.GOOGLE_CLIENT_ID    || '',
     baseUrl:          process.env.BASE_URL            || 'http://localhost:3001',
     // Tracking pixel IDs — empty by default (loader will no-op).
