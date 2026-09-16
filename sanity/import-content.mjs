@@ -115,7 +115,7 @@ const sessionTypes = [
     _type: 'sessionType',
     order: 4,
     name:  'Aufguss / Opgieting',
-    description: 'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation and a homemade salt scrub.',
+    description: 'A traditional sauna ritual led by one of our in-house sauna masters. Essential oils are poured over hot stones to create a burst of steam. Expect a visualisation or meditation.',
   },
 ];
 

@@ -292,6 +292,8 @@ async function initializeDB() {
   // Fix session type prices/durations if they were seeded with wrong values
   await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Social Sauna'`);
   await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
+  // Salt scrub is uit het Aufguss-programma; live DB had nog de oude omschrijving
+  await pool.query(`UPDATE session_types SET description='Traditional ritual with essential oils and a visualisation or meditation.' WHERE name='Aufguss / Opgieting'`);
   // Ambient: 3-uursblok met 80 minuten saunatijd, twee groepen van 14 per avond (sinds sept 2026)
   await pool.query(`UPDATE session_types SET duration_min=80, max_capacity=14 WHERE name='Ambient Sauna'`);
   // Eenmalige herindeling van de al geplande Ambient-avonden (19 sep t/m 3 okt 2026):
