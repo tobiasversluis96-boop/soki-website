@@ -1057,7 +1057,7 @@
 
     // Wire free-credits button (giveaways etc. — creates a €0 punch pass)
     document.getElementById('customer-modal-credits-btn').onclick = async function () {
-      const input = prompt('Hoeveel gratis credits wil je ' + c.name + ' geven?\n\nEveryday/Social = 1 credit, Ambient/Aufguss = 1,5 credits per persoon. Credits zijn 1 jaar geldig.');
+      const input = prompt('Hoeveel gratis credits wil je ' + c.name + ' geven?\n\nEveryday/Extended = 1 credit, Ambient/Aufguss = 1,5 credits per persoon. Credits zijn 1 jaar geldig.');
       if (input === null) return;
       const credits = parseFloat(String(input).replace(',', '.'));
       if (!isFinite(credits) || credits <= 0 || credits > 100) {

@@ -10,7 +10,7 @@ const { requireAuth } = require('./auth');
 const router = express.Router();
 
 // Credit cost per session type (session_type_id -> credits)
-const CREDIT_COST = { 1: 1, 2: 1, 3: 1.5, 4: 1.5 };  // 1=Everyday, 2=Social, 3=Ambient, 4=Aufguss
+const CREDIT_COST = { 1: 1, 2: 1, 3: 1.5, 4: 1.5 };  // 1=Everyday, 2=Extended, 3=Ambient, 4=Aufguss
 
 // GET /api/subscriptions/plans
 router.get('/plans', async (req, res) => {

@@ -157,7 +157,7 @@ var SOKI_I18N = {
 
     'sessions.programme.eyebrow': "What's on this month",
     'sessions.programme.h2':      'Programme',
-    'sessions.programme.p':       'Alongside our regular Everyday and Social Sauna sessions, every now and then we run a programme of special creative and community events.',
+    'sessions.programme.p':       'Alongside our regular Everyday and Extended Sauna sessions, every now and then we run a programme of special creative and community events.',
 
     'sessions.info.eyebrow': 'Good to know',
     'sessions.info.h2':      'Before you come',
@@ -521,7 +521,7 @@ var SOKI_I18N = {
     'membership.sub':            'Save on every session with a monthly membership. Flexible plans, cancel anytime.',
     'membership.price.month':    '/month',
     'membership.weekly.credits': '4 credits per month',
-    'membership.feat.credit1':   'Everyday & Social Sauna = 1 credit',
+    'membership.feat.credit1':   'Everyday & Extended Sauna = 1 credit',
     'membership.feat.credit15':  'Ambient & Aufguss = 1.5 credits',
     'membership.feat.personal':  'Personal - for your own spot only',
     'membership.feat.skippay':   'Skip the payment step when booking',
@@ -540,7 +540,7 @@ var SOKI_I18N = {
     'membership.pp.promo':       'Have a promo code?',
     'membership.pp.promo.ph':    'Promo code',
     'membership.faq.q1':         'How do credits work?',
-    'membership.faq.a1':         'With the SOKI Weekly plan you get 4 credits per month. Everyday Sauna and Social Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.',
+    'membership.faq.a1':         'With the SOKI Weekly plan you get 4 credits per month. Everyday Sauna and Extended Sauna sessions cost 1 credit, while Ambient Sauna and Aufguss sessions cost 1.5 credits. When booking, credits are automatically deducted instead of paying with card.',
     'membership.faq.q2':         'Can I cancel my membership?',
     'membership.faq.a2':         "Yes, you can cancel anytime from your account page. Your membership stays active until the end of your current billing period - you won't be charged again after cancelling.",
     'membership.faq.q3':         'When do credits reset?',
@@ -746,7 +746,7 @@ var SOKI_I18N = {
 
     'sessions.programme.eyebrow': 'Dit staat er op het programma',
     'sessions.programme.h2':      'Programma',
-    'sessions.programme.p':       'Naast onze reguliere Everyday en Social Sauna sessies organiseren we af en toe een programma van speciale creatieve en gemeenschapsevenementen.',
+    'sessions.programme.p':       'Naast onze reguliere Everyday en Extended Sauna sessies organiseren we af en toe een programma van speciale creatieve en gemeenschapsevenementen.',
 
     'sessions.info.eyebrow': 'Goed om te weten',
     'sessions.info.h2':      'Voor je komt',
@@ -1110,7 +1110,7 @@ var SOKI_I18N = {
     'membership.sub':            'Bespaar op elke sessie met een maandelijks membership. Flexibele plannen, maandelijks opzegbaar.',
     'membership.price.month':    '/maand',
     'membership.weekly.credits': '4 credits per maand',
-    'membership.feat.credit1':   'Everyday & Social Sauna = 1 credit',
+    'membership.feat.credit1':   'Everyday & Extended Sauna = 1 credit',
     'membership.feat.credit15':  'Ambient & Aufguss = 1,5 credit',
     'membership.feat.personal':  'Persoonlijk, alleen voor je eigen plek',
     'membership.feat.skippay':   'Sla de betaalstap over bij het boeken',
@@ -1129,7 +1129,7 @@ var SOKI_I18N = {
     'membership.pp.promo':       'Heb je een kortingscode?',
     'membership.pp.promo.ph':    'Kortingscode',
     'membership.faq.q1':         'Hoe werken credits?',
-    'membership.faq.a1':         'Met SOKI Weekly krijg je 4 credits per maand. Everyday Sauna en Social Sauna kosten 1 credit, Ambient Sauna en Aufguss kosten 1,5 credit. Bij het boeken worden credits automatisch gebruikt in plaats van betalen met kaart.',
+    'membership.faq.a1':         'Met SOKI Weekly krijg je 4 credits per maand. Everyday Sauna en Extended Sauna kosten 1 credit, Ambient Sauna en Aufguss kosten 1,5 credit. Bij het boeken worden credits automatisch gebruikt in plaats van betalen met kaart.',
     'membership.faq.q2':         'Kan ik mijn membership opzeggen?',
     'membership.faq.a2':         'Ja, je kunt op elk moment opzeggen via je accountpagina. Je membership blijft actief tot het einde van je huidige betaalperiode, daarna wordt er niets meer afgeschreven.',
     'membership.faq.q3':         'Wanneer vernieuwen mijn credits?',

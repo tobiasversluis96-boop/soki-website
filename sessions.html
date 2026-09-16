@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sessions | SOKI Social Sauna Utrecht</title>
-  <meta name="description" content="Book a sauna session at SOKI Utrecht: Everyday Sauna, Social Sauna, Ambient Sauna with DJs, and Aufguss ritual sessions." />
+  <meta name="description" content="Book a sauna session at SOKI Utrecht: Everyday Sauna, Extended Sauna, Ambient Sauna with DJs, and Aufguss ritual sessions." />
   <link rel="stylesheet" href="styles.css?v=20260902-1" />
   <link rel="icon" type="image/png" href="images/favicon.png" />
   <script src="/consent.js"></script>
@@ -144,12 +144,12 @@
           </div>
         </div>
 
-        <!-- Social Sauna -->
+        <!-- Extended Sauna -->
         <div class="session-type-card">
           <div class="session-type-card__body">
             <div class="session-type-card__header" style="background:var(--brown-soft);">
               <div class="session-type-card__header-inner">
-                <h3 style="color:var(--white); font-size:1.1rem;">Social Sauna</h3>
+                <h3 style="color:var(--white); font-size:1.1rem;">Extended Sauna</h3>
                 <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--peach); font-weight:700;">€20</span>
               </div>
               <p style="color:rgba(242,242,242,0.75); font-size:0.82rem; margin-top:4px; font-family:var(--font-sub); letter-spacing:0.08em; text-transform:uppercase;">80 minutes</p>
@@ -163,7 +163,7 @@
             </div>
           </div>
           <div class="session-type-card__img">
-            <img src="/images/social-sauna.jpg?v=2" alt="Social Sauna" loading="lazy" />
+            <img src="/images/social-sauna.jpg?v=2" alt="Extended Sauna" loading="lazy" />
           </div>
         </div>
 
@@ -224,14 +224,14 @@
       <div class="section-header">
         <span class="eyebrow" data-i18n="sessions.programme.eyebrow">What's on this month</span>
         <h2 data-i18n="sessions.programme.h2">Programme</h2>
-        <p data-i18n="sessions.programme.p">Alongside our regular Everyday and Social Sauna sessions, every now and then we run a programme of special creative and community events.</p>
+        <p data-i18n="sessions.programme.p">Alongside our regular Everyday and Extended Sauna sessions, every now and then we run a programme of special creative and community events.</p>
       </div>
 
       <!-- Filters -->
       <div class="sessions-filters">
         <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="everyday">Everyday</button>
-        <button class="filter-btn" data-filter="social">Social</button>
+        <button class="filter-btn" data-filter="social">Extended</button>
         <button class="filter-btn" data-filter="ambient">Ambient</button>
         <button class="filter-btn" data-filter="aufguss">Aufguss</button>
       </div>
@@ -283,7 +283,7 @@
         function tagClass(name) {
           var t = String(name || '').toLowerCase();
           if (t.indexOf('everyday') > -1) return 'tag--everyday';
-          if (t.indexOf('social')   > -1) return 'tag--social';
+          if (t.indexOf('social')   > -1 || t.indexOf('extended') > -1) return 'tag--social';
           if (t.indexOf('ambient')  > -1) return 'tag--ambient';
           if (t.indexOf('aufguss')  > -1 || t.indexOf('opgiet') > -1) return 'tag--aufguss';
           return 'tag--mixed';
@@ -468,7 +468,7 @@
     </div>
   </footer>
 
-  <script src="translations.js?v=20260916-1"></script>
+  <script src="translations.js?v=20260916-2"></script>
   <script src="main.js?v=20260906-5"></script>
 </body>
 </html>

@@ -89,7 +89,7 @@ async function seedSessionTypes() {
     VALUES ($1, $2, $3, $4, $5, $6)
   `;
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
-  await pool.query(sql, ['Social Sauna',         'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
+  await pool.query(sql, ['Extended Sauna',       'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
   await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           80,  2500,  14, '#D94D1A']);
   await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#6B2E18']);
 }
@@ -289,8 +289,10 @@ async function migrateWeeklyPrice() {
 
 async function initializeDB() {
   await pool.query(SCHEMA);
+  // Sessietype hernoemd (sept 2026): Social Sauna heet voortaan Extended Sauna
+  await pool.query(`UPDATE session_types SET name='Extended Sauna' WHERE name='Social Sauna'`);
   // Fix session type prices/durations if they were seeded with wrong values
-  await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Social Sauna'`);
+  await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Extended Sauna'`);
   await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
   // Salt scrub is uit het Aufguss-programma; live DB had nog de oude omschrijving
   await pool.query(`UPDATE session_types SET description='Traditional ritual with essential oils and a visualisation or meditation.' WHERE name='Aufguss / Opgieting'`);
