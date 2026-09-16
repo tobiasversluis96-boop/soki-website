@@ -255,7 +255,7 @@ function validCheckinSig(sig, bookingId) {
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
-// ─── Combi-deal De Kantine: permanente deelbare kokspagina ───────────────────
+// ─── Combi-deal Kantine: permanente deelbare kokspagina ───────────────────
 // Sleutel is afgeleid van JWT_SECRET, dus de link blijft altijd geldig zonder
 // extra configuratie (verandert alleen als JWT_SECRET ooit wordt geroteerd).
 function kantineKey() {
@@ -276,7 +276,7 @@ app.get('/api/kantine/combi', async (req, res) => {
   res.json(stats);
 });
 
-// AVG-minimale ticketscan voor De Kantine: alleen geldigheid, datum en aantal
+// AVG-minimale ticketscan voor Kantine: alleen geldigheid, datum en aantal
 // diners — géén naam of e-mail. Vereist de kantinesleutel én de handtekening
 // uit de QR-code van het ticket.
 function kantineScanInfo(booking) {

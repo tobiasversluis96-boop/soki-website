@@ -78,7 +78,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (pct > 0) cotenantCents = Math.round(slot.price_cents * pct / 100);
   }
 
-  // Combi ticket De Kantine: 2-gangendiner, €12 p.p. — huurders (accounts met
+  // Combi ticket Kantine: 2-gangendiner, €12 p.p. — huurders (accounts met
   // huurderskorting) betalen hun vaste Kantine-prijs van €10 p.p. Alleen bij
   // betaalde losse sessies (niet gratis, niet privéverhuur); creditsboekingen
   // worden in confirm-member geweigerd zolang er een addon op de boeking staat.
@@ -373,7 +373,7 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
   if (booking.kantine_addon_cents > 0)
-    return res.status(400).json({ error: 'Het combi ticket met De Kantine kan niet met credits worden geboekt.' });
+    return res.status(400).json({ error: 'Het combi ticket met Kantine kan niet met credits worden geboekt.' });
   // Credits zijn persoonlijk: groepsboekingen lopen via de deelbetaling (create-intent)
   if ((booking.group_size || 1) > 1)
     return res.status(400).json({ error: 'Credits gelden alleen voor je eigen plek. Boek een groep via de gewone betaling.' });

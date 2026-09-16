@@ -453,7 +453,7 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/admin/kantine-link — permanente deelbare link voor de koks van De Kantine
+// GET /api/admin/kantine-link — permanente deelbare link voor de koks van Kantine
 // (zelfde sleutelafleiding als in server.js: HMAC van JWT_SECRET, dus altijd geldig)
 router.get('/kantine-link', requireAdmin, async (_req, res) => {
   const crypto = require('crypto');

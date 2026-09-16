@@ -710,7 +710,7 @@ const queries = {
     await pool.query('UPDATE users SET discount_pct = $1 WHERE id = $2', [pct, userId]);
   },
 
-  // Combi-deal De Kantine: aantal diners per sessie (voor de deelbare kokspagina)
+  // Combi-deal Kantine: aantal diners per sessie (voor de deelbare kokspagina)
   getKantineCombiStats: async () => {
     const { rows } = await pool.query(`
       SELECT ts.date, ts.start_time, ts.end_time, st.name AS session_name,
@@ -758,7 +758,7 @@ const queries = {
     await pool.query('UPDATE bookings SET checked_in = $1 WHERE id = $2', [value, bookingId]);
   },
 
-  // Atomair: alleen de eerste verzilvering slaagt (voorkomt dubbel gebruik bij De Kantine)
+  // Atomair: alleen de eerste verzilvering slaagt (voorkomt dubbel gebruik bij Kantine)
   redeemKantineBooking: async (bookingId) => {
     const { rows } = await pool.query(`
       UPDATE bookings SET kantine_redeemed_at = NOW()

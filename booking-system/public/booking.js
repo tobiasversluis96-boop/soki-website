@@ -74,7 +74,7 @@
     state.creditPartial   = null;
   }
 
-  // Combi-deal De Kantine geldt alleen bij betaalde losse sessies
+  // Combi-deal Kantine geldt alleen bij betaalde losse sessies
   function kantineApplies() {
     if (!state.slot || state.slot.is_private) return false;
     var perPerson = (state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : (state.sessionType ? state.sessionType.price_cents : 0);

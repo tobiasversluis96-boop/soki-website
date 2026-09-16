@@ -96,7 +96,7 @@
 
   document.getElementById('admin-logout').addEventListener('click', logout);
 
-  // Combi-deal De Kantine: permanente deelbare link voor de koks kopiëren
+  // Combi-deal Kantine: permanente deelbare link voor de koks kopiëren
   document.getElementById('kantine-link-copy').addEventListener('click', async function () {
     const btn = this;
     let url;
