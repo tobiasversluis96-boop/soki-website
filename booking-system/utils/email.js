@@ -246,6 +246,19 @@ async function sendMilestoneEmail({ customer_name, customer_email, milestone, la
   );
 }
 
+// Bedankmail 1 dag na het eerste bezoek (template 15)
+async function sendFirstVisitThanksEmail({ customer_name, customer_email }) {
+  await send(
+    process.env.BREVO_TEMPLATE_FIRST_VISIT,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME:  customer_name,
+      CUSTOMER_EMAIL: customer_email,
+    }
+  );
+}
+
 // Bevestiging als de gast zélf annuleert (template 8)
 async function sendSelfCancelledEmail({ customer_name, customer_email, session_name, date, start_time, end_time, refund_amount_cents = 0, refund_pct = 0, credits_restored = 0 }) {
   await send(
@@ -498,6 +511,7 @@ module.exports = {
   sendAutoBookedEmail,
   sendMessageReply,
   sendMilestoneEmail,
+  sendFirstVisitThanksEmail,
   sendGiftCardEmail,
   sendGiftCardPurchaseEmail,
   sendSelfCancelledEmail,

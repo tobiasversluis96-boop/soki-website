@@ -1,0 +1,94 @@
+<!--
+  Bedankmail na het EERSTE bezoek — wordt 1 dag na de eerste check-in verstuurd
+  door het boekingssysteem (cron in server.js) via Brevo-template
+  BREVO_TEMPLATE_FIRST_VISIT.
+
+  Params: CUSTOMER_NAME, CUSTOMER_EMAIL
+
+  LET OP: vervang JOUW-GOOGLE-REVIEW-LINK (2x) door je echte Google-reviewlink
+  uit Google Bedrijfsprofiel ("Om reviews vragen").
+-->
+<!DOCTYPE html>
+<html lang="nl">
+<body style="margin:0;padding:0;background-color:#ffecd3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffecd3;">
+    <tr>
+      <td align="center" style="padding:32px 16px 0;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;">
+          <tr>
+            <td align="center" style="padding:0 0 28px;">
+              <img src="https://img.mailinblue.com/10958046/images/content_library/original/6a96d22f8ac0d97f596c4c60.png" alt="SOKI - Social Sauna" width="250" style="display:block;width:250px;max-width:80%;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 8px 20px;">
+              <h1 style="margin:0;font-family:'Arial Black','Montserrat',Arial,Helvetica,sans-serif;font-size:28px;line-height:1.25;color:#4a1c0c;">Dankjewel voor je eerste bezoek!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 8px 36px;font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#4a1c0c;">
+              <p style="margin:0 0 16px;">Hoi {{ params.CUSTOMER_NAME }},</p>
+              <p style="margin:0 0 16px;">Wat leuk dat je gisteren voor het eerst bij SOKI was! We hopen dat je hebt genoten van de warmte, het ijsbad en de mensen om je heen &mdash; en dat je lichter naar buiten liep dan je binnenkwam.<br>
+                 <span style="color:#8a6a58;">How nice that you visited SOKI for the first time yesterday! We hope you enjoyed the heat, the ice bath and the people around you &mdash; and that you left feeling lighter than when you came in.</span></p>
+
+              <!-- Sterrenblok: 1-3 -> interne feedbackpagina, 4-5 -> Google review -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                <tr>
+                  <td align="center" style="background-color:#faf3ec;border-radius:12px;padding:28px 20px;">
+                    <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#4A1C0C;">
+                      Hoe was je bezoek? / How was your visit?
+                    </p>
+                    <p style="margin:0 0 18px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#8a6a57;">
+                      Klik op het aantal sterren dat bij jouw ervaring past.<br>
+                      Click the number of stars that matches your experience.
+                    </p>
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=1&amp;lang=nl&amp;email={{ params.CUSTOMER_EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+                        <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=2&amp;lang=nl&amp;email={{ params.CUSTOMER_EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+                        <td><a href="https://www.sokisocialsauna.nl/feedback.html?sterren=3&amp;lang=nl&amp;email={{ params.CUSTOMER_EMAIL }}" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+                        <td><a href="JOUW-GOOGLE-REVIEW-LINK" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+                        <td><a href="JOUW-GOOGLE-REVIEW-LINK" style="font-size:38px;line-height:1;text-decoration:none;color:#E8A33D;padding:0 5px;">&#9733;</a></td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">1</td>
+                        <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">2</td>
+                        <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">3</td>
+                        <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">4</td>
+                        <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8a6a57;padding-top:4px;">5</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 16px;">Zin om terug te komen? Bekijk onze sessies &mdash; van Everyday Sauna tot Ambient met live DJ en Aufguss / Opgieting rituelen.<br>
+                 <span style="color:#8a6a58;">Feel like coming back? Check out our sessions &mdash; from Everyday Sauna to Ambient with live DJs and Aufguss / Opgieting rituals.</span></p>
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto;">
+                <tr>
+                  <td align="center" style="background-color:#4a1c0c;border-radius:4px;">
+                    <a href="https://www.sokisocialsauna.nl/booking" style="display:inline-block;padding:14px 32px;font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#f0efea;text-decoration:none;">Boek je volgende sessie / Book your next session</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#8a6a58;font-size:13px;">Vragen? Antwoord op deze mail. / Questions? Just reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0 16px 32px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background-color:#4a1c0c;">
+          <tr>
+            <td align="center" style="padding:28px 16px;font-family:'Montserrat',Arial,Helvetica,sans-serif;color:#f0efea;">
+              <div style="font-size:16px;font-weight:bold;">SOKI - Social Sauna</div>
+              <div style="font-size:14px;margin-top:6px;">Europalaan 2B, 3526 KS, Utrecht</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

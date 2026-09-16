@@ -356,6 +356,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_addon_cents INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS first_visit_thanks_sent BOOLEAN DEFAULT FALSE');
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
     id          SERIAL      PRIMARY KEY,
     user_id     INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1276,6 +1277,24 @@ const queries = {
 
   markReminderSent: async (bookingId) => {
     await pool.query('UPDATE bookings SET reminder_sent = TRUE WHERE id = $1', [bookingId]);
+  },
+
+  // Bedankmail na eerste bezoek: gebruikers van wie de eerste check-in gisteren was
+  getUsersNeedingFirstVisitThanks: async () => {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.name AS customer_name, u.email AS customer_email
+      FROM users u
+      JOIN bookings b ON b.user_id = u.id AND b.status = 'confirmed' AND b.checked_in = TRUE
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      WHERE u.first_visit_thanks_sent = FALSE
+      GROUP BY u.id, u.name, u.email
+      HAVING MIN(ts.date) = (NOW() AT TIME ZONE 'Europe/Amsterdam')::date - 1
+    `);
+    return rows;
+  },
+
+  markFirstVisitThanksSent: async (userId) => {
+    await pool.query('UPDATE users SET first_visit_thanks_sent = TRUE WHERE id = $1', [userId]);
   },
 
   // Messages

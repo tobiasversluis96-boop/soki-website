@@ -529,6 +529,30 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000); // every hour
 
+// ─── Bedankmail na eerste bezoek (runs every hour) ───────────────────────────
+// Verstuurt 1 dag na iemands állereerste check-in een bedankmail met reviewvraag.
+// Alleen tussen 10:00 en 21:00 NL-tijd; de vlag first_visit_thanks_sent voorkomt dubbelen.
+setInterval(async () => {
+  try {
+    const hourNL = Number(new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hour12: false }).format(new Date()));
+    if (hourNL < 10 || hourNL >= 21) return;
+
+    const users = await queries.getUsersNeedingFirstVisitThanks();
+    for (const user of users) {
+      try {
+        const { sendFirstVisitThanksEmail } = require('./utils/email');
+        await sendFirstVisitThanksEmail(user);
+        await queries.markFirstVisitThanksSent(user.id);
+        console.log(`✓ First-visit thanks sent: user #${user.id}`);
+      } catch (err) {
+        console.error(`First-visit thanks failed for user #${user.id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error('First-visit thanks cron error:', err.message);
+  }
+}, 60 * 60 * 1000); // every hour
+
 // ─── Pending booking cleanup (runs every 15 minutes) ─────────────────────────
 setInterval(async () => {
   try {
