@@ -352,6 +352,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_addon_cents INTEGER NOT NULL DEFAULT 0');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
     id          SERIAL      PRIMARY KEY,
@@ -755,6 +756,16 @@ const queries = {
 
   checkInBooking: async (bookingId, value) => {
     await pool.query('UPDATE bookings SET checked_in = $1 WHERE id = $2', [value, bookingId]);
+  },
+
+  // Atomair: alleen de eerste verzilvering slaagt (voorkomt dubbel gebruik bij De Kantine)
+  redeemKantineBooking: async (bookingId) => {
+    const { rows } = await pool.query(`
+      UPDATE bookings SET kantine_redeemed_at = NOW()
+      WHERE id = $1 AND kantine_addon_cents > 0 AND kantine_redeemed_at IS NULL
+      RETURNING kantine_redeemed_at
+    `, [bookingId]);
+    return rows[0] || null;
   },
 
   getUserBookings: async (userId) => {

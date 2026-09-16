@@ -278,6 +278,53 @@ app.get('/api/kantine/combi', async (req, res) => {
   res.json(stats);
 });
 
+// AVG-minimale ticketscan voor De Kantine: alleen geldigheid, datum en aantal
+// diners — géén naam of e-mail. Vereist de kantinesleutel én de handtekening
+// uit de QR-code van het ticket.
+function kantineScanInfo(booking) {
+  const combi = (booking.kantine_addon_cents || 0) > 0;
+  return {
+    id:           booking.id,
+    date:         booking.date,
+    start_time:   booking.start_time,
+    end_time:     booking.end_time,
+    session_name: booking.session_name,
+    status:       booking.status,
+    combi,
+    diners:       combi ? booking.group_size : 0,
+    redeemed_at:  booking.kantine_redeemed_at || null,
+  };
+}
+
+app.get('/api/kantine/scan/:bookingId', async (req, res) => {
+  if (!validKantineKey(req.query.key))
+    return res.status(403).json({ error: 'Ongeldige link' });
+  const { bookingId } = req.params;
+  if (!validCheckinSig(req.query.sig, bookingId))
+    return res.status(403).json({ error: 'Ongeldige QR-code' });
+  const booking = await queries.getBookingById(bookingId);
+  if (!booking) return res.status(404).json({ error: 'Boeking niet gevonden' });
+  res.json(kantineScanInfo(booking));
+});
+
+app.post('/api/kantine/redeem/:bookingId', async (req, res) => {
+  if (!validKantineKey(req.query.key))
+    return res.status(403).json({ error: 'Ongeldige link' });
+  const { bookingId } = req.params;
+  if (!validCheckinSig(req.query.sig, bookingId))
+    return res.status(403).json({ error: 'Ongeldige QR-code' });
+  const booking = await queries.getBookingById(bookingId);
+  if (!booking) return res.status(404).json({ error: 'Boeking niet gevonden' });
+  if (booking.status !== 'confirmed')
+    return res.status(400).json({ error: 'Boeking is niet bevestigd', ...kantineScanInfo(booking) });
+  if ((booking.kantine_addon_cents || 0) === 0)
+    return res.status(400).json({ error: 'Geen combi-deal bij deze boeking', ...kantineScanInfo(booking) });
+  const result = await queries.redeemKantineBooking(bookingId);
+  if (!result)
+    return res.status(409).json({ error: 'Al verzilverd', already_redeemed: true, ...kantineScanInfo(booking) });
+  res.json({ redeemed: true, ...kantineScanInfo({ ...booking, kantine_redeemed_at: result.kantine_redeemed_at }) });
+});
+
 app.get('/api/checkin/:bookingId', async (req, res) => {
   const { bookingId } = req.params;
   const { sig } = req.query;

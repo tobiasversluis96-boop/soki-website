@@ -26,15 +26,41 @@
     .kantine-empty { color: var(--text-muted, #8C7B6B); font-size: 0.9rem; padding: 0.5rem 0; }
     .loading, .error { color: var(--text-muted, #8C7B6B); padding: 2rem 0; text-align: center; }
     .error { color: #C62828; }
+    .scan-btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--terra, #D94D1A); color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .scan-btn:disabled { opacity: .6; }
+    .scan-btn.secondary { background: #fff; color: var(--brown, #4A1C0C); border: 2px solid var(--border-color, #E8D5BF); }
+    .scan-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 50; }
+    .scan-overlay.open { display: block; }
+    .scan-overlay video { width: 100%; height: 100%; object-fit: cover; }
+    .scan-frame { position: absolute; top: 50%; left: 50%; width: 240px; height: 240px; transform: translate(-50%,-50%); border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+    #scanCancel { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); padding: 12px 28px; border: none; border-radius: 999px; background: #fff; color: #4A1C0C; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .scan-result { margin-top: 1rem; border-radius: 12px; padding: 14px; font-size: .95rem; line-height: 1.45; }
+    .scan-result.ok { background: #E8F5E9; color: #1B5E20; }
+    .scan-result.warn { background: #FFF3E0; color: #B45309; }
+    .scan-result.bad { background: #FFEBEE; color: #C62828; }
+    .scan-result .big { font-size: 1.2rem; font-weight: 700; display: block; margin-bottom: 4px; }
   </style>
 </head>
 <body>
 <div class="kantine-wrap">
+  <div class="kantine-card" id="scanCard" style="display:none; margin-bottom:1rem;">
+    <h2 class="kantine-title" style="font-size:1.1rem;">Ticket scannen</h2>
+    <p class="kantine-sub" style="margin-bottom:1rem;">Scan de QR-code op het SOKI-ticket van de gast. Je ziet alleen of de combi-deal geldig is — geen persoonsgegevens.</p>
+    <button class="scan-btn" id="scanBtn">📷 Scan combi-ticket</button>
+    <div id="scanResult"></div>
+  </div>
   <div class="kantine-card" id="card">
     <div class="loading">Laden…</div>
   </div>
 </div>
 
+<div class="scan-overlay" id="scanOverlay">
+  <video id="scanVideo" autoplay muted playsinline></video>
+  <div class="scan-frame"></div>
+  <button id="scanCancel">Annuleren</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
 (function() {
   var key  = new URLSearchParams(location.search).get('key');
@@ -111,6 +137,136 @@
         (r.huurders > 0 ? '<small>waarvan ' + r.huurders + ' huurder' + (r.huurders === 1 ? '' : 's') + '</small>' : '') +
       '</span>' +
     '</div>';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+})();
+
+// ─── Ticketscanner ────────────────────────────────────────────────────────────
+(function() {
+  var key = new URLSearchParams(location.search).get('key');
+  if (!key) return;
+
+  document.getElementById('scanCard').style.display = '';
+  var resultEl  = document.getElementById('scanResult');
+  var overlay   = document.getElementById('scanOverlay');
+  var video     = document.getElementById('scanVideo');
+  var stream    = null, scanning = false;
+  var canvas    = document.createElement('canvas');
+  var ctx       = canvas.getContext('2d', { willReadFrequently: true });
+
+  document.getElementById('scanBtn').addEventListener('click', startScan);
+  document.getElementById('scanCancel').addEventListener('click', stopScan);
+
+  function startScan() {
+    resultEl.innerHTML = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      show('bad', 'Camera niet beschikbaar', 'Gebruik een telefoon of tablet met camera.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(function(s) {
+        stream = s;
+        video.srcObject = s;
+        video.play();
+        overlay.classList.add('open');
+        scanning = true;
+        requestAnimationFrame(tick);
+      })
+      .catch(function() {
+        show('bad', 'Geen toegang tot camera', 'Geef de browser toestemming om de camera te gebruiken en probeer opnieuw.');
+      });
+  }
+
+  function stopScan() {
+    scanning = false;
+    overlay.classList.remove('open');
+    if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; }
+  }
+
+  function tick() {
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      var img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) { stopScan(); handleCode(code.data); return; }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function handleCode(text) {
+    var bid = null, sig = null;
+    try {
+      var u = new URL(text, location.origin);
+      bid = u.searchParams.get('bid');
+      sig = u.searchParams.get('sig');
+    } catch (e) {}
+    if (!bid || !sig) {
+      show('bad', 'Geen SOKI-ticket', 'Deze QR-code is geen geldig SOKI-ticket.');
+      return;
+    }
+    resultEl.innerHTML = '<div class="scan-result warn">Controleren…</div>';
+    fetch('/api/kantine/scan/' + encodeURIComponent(bid) + '?sig=' + encodeURIComponent(sig) + '&key=' + encodeURIComponent(key))
+      .then(function(r) { return r.json(); })
+      .then(function(info) { renderInfo(bid, sig, info); })
+      .catch(function() { show('bad', 'Verbindingsfout', 'Probeer opnieuw.'); });
+  }
+
+  function renderInfo(bid, sig, info) {
+    if (info.error && info.combi === undefined) { show('bad', 'Ongeldig ticket', esc(info.error)); return; }
+
+    var today   = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+    var day     = String(info.date).slice(0, 10);
+    var d       = day.split('-').map(Number);
+    var dateStr = new Date(d[0], d[1] - 1, d[2]).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    var detail  = esc(dateStr) + ' · ' + esc(String(info.start_time).slice(0, 5)) + ' uur · ' + esc(info.session_name);
+
+    if (!info.combi) { show('bad', 'Geen combi-deal', 'Bij deze boeking is geen diner geboekt.<br>' + detail); return; }
+    if (info.status !== 'confirmed') {
+      show('bad', 'Boeking niet geldig', 'Deze boeking is ' + (info.status === 'cancelled' ? 'geannuleerd' : 'niet bevestigd') + '.<br>' + detail);
+      return;
+    }
+    if (info.redeemed_at) {
+      var t = new Date(info.redeemed_at).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      show('warn', 'Al verzilverd', 'Dit ticket is al verzilverd op ' + esc(t) + '.<br>' + detail);
+      return;
+    }
+    var warnDay = day !== today ? '<br><strong>Let op: dit ticket is voor ' + esc(dateStr) + ', niet vandaag.</strong>' : '';
+    show('ok', '✓ Geldige combi-deal — ' + info.diners + ' diner' + (info.diners === 1 ? '' : 's'), detail + warnDay,
+      { bid: bid, sig: sig, diners: info.diners });
+  }
+
+  function show(type, title, bodyHtml, redeem) {
+    var html = '<div class="scan-result ' + type + '"><span class="big">' + title + '</span>' + bodyHtml + '</div>';
+    if (redeem) html += '<button class="scan-btn" id="redeemBtn" style="margin-top:0.75rem;">Markeer als verzilverd (' + redeem.diners + ' diner' + (redeem.diners === 1 ? '' : 's') + ')</button>';
+    html += '<button class="scan-btn secondary" id="rescanBtn" style="margin-top:0.75rem;">Opnieuw scannen</button>';
+    resultEl.innerHTML = html;
+    var rb = document.getElementById('redeemBtn');
+    if (rb) rb.addEventListener('click', function() { doRedeem(redeem, rb); });
+    document.getElementById('rescanBtn').addEventListener('click', startScan);
+  }
+
+  function doRedeem(r, btnEl) {
+    btnEl.disabled = true;
+    fetch('/api/kantine/redeem/' + encodeURIComponent(r.bid) + '?sig=' + encodeURIComponent(r.sig) + '&key=' + encodeURIComponent(key), { method: 'POST' })
+      .then(function(res) { return res.json(); })
+      .then(function(out) {
+        if (out.redeemed) {
+          show('ok', '✓ Verzilverd', r.diners + ' diner' + (r.diners === 1 ? '' : 's') + ' geregistreerd. Eet smakelijk!');
+        } else if (out.already_redeemed) {
+          show('warn', 'Al verzilverd', 'Dit ticket was al eerder verzilverd.');
+        } else {
+          show('bad', 'Mislukt', esc(out.error || 'Probeer opnieuw.'));
+        }
+      })
+      .catch(function() { show('bad', 'Verbindingsfout', 'Probeer opnieuw.'); });
   }
 
   function esc(s) {
