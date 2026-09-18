@@ -57,8 +57,7 @@
       <div class="booking-progress__fill" id="progress-fill" style="width:16.6%"></div>
     </div>
     <div class="booking-progress__steps container">
-      <span class="booking-progress__step active" data-step="1" data-i18n="booking.step.session">Session</span>
-      <span class="booking-progress__step" data-step="2" data-i18n="booking.step.date">Date</span>
+      <span class="booking-progress__step active" data-step="2" data-i18n="booking.step.date">Date</span>
       <span class="booking-progress__step" data-step="3" data-i18n="booking.step.group">Group</span>
       <span class="booking-progress__step" data-step="4" data-i18n="booking.step.account">Account</span>
       <span class="booking-progress__step" data-step="4.5" data-i18n="booking.step.waiver">Waiver</span>
@@ -70,17 +69,8 @@
 
 <div class="booking-wrap">
 
-  <!-- ── Step 1: Session type ──────────────────────────────────────────────── -->
-  <div class="booking-step" id="step-1">
-    <h1 class="booking-step-title" data-i18n="booking.s1.title">Choose your session</h1>
-    <p class="booking-step-sub" data-i18n="booking.s1.sub">Four unique experiences. Sauna, ice baths and lounge all included.</p>
-    <div class="pick-cards" id="session-cards">
-      <div class="slots-loading" data-i18n="slots.loading">Loading…</div>
-    </div>
-  </div>
-
   <!-- ── Step 2: Date & time (calendar) ───────────────────────────────────── -->
-  <div class="booking-step" id="step-2" style="display:none">
+  <div class="booking-step" id="step-2">
     <h1 class="booking-step-title" data-i18n="booking.s2.title">Choose a date</h1>
     <p class="booking-step-sub" id="step2-sub" data-i18n="booking.s2.sub">Select a day and time slot.</p>
 
@@ -108,15 +98,13 @@
       <div class="slot-list" id="cal-slot-list"></div>
     </div>
 
-    <div class="step-nav" style="margin-top:2rem">
-      <button class="btn btn--outline" id="back-1" data-i18n="booking.btn.back">← Back</button>
-    </div>
   </div>
 
   <!-- ── Step 3: Group size ────────────────────────────────────────────────── -->
   <div class="booking-step" id="step-3" style="display:none">
     <h1 class="booking-step-title" data-i18n="booking.s3.title">How large is your group?</h1>
     <p class="booking-step-sub" data-i18n="booking.s3.sub">Each spot is personally reserved.</p>
+    <p class="booking-step-sub" id="step3-session" style="margin-top:-0.75rem;font-weight:600;color:var(--brown,#4A1C0C);"></p>
 
     <div class="group-selector">
       <div class="group-controls">

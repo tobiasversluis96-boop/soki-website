@@ -93,11 +93,6 @@
     return dt.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
-  function fmtDateShort(dateStr) {
-    var parts = dateStr.split('-').map(Number);
-    var dt = new Date(parts[0], parts[1] - 1, parts[2]);
-    return dt.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'long' });
-  }
 
   function setProgress(n) {
     document.getElementById('progress-fill').style.width = (n / 6 * 100) + '%';
@@ -171,72 +166,33 @@
     initPayment();
   }
 
-  // ─── Step 1: Session types ─────────────────────────────────────────────────
-  function loadSessionTypes() {
+  // ─── Init: load session types, then open the full calendar ────────────────
+  var allTypes = [];
+  function initBooking() {
     api('/session-types').then(function (types) {
-      var container = document.getElementById('session-cards');
-      container.innerHTML = types.map(function (t_) {
-        return '<div class="pick-card" data-id="' + t_.id + '">' +
-          '<div class="pick-card__name"><span class="pick-card__dot" style="background:' + esc(t_.color) + '"></span>' + esc(t_.name) + '</div>' +
-          '<div class="pick-card__duration">' + esc(t_.duration_min) + ' ' + t('booking.minutes') + '</div>' +
-          '<div class="pick-card__price">' + eur(t_.price_cents) + ' <span>p.p.</span></div>' +
-          '<div class="pick-card__desc">' + esc(t_.description || '') + '</div>' +
-          '<div class="pick-card__next-date" id="next-date-' + t_.id + '"></div>' +
-          '</div>';
-      }).join('');
-
-      // Fetch next available date for each session type
-      types.forEach(function (t_) {
-        fetchNextAvailable(t_.id);
-      });
-
-      container.querySelectorAll('.pick-card').forEach(function (card) {
-        card.addEventListener('click', function () {
-          container.querySelectorAll('.pick-card').forEach(function (c) { c.classList.remove('selected'); });
-          card.classList.add('selected');
-          state.sessionType = types.find(function (t_) { return t_.id === +card.dataset.id; });
-          loadCalendar();
-          showStep(2);
-        });
-      });
-
-      // URL pre-selection: ?type=X
+      allTypes = types;
       var params = new URLSearchParams(window.location.search);
-      var preType = parseInt(params.get('type'));
-      if (preType) {
-        var match = types.find(function (t_) { return t_.id === preType; });
-        if (match) {
-          state.sessionType = match;
-          var card = container.querySelector('[data-id="' + preType + '"]');
-          if (card) card.classList.add('selected');
-          loadCalendar();
-          showStep(2);
-        }
-      }
+
+      // Kalender altijd laden zodat "terug" en volle/verleden slots niet doodlopen
+      loadCalendar();
 
       // Quick-book: ?slot=SLOT_ID (from homepage widget)
       var preSlotId = parseInt(params.get('slot'));
-      if (preSlotId && !preType) {
+      if (preSlotId) {
         api('/slots/' + preSlotId).then(function (slot) {
           if (!slot || slot.error) return;
           var matchType = types.find(function (t_) { return t_.id === slot.session_type_id || t_.id === slot.type_id; });
           if (!matchType) return;
-          state.sessionType = matchType;
-          var typeCard = container.querySelector('[data-id="' + matchType.id + '"]');
-          if (typeCard) typeCard.classList.add('selected');
-          // Kalender altijd laden zodat "terug" en volle/verleden slots niet doodlopen
-          loadCalendar();
           var todayStr = new Date().toISOString().slice(0, 10);
-          if (slot.is_cancelled || slot.is_full || slot.date < todayStr) {
-            showStep(2);
-            return;
-          }
+          if (slot.is_cancelled || slot.is_full || slot.date < todayStr) return;
+          state.sessionType = matchType;
           state.slot = slot; // ná loadCalendar (die wist state.slot)
           var saved = parseInt(localStorage.getItem('soki_last_group_size'));
           state.groupSize = (saved && saved >= 1 && saved <= (slot.spots_left || 15)) ? saved : 1;
           updateGroup();
           showStep(3);
         });
+        return;
       }
 
       // Resume pending booking: ?resume=BOOKING_ID
@@ -260,43 +216,6 @@
     });
   }
 
-  // ─── Step 1: Fetch next available date for a session type ──────────────────
-  function fetchNextAvailable(sessionTypeId) {
-    var now = new Date();
-    var y = now.getFullYear();
-    var m = now.getMonth() + 1;
-    var todayStr = now.toISOString().slice(0, 10);
-    var nowTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-
-    api('/slots?session_type_id=' + sessionTypeId + '&year=' + y + '&month=' + m).then(function (slots) {
-      var available = slots.filter(function (s) {
-        if (s.is_full) return false;
-        if (s.date < todayStr) return false;
-        if (s.date === todayStr && s.start_time <= nowTime) return false;
-        return true;
-      });
-
-      if (available.length === 0) {
-        // Try next month
-        var nm = m + 1, ny = y;
-        if (nm > 12) { nm = 1; ny++; }
-        api('/slots?session_type_id=' + sessionTypeId + '&year=' + ny + '&month=' + nm).then(function (slots2) {
-          var avail2 = slots2.filter(function (s) { return !s.is_full; });
-          var el = document.getElementById('next-date-' + sessionTypeId);
-          if (el && avail2.length > 0) {
-            el.textContent = t('booking.next.available') + fmtDateShort(avail2[0].date);
-          }
-        });
-        return;
-      }
-
-      var el = document.getElementById('next-date-' + sessionTypeId);
-      if (el) {
-        el.textContent = t('booking.next.available') + fmtDateShort(available[0].date);
-      }
-    });
-  }
-
   // ─── Step 2: Calendar ─────────────────────────────────────────────────────
 
   var calYear, calMonth, calAllSlots = [];
@@ -304,9 +223,6 @@
   function loadCalendar() {
     state.slot = null;
     resetBookingState();
-
-    document.getElementById('step2-sub').textContent =
-      state.sessionType.name + ' · ' + eur(state.sessionType.price_cents) + ' p.p.';
 
     var now = new Date();
     calYear  = now.getFullYear();
@@ -324,7 +240,7 @@
     var names = (typeof SOKI_LANG !== 'undefined' && SOKI_LANG === 'nl') ? MONTH_NAMES_NL : MONTH_NAMES_EN;
     document.getElementById('cal-month-label').textContent = names[month - 1] + ' ' + year;
 
-    api('/slots?session_type_id=' + state.sessionType.id + '&year=' + year + '&month=' + month)
+    api('/slots?year=' + year + '&month=' + month)
       .then(function (slots) {
         calAllSlots = slots;
         renderCalGrid(year, month, slots);
@@ -427,6 +343,10 @@
       return;
     }
 
+    function typeLine(s) {
+      return '<div class="slot-item__type"><span class="slot-item__type-dot" style="background:' + esc(s.type_color || '#D94D1A') + '"></span>' + esc(s.session_name || '') + '</div>';
+    }
+
     listEl.innerHTML = available.map(function (s) {
       var spotsLeft  = s.spots_left;
       var spotsClass = spotsLeft > 3 ? 'spots--green' : spotsLeft > 1 ? 'spots--orange' : 'spots--red';
@@ -436,6 +356,7 @@
         : '';
       return '<div class="slot-item" data-slot-id="' + s.id + '">' +
         '<div>' +
+          typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
           '<div class="slot-item__info ' + spotsClass + '">' + spotsLabel + '</div>' +
@@ -448,6 +369,7 @@
         : '';
       return '<div class="slot-item slot-item--full" data-slot-id="' + s.id + '" style="opacity:0.7;cursor:default;">' +
         '<div>' +
+          typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
           '<div class="slot-item__info spots--red">' + t('booking.slot.full') + '</div>' +
@@ -464,6 +386,7 @@
         el.classList.add('selected');
         var slotId = +el.dataset.slotId;
         state.slot = daySlots.find(function (s) { return s.id === slotId; });
+        state.sessionType = allTypes.find(function (t_) { return t_.id === state.slot.session_type_id; }) || state.sessionType;
         selectSlot();
       });
     });
@@ -655,6 +578,11 @@
 
   // ─── Step 3: Group size ───────────────────────────────────────────────────
   function updateGroup() {
+    var sessEl = document.getElementById('step3-session');
+    if (sessEl && state.slot && state.sessionType) {
+      sessEl.innerHTML = '<span class="slot-item__type-dot" style="background:' + esc(state.sessionType.color || '#D94D1A') + ';display:inline-block;margin-right:7px;"></span>' +
+        '<strong>' + esc(state.sessionType.name) + '</strong> · ' + fmtDate(state.slot.date) + ' · ' + state.slot.start_time + ' – ' + state.slot.end_time;
+    }
     document.getElementById('kantine-addon-box').style.display = kantineApplies() ? 'block' : 'none';
     document.getElementById('kantine-addon-check').checked = state.kantineAddon;
     var kTitle = document.querySelector('#kantine-addon-box [data-i18n="booking.kantine.title"]');
@@ -1136,7 +1064,6 @@
   // ─── Event bindings ────────────────────────────────────────────────────────
   function bind() {
     // Step 2 back
-    document.getElementById('back-1').addEventListener('click', function () { showStep(1); });
 
     // Step 3 nav — back goes to slot list (step 2)
     document.getElementById('back-2').addEventListener('click', function () { showStep(2); });
@@ -1327,6 +1254,6 @@
 
   // ─── Init ─────────────────────────────────────────────────────────────────
   bind();
-  loadSessionTypes();
+  initBooking();
 
 })();

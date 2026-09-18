@@ -4,85 +4,6 @@
  * Loaded after /styles.css — extends, does not duplicate it.
  */
 
-/* ─── Booking session picker cards ────────────────────────────────────────── */
-
-.pick-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 1rem;
-}
-
-.pick-card {
-  border: 1.5px solid rgba(242,194,153,0.6);
-  border-radius: 20px;
-  padding: 1.5rem 1.75rem;
-  cursor: pointer;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease;
-  background: var(--white);
-}
-
-.pick-card:hover {
-  border-color: var(--terra);
-  box-shadow: 0 8px 32px rgba(217,77,26,0.12);
-  transform: translateY(-2px);
-}
-
-.pick-card.selected {
-  border-color: var(--terra);
-  background: rgba(217,77,26,0.04);
-}
-
-.pick-card__dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 8px;
-  vertical-align: middle;
-  margin-bottom: 2px;
-}
-
-.pick-card__name {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--brown);
-  margin-bottom: 4px;
-}
-
-.pick-card__duration {
-  font-family: var(--font-sub);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.75rem;
-}
-
-.pick-card__price {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  color: var(--terra);
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.pick-card__price span {
-  font-size: 0.85rem;
-  font-family: var(--font-sub);
-  font-weight: 400;
-  color: var(--text-muted);
-  letter-spacing: 0.06em;
-}
-
-.pick-card__desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-  font-weight: 300;
-}
-
 /* ─── Calendar ─────────────────────────────────────────────────────────────── */
 
 .cal-header {
@@ -199,6 +120,26 @@
 .slot-item--full {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.slot-item__type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-sub);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brown);
+  margin-bottom: 3px;
+}
+
+.slot-item__type-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .slot-item__time {
@@ -487,16 +428,6 @@
   transform: translateY(-2px);
 }
 
-/* ─── Next available date on session cards ──────────────────────────────────── */
-
-.pick-card__next-date {
-  font-size: 0.78rem;
-  color: var(--terra);
-  margin-top: 0.5rem;
-  font-weight: 500;
-  min-height: 1.2em;
-}
-
 /* ─── Slot date list (step 2) ──────────────────────────────────────────────── */
 
 .slot-date-group {
@@ -530,7 +461,6 @@
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
-  .pick-cards { grid-template-columns: 1fr; }
   .booking-wrap { padding: 1.5rem 1rem 4rem; }
   .group-selector { padding: 1.5rem; }
   .group-count { font-size: 3rem; }

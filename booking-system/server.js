@@ -157,12 +157,12 @@ app.get('/api/session-types', async (req, res) => {
   res.json(await queries.getSessionTypes());
 });
 
-// Available slots for a session type + month
+// Available slots for a month, optionally filtered by session type
 app.get('/api/slots', async (req, res) => {
-  const typeId = parseInt(req.query.session_type_id);
+  const typeId = req.query.session_type_id ? parseInt(req.query.session_type_id) : null;
   const year   = parseInt(req.query.year);
   const month  = parseInt(req.query.month);
-  if (isNaN(typeId) || isNaN(year) || isNaN(month) || month < 1 || month > 12 || year < 2020 || year > 2100)
+  if ((typeId !== null && isNaN(typeId)) || isNaN(year) || isNaN(month) || month < 1 || month > 12 || year < 2020 || year > 2100)
     return res.status(400).json({ error: 'session_type_id, year and month must be valid numbers' });
 
   const slots = await queries.getSlotsForMonth(typeId, year, month);

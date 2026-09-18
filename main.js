@@ -401,14 +401,7 @@ document.head.appendChild(revealStyle);
 
 /* ===== SESSIONS PAGE: auto-link "Book now" buttons ===== */
 (function linkBookingButtons() {
-  var typeMap = { everyday: 1, social: 2, ambient: 3, aufguss: 4 };
-
-  // Programme list cards (data-type attribute)
   document.querySelectorAll('.session-card[data-type] .session-card__action a').forEach(function (btn) {
-    var card = btn.closest('.session-card[data-type]');
-    if (!card) return;
-    var type = card.dataset.type;
-    var id   = typeMap[type];
-    if (id) btn.href = '/booking?type=' + id;
+    btn.href = '/booking';
   });
 })();
