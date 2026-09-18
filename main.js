@@ -340,8 +340,9 @@ document.head.appendChild(revealStyle);
     var parts = s.date.split('-').map(Number);
     var day   = parts[2];
     var mon   = MONTH_NL[parts[1] - 1];
-    var dots  = spotsLabel(s.spots_left);
-    var cls   = spotsClass(s.spots_left);
+    var spotsHtml = s.spots_left <= 5
+      ? '<span class="spots-badge ' + spotsClass(s.spots_left) + '">' + spotsLabel(s.spots_left) + '</span>'
+      : '';
     var isNL  = SOKI_LANG === 'nl';
     var isFree = s.price_cents === 0;
     var freeLabel = isNL ? 'GRATIS' : 'FREE';
@@ -367,7 +368,7 @@ document.head.appendChild(revealStyle);
         '</div>' +
         '<div class="session-card__meta" style="margin-top:6px;">' +
           priceHtml +
-          '<span class="spots-badge ' + cls + '">' + dots + '</span>' +
+          spotsHtml +
         '</div>' +
       '</div>' +
       '<div class="session-card__action">' +

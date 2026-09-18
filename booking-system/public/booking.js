@@ -349,8 +349,12 @@
 
     listEl.innerHTML = available.map(function (s) {
       var spotsLeft  = s.spots_left;
-      var spotsClass = spotsLeft > 3 ? 'spots--green' : spotsLeft > 1 ? 'spots--orange' : 'spots--red';
-      var spotsLabel = spotsLeft === 1 ? t('booking.spots.last') : spotsLeft + ' ' + t('booking.spots.left');
+      var spotsHtml  = '';
+      if (spotsLeft <= 5) {
+        var spotsClass = spotsLeft > 1 ? 'spots--orange' : 'spots--red';
+        var spotsLabel = spotsLeft === 1 ? t('booking.spots.last') : spotsLeft + ' ' + t('booking.spots.left');
+        spotsHtml = '<div class="slot-item__info ' + spotsClass + '">' + spotsLabel + '</div>';
+      }
       var artistLine = s.artist
         ? '<div class="slot-item__info" style="color:#D94D1A;font-weight:600;">' + t('booking.slot.with') + ': ' + esc(s.artist) + '</div>'
         : '';
@@ -359,7 +363,7 @@
           typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
-          '<div class="slot-item__info ' + spotsClass + '">' + spotsLabel + '</div>' +
+          spotsHtml +
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
       '</div>';
@@ -604,7 +608,7 @@
     var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
     document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize + kantineCents());
     document.getElementById('group-caption').textContent =
-      personStr(state.groupSize) + ' · ' + spotsLeft + ' ' + t('booking.spots.left');
+      personStr(state.groupSize) + (spotsLeft <= 5 ? ' · ' + spotsLeft + ' ' + t('booking.spots.left') : '');
     document.getElementById('group-minus').disabled = state.groupSize <= 1;
     document.getElementById('group-plus').disabled  = state.groupSize >= spotsLeft;
   }
