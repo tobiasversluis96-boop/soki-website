@@ -344,7 +344,7 @@
     }
 
     function typeLine(s) {
-      return '<div class="slot-item__type"><span class="slot-item__type-dot" style="background:' + esc(s.type_color || '#D94D1A') + '"></span>' + esc(s.session_name || '') + '</div>';
+      return '<div class="slot-item__type" style="color:' + esc(s.type_color || '#D94D1A') + '">' + esc(s.session_name || '') + '</div>';
     }
 
     listEl.innerHTML = available.map(function (s) {
@@ -584,8 +584,8 @@
   function updateGroup() {
     var sessEl = document.getElementById('step3-session');
     if (sessEl && state.slot && state.sessionType) {
-      sessEl.innerHTML = '<span class="slot-item__type-dot" style="background:' + esc(state.sessionType.color || '#D94D1A') + ';display:inline-block;margin-right:7px;"></span>' +
-        '<strong>' + esc(state.sessionType.name) + '</strong> · ' + fmtDate(state.slot.date) + ' · ' + state.slot.start_time + ' – ' + state.slot.end_time;
+      sessEl.innerHTML = '<strong style="color:' + esc(state.sessionType.color || '#D94D1A') + ';">' + esc(state.sessionType.name) + '</strong> · ' +
+        fmtDate(state.slot.date) + ' · ' + state.slot.start_time + ' – ' + state.slot.end_time;
     }
     document.getElementById('kantine-addon-box').style.display = kantineApplies() ? 'block' : 'none';
     document.getElementById('kantine-addon-check').checked = state.kantineAddon;

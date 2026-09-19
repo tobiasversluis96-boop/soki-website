@@ -89,9 +89,9 @@ async function seedSessionTypes() {
     VALUES ($1, $2, $3, $4, $5, $6)
   `;
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
-  await pool.query(sql, ['Extended Sauna',       'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#4A1C0C']);
+  await pool.query(sql, ['Extended Sauna',       'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#3F6B4A']);
   await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           80,  2500,  14, '#D94D1A']);
-  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#6B2E18']);
+  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#7A4069']);
 }
 
 async function seedTimeSlots() {
@@ -357,6 +357,10 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS first_visit_thanks_sent BOOLEAN DEFAULT FALSE');
+
+  // Eenmalige kleurupdate sessietypes (alleen als de oude seed-kleur er nog staat)
+  await pool.query(`UPDATE session_types SET color = '#3F6B4A' WHERE name = 'Extended Sauna' AND color = '#4A1C0C'`);
+  await pool.query(`UPDATE session_types SET color = '#7A4069' WHERE name = 'Aufguss / Opgieting' AND color = '#6B2E18'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS messages (
     id          SERIAL      PRIMARY KEY,
     user_id     INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
