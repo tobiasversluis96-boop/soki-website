@@ -123,12 +123,23 @@
 }
 
 .slot-item__type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-family: var(--font-sub);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--brown);
   margin-bottom: 3px;
+}
+
+.slot-item__type-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .slot-item__time {
