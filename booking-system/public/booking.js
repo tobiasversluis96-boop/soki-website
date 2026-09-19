@@ -218,7 +218,20 @@
 
   // ─── Step 2: Calendar ─────────────────────────────────────────────────────
 
-  var calYear, calMonth, calAllSlots = [];
+  var calYear, calMonth, calAllSlots = [], calSelectedDate = null;
+
+  function updateCalMonthLabel() {
+    if (!calYear) return;
+    var MONTH_NAMES_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    var MONTH_NAMES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var names = (typeof SOKI_LANG !== 'undefined' && SOKI_LANG === 'nl') ? MONTH_NAMES_NL : MONTH_NAMES_EN;
+    document.getElementById('cal-month-label').textContent = names[calMonth - 1] + ' ' + calYear;
+  }
+
+  document.addEventListener('soki:lang-applied', function () {
+    updateCalMonthLabel();
+    if (calSelectedDate) showSlotsForDate(calSelectedDate);
+  });
 
   function loadCalendar() {
     state.slot = null;
@@ -235,16 +248,14 @@
     var grid = document.getElementById('cal-grid');
     grid.innerHTML = '<div class="slots-loading">' + t('slots.loading') + '</div>';
 
-    var MONTH_NAMES_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    var MONTH_NAMES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var names = (typeof SOKI_LANG !== 'undefined' && SOKI_LANG === 'nl') ? MONTH_NAMES_NL : MONTH_NAMES_EN;
-    document.getElementById('cal-month-label').textContent = names[month - 1] + ' ' + year;
+    updateCalMonthLabel();
 
     api('/slots?year=' + year + '&month=' + month)
       .then(function (slots) {
         calAllSlots = slots;
         renderCalGrid(year, month, slots);
         // Hide slots panel when switching months
+        calSelectedDate = null;
         document.getElementById('cal-slots-panel').style.display = 'none';
       })
       .catch(function () {
@@ -314,6 +325,7 @@
   }
 
   function showSlotsForDate(dateStr) {
+    calSelectedDate = dateStr;
     var panel    = document.getElementById('cal-slots-panel');
     var dateEl   = document.getElementById('cal-slots-date');
     var listEl   = document.getElementById('cal-slot-list');

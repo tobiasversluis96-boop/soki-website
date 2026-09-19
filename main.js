@@ -37,6 +37,9 @@ function applyTranslations(lang) {
     btn.textContent = lang === 'en' ? 'NL' : 'EN';
     btn.setAttribute('aria-label', lang === 'en' ? 'Switch to Dutch' : 'Overschakelen naar Engels');
   });
+
+  // Let dynamically rendered components (e.g. booking slot list) re-render
+  document.dispatchEvent(new CustomEvent('soki:lang-applied'));
 }
 
 function toggleLang() {
