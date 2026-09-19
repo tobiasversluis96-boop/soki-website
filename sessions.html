@@ -328,7 +328,8 @@
                 if (spotsLeft <= 0)       spotsHtml = '<span class="spots-badge spots-badge--full">' + STR.full + '</span>';
                 else if (spotsLeft === 1) spotsHtml = '<span class="spots-badge spots-badge--low">' + STR.spotOne + '</span>';
                 else if (spotsLeft <= 3)  spotsHtml = '<span class="spots-badge spots-badge--low">' + spotsLeft + STR.spotsMany + '</span>';
-                else                      spotsHtml = '<span class="spots-badge">' + spotsLeft + STR.spotsMany + '</span>';
+                else if (spotsLeft <= 5)  spotsHtml = '<span class="spots-badge">' + spotsLeft + STR.spotsMany + '</span>';
+                else                      spotsHtml = '';
 
                 var actionHtml = spotsLeft > 0
                   ? '<a href="/booking?slot=' + s.id + '" class="btn btn--outline">' + STR.book + '</a>'
