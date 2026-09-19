@@ -349,7 +349,7 @@
 
     function ambientLine(s) {
       return /ambient/i.test(s.session_name || '')
-        ? '<div class="slot-item__info">' + t('booking.ambient.event') + '</div>'
+        ? '<div class="slot-item__info" data-i18n="booking.ambient.event">' + t('booking.ambient.event') + '</div>'
         : '';
     }
 
