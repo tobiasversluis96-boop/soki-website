@@ -347,6 +347,12 @@
       return '<div class="slot-item__type"><span class="slot-item__type-dot" style="background:' + esc(s.type_color || '#D94D1A') + '"></span>' + esc(s.session_name || '') + '</div>';
     }
 
+    function ambientLine(s) {
+      return /ambient/i.test(s.session_name || '')
+        ? '<div class="slot-item__info">' + t('booking.ambient.event') + '</div>'
+        : '';
+    }
+
     listEl.innerHTML = available.map(function (s) {
       var spotsLeft  = s.spots_left;
       var spotsHtml  = '';
@@ -363,6 +369,7 @@
           typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
+          ambientLine(s) +
           spotsHtml +
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
@@ -376,6 +383,7 @@
           typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
+          ambientLine(s) +
           '<div class="slot-item__info spots--red">' + t('booking.slot.full') + '</div>' +
         '</div>' +
         '<div>' +
