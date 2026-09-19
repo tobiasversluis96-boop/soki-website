@@ -21,6 +21,11 @@ router.post('/', requireAuth, async (req, res) => {
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_cancelled) return res.status(400).json({ error: 'This slot has been cancelled' });
 
+  // date/start_time zijn VARCHAR; vergelijk in NL-tijd (server draait in UTC)
+  const nowNL = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  if (slot.date + ' ' + slot.start_time < nowNL)
+    return res.status(400).json({ error: 'This session has already started and can no longer be booked' });
+
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
 

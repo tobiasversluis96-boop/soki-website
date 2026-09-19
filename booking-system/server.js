@@ -182,7 +182,6 @@ app.get('/api/slots', async (req, res) => {
 app.get('/api/upcoming-slots', async (req, res) => {
   const limit       = Math.min(parseInt(req.query.limit) || 3, 200);
   const includeFull = req.query.include_full === '1';
-  const today       = new Date().toISOString().slice(0, 10);
 
   const havingClause = includeFull
     ? ''
@@ -200,12 +199,14 @@ app.get('/api/upcoming-slots', async (req, res) => {
     FROM time_slots ts
     JOIN session_types st ON st.id = ts.session_type_id
     LEFT JOIN bookings b ON b.time_slot_id = ts.id
-    WHERE ts.date >= $1 AND ts.is_cancelled = FALSE AND ts.is_private = FALSE
+    WHERE ts.is_cancelled = FALSE AND ts.is_private = FALSE
+      -- date/start_time zijn VARCHAR; vergelijk als timestamp in NL-tijd (server draait in UTC)
+      AND (ts.date::text || ' ' || ts.start_time)::timestamp > NOW() AT TIME ZONE 'Europe/Amsterdam'
     GROUP BY ts.id, st.name, st.price_cents, st.color, st.duration_min, st.id, st.max_capacity
     ${havingClause}
     ORDER BY ts.date ASC, ts.start_time ASC
-    LIMIT $2
-  `, [today, limit]);
+    LIMIT $1
+  `, [limit]);
 
   res.json(slots.map(s => ({
     ...s,
