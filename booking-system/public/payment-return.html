@@ -67,6 +67,7 @@
   <p data-i18n="payment.processing">Processing payment…</p>
 </div>
 
+<script src="/consent.js?v=20260920-1"></script>
 <script src="/translations.js?v=20260916-2"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
@@ -109,6 +110,22 @@
     return summaryHtml;
   }
 
+  var purchaseTracked = false;
+  function trackPurchase(b) {
+    if (purchaseTracked || !window.sokiTrack) return;
+    purchaseTracked = true;
+    sokiTrack('CompletePayment', {
+      value: b && b.total_cents ? b.total_cents / 100 : 0,
+      currency: 'EUR',
+      contents: [{
+        content_id:   b && b.time_slot_id ? String(b.time_slot_id) : '',
+        content_type: 'product',
+        content_name: (b && b.session_name) || 'Sessie',
+        quantity:     (b && b.group_size) || 1,
+      }],
+    });
+  }
+
   function confirmPayment() {
     attempts++;
     var controller = new AbortController();
@@ -139,13 +156,16 @@
             if (b && b.session_name) {
               summary = showBookingSummary(b);
             }
+            trackPurchase(b);
             show('✅', t('payment.confirmed.title'), t('payment.confirmed.msg'),
               '/account', t('payment.confirmed.btn'), summary);
           }).catch(function() {
+            trackPurchase(null);
             show('✅', t('payment.confirmed.title'), t('payment.confirmed.msg'),
               '/account', t('payment.confirmed.btn'), summary);
           });
         } else {
+          trackPurchase(conf);
           show('✅', t('payment.confirmed.title'), t('payment.confirmed.msg'),
             '/account', t('payment.confirmed.btn'), summary);
         }

@@ -206,6 +206,15 @@
     reopen: function () { hideBanner(); showBanner(); },
   };
 
+  // --- Conversie-events ---
+  // Stuurt events naar TikTok; doet niets zolang de pixel niet (na
+  // marketing-consent) geladen is. Tracking mag nooit de site breken.
+  window.sokiTrack = function (event, props) {
+    try {
+      if (window.ttq && typeof window.ttq.track === 'function') window.ttq.track(event, props || {});
+    } catch (e) { /* stil falen */ }
+  };
+
   // --- Init ---
   function init() {
     var state = getState();

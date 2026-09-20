@@ -225,6 +225,8 @@ async function handleSignup(e) {
     return;
   }
 
+  if (window.sokiTrack) sokiTrack('Subscribe', {});
+
   // Show success state
   if (formState && successState) {
     formState.style.display = 'none';

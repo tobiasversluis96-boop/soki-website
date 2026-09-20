@@ -759,6 +759,16 @@
     document.getElementById('stripe-errors').textContent = '';
     document.getElementById('promo-toggle').style.display = '';
 
+    if (window.sokiTrack) sokiTrack('InitiateCheckout', {
+      currency: 'EUR',
+      contents: [{
+        content_id:   String(state.slot ? state.slot.id : ''),
+        content_type: 'product',
+        content_name: state.sessionType ? state.sessionType.name : 'Sessie',
+        quantity:     state.groupSize || 1,
+      }],
+    });
+
     // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken
     // totaalprijs)
     if (state.token && !(state.slot && state.slot.is_private)) {
@@ -1053,6 +1063,20 @@
   function showConfirmation() {
     showStep(6);
 
+    if (!state.purchaseTracked && window.sokiTrack) {
+      state.purchaseTracked = true;
+      sokiTrack('CompletePayment', {
+        value: (state.totalCents || 0) / 100,
+        currency: 'EUR',
+        contents: [{
+          content_id:   String(state.slot ? state.slot.id : ''),
+          content_type: 'product',
+          content_name: state.sessionType ? state.sessionType.name : 'Sessie',
+          quantity:     state.groupSize || 1,
+        }],
+      });
+    }
+
     // Save group size preference — behalve bij privéverhuur (vast, vaak groot aantal)
     if (!(state.slot && state.slot.is_private)) {
       localStorage.setItem('soki_last_group_size', String(state.groupSize));
@@ -1203,6 +1227,7 @@
         state.token = res.token;
         state.user  = res.user;
         localStorage.setItem('soki_token', res.token);
+        if (window.sokiTrack) sokiTrack('CompleteRegistration', {});
         proceedAfterAuth();
       });
     });

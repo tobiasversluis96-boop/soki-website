@@ -183,7 +183,7 @@
       min-height: 18px;
     }
   </style>
-  <script src="/consent.js"></script>
+  <script src="/consent.js?v=20260920-1"></script>
 </head>
 <body>
 
@@ -446,6 +446,7 @@
     this.disabled = false;
 
     if (res.error) { errEl.textContent = res.error; return; }
+    if (window.sokiTrack) sokiTrack('CompleteRegistration', {});
     onAuthSuccess(res);
   });
 

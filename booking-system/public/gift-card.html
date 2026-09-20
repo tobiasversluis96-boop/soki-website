@@ -31,7 +31,7 @@
     .success-box .success-icon { font-size: 3rem; margin-bottom: 16px; }
     .success-code { font-size: 1.5rem; font-weight: 700; letter-spacing: .12em; color: var(--terra,#D94D1A); font-family: monospace; background: var(--cream,#F9F4EF); padding: 14px 20px; border-radius: 10px; display: inline-block; margin: 12px 0; }
   </style>
-  <script src="/consent.js"></script>
+  <script src="/consent.js?v=20260920-1"></script>
 </head>
 <body>
 
@@ -151,7 +151,7 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script src="/translations.js?v=20260916-2"></script>
-<script src="/main.js?v=20260906-5"></script>
+<script src="/main.js?v=20260920-1"></script>
 <script>
 (function () {
   var selectedCents = 5000;
@@ -258,6 +258,9 @@
     btn.disabled = true;
     document.getElementById('pay-label').innerHTML = '<span class="btn-spinner"></span>';
 
+    // Bedrag bewaren voor het geval de betaling via een redirect (iDEAL/3DS) terugkomt
+    try { sessionStorage.setItem('soki_gc_cents', String(selectedCents)); } catch (e) {}
+
     var result = await stripe.confirmPayment({
       elements,
       confirmParams: { return_url: window.location.href },
@@ -277,11 +280,23 @@
       body: JSON.stringify({ payment_intent_id: window._gcPaymentIntentId }),
     }).then(function (r) { return r.json(); }).then(function (res) {
       if (res.error) return showError(res.error);
+      trackGiftCardPurchase();
       document.getElementById('gc-form').style.display = 'none';
       document.getElementById('success-box').style.display = 'block';
       document.getElementById('success-code').textContent = res.code;
     });
   });
+
+  function trackGiftCardPurchase() {
+    if (!window.sokiTrack) return;
+    var cents = selectedCents;
+    try { cents = parseInt(sessionStorage.getItem('soki_gc_cents')) || selectedCents; sessionStorage.removeItem('soki_gc_cents'); } catch (e) {}
+    sokiTrack('CompletePayment', {
+      value: cents / 100,
+      currency: 'EUR',
+      contents: [{ content_id: 'gift-card', content_type: 'product', content_name: 'Cadeaubon', quantity: 1 }],
+    });
+  }
 
   // Handle redirect-back from 3DS
   var params = new URLSearchParams(window.location.search);
@@ -293,6 +308,7 @@
       body: JSON.stringify({ payment_intent_id: piId }),
     }).then(function (r) { return r.json(); }).then(function (res) {
       if (res.ok) {
+        trackGiftCardPurchase();
         document.getElementById('gc-form').style.display = 'none';
         document.getElementById('success-box').style.display = 'block';
         document.getElementById('success-code').textContent = res.code;
