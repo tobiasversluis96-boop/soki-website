@@ -301,7 +301,8 @@
   // Read redirect target from query string (e.g. /login?redirect=/booking)
   // Alleen relatieve paden toestaan (voorkomt open redirect naar externe sites)
   var rawRedirect = new URLSearchParams(location.search).get('redirect') || '/account';
-  var redirectTo = (rawRedirect.charAt(0) === '/' && rawRedirect.charAt(1) !== '/') ? rawRedirect : '/account';
+  // Ook backslash weren: browsers behandelen "/\evil.com" als protocol-relatief
+  var redirectTo = (rawRedirect.charAt(0) === '/' && rawRedirect.charAt(1) !== '/' && rawRedirect.indexOf('\\') === -1) ? rawRedirect : '/account';
 
   // If already logged in, redirect immediately
   var existingToken = localStorage.getItem('soki_token');

@@ -457,7 +457,7 @@ router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
 // (zelfde sleutelafleiding als in server.js: HMAC van JWT_SECRET, dus altijd geldig)
 router.get('/kantine-link', requireAdmin, async (_req, res) => {
   const crypto = require('crypto');
-  const key = crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+  const key = crypto.createHmac('sha256', process.env.KANTINE_KEY_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me')
     .update('kantine-combi-view').digest('hex').slice(0, 32);
   res.json({ url: `${process.env.BASE_URL || 'http://localhost:3001'}/kantine?key=${key}` });
 });

@@ -11,18 +11,14 @@ const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, 
 
 const router = express.Router();
 
-// POST /api/bookings — create a pending booking
-router.post('/', requireAuth, async (req, res) => {
-  const { slot_id, promo_code, kantine_addon } = req.body;
-  let { group_size } = req.body;
-  if (!slot_id || !group_size)
-    return res.status(400).json({ error: 'slot_id and group_size are required' });
-
-  // Max 1 open boeking per gebruiker: eerdere onafgemaakte boekingen worden
-  // vervangen door de nieuwe. Loopt de betaling van een oude boeking nog
-  // (of is die al gelukt), dan blijft die staan.
-  const stalePending = await queries.getPendingBookingsByUser(req.user.userId);
+// Annuleer openstaande (pending) boekingen van een gebruiker. Met newBookingId
+// worden alleen óudere pendings geannuleerd, zodat bij parallelle requests
+// altijd de nieuwste boeking overleeft en ze elkaar niet allebei wegannuleren.
+// Boekingen waarvan de betaling al gelukt of onderweg is blijven staan.
+async function supersedePendingBookings(userId, newBookingId = null) {
+  const stalePending = await queries.getPendingBookingsByUser(userId);
   for (const old of stalePending) {
+    if (newBookingId !== null && old.id >= newBookingId) continue;
     if (old.stripe_payment_intent_id) {
       try {
         await stripe.paymentIntents.cancel(old.stripe_payment_intent_id);
@@ -35,6 +31,19 @@ router.post('/', requireAuth, async (req, res) => {
     }
     await queries.cancelBooking(old.id);
   }
+}
+
+// POST /api/bookings — create a pending booking
+router.post('/', requireAuth, async (req, res) => {
+  const { slot_id, promo_code, kantine_addon } = req.body;
+  let { group_size } = req.body;
+  if (!slot_id || !group_size)
+    return res.status(400).json({ error: 'slot_id and group_size are required' });
+
+  // Max 1 open boeking per gebruiker: eerdere onafgemaakte boekingen worden
+  // vervangen door de nieuwe. Loopt de betaling van een oude boeking nog
+  // (of is die al gelukt), dan blijft die staan.
+  await supersedePendingBookings(req.user.userId);
 
   const slot = await queries.getSlotById(slot_id);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
@@ -140,8 +149,18 @@ router.post('/', requireAuth, async (req, res) => {
       // Try milestone code
       milestoneEntry = await queries.getMilestoneByCode(promo_code.trim());
       if (milestoneEntry) {
+        // Milestone-codes zijn persoonlijk — alleen de eigenaar mag ze gebruiken
+        if (milestoneEntry.user_id !== req.user.userId)
+          return res.status(400).json({ error: 'Ongeldige promotiecode.' });
         if (slot.is_private)
           return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
+        const { rows: msPending } = await getPool().query(
+          `SELECT 1 FROM bookings WHERE pending_milestone_id = $1 AND status = 'pending'
+             AND (hold_until IS NULL OR hold_until > NOW()) LIMIT 1`,
+          [milestoneEntry.id]
+        );
+        if (msPending[0])
+          return res.status(400).json({ error: 'Deze code is al in gebruik voor een andere boeking.' });
         const { MILESTONES } = require('../utils/milestones');
         const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
         if (milestoneDef) {
@@ -179,6 +198,15 @@ router.post('/', requireAuth, async (req, res) => {
     throw err;
   }
 
+  // Nogmaals na het aanmaken: twee parallelle requests kunnen allebei langs de
+  // eerste supersede-check komen; deze naloop (alleen oudere pendings)
+  // herstelt "max 1 pending" alsnog.
+  try {
+    await supersedePendingBookings(req.user.userId, booking.id);
+  } catch (e) {
+    console.error('Supersede after create failed (non-fatal):', e.message);
+  }
+
   // Fully free: confirm immediately without Stripe.
   // Inwisselen gebeurt VÓÓR het bevestigen: als het bonsaldo intussen op is
   // (parallelle boeking), wordt deze boeking geannuleerd i.p.v. gratis bevestigd.
@@ -191,7 +219,13 @@ router.post('/', requireAuth, async (req, res) => {
         return res.status(409).json({ error: 'Het saldo van deze cadeaubon is net gebruikt voor een andere boeking. Probeer opnieuw.' });
       }
     }
-    if (milestoneEntry) await queries.redeemMilestoneCode(milestoneEntry.id);
+    if (milestoneEntry) {
+      const redeemed = await queries.redeemMilestoneCode(milestoneEntry.id);
+      if (!redeemed) {
+        await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
+        return res.status(409).json({ error: 'Deze code is net al gebruikt. Probeer opnieuw.' });
+      }
+    }
     if (discountCode) await queries.redeemDiscountCode(discountCode.id, req.user.userId, { bookingId: booking.id });
     await pool.query(
       "UPDATE bookings SET status = 'confirmed', stripe_payment_status = 'free', confirmation_sent = TRUE WHERE id = $1",
@@ -207,10 +241,18 @@ router.post('/', requireAuth, async (req, res) => {
   // Partial discount: store the promo on the booking — it is only actually
   // redeemed once payment succeeds (payments /confirm or the Stripe webhook),
   // so an abandoned checkout never costs the customer their code/balance.
-  if (milestoneEntry || giftCard || discountCode) {
+  if (giftCard) {
+    // Atomair reserveren onder rijlock: parallelle boekingen kunnen niet
+    // allebei hetzelfde saldo claimen.
+    const reserved = await queries.reserveGiftCardOnBooking(booking.id, giftCard.id, discountCents);
+    if (!reserved) {
+      await queries.cancelBooking(booking.id);
+      return res.status(409).json({ error: 'Het saldo van deze cadeaubon is net gebruikt voor een andere boeking. Probeer opnieuw.' });
+    }
+  } else if (milestoneEntry || discountCode) {
     await queries.setBookingPendingPromo(
       booking.id,
-      giftCard ? giftCard.id : null,
+      null,
       milestoneEntry ? milestoneEntry.id : null,
       discountCents,
       discountCode ? discountCode.id : null
@@ -251,7 +293,7 @@ router.get('/:id/qr', requireAuth, async (req, res) => {
   if (booking.user_id !== req.user.userId) return res.status(403).json({ error: 'Access denied' });
   if (booking.status !== 'confirmed') return res.status(400).json({ error: 'Booking not confirmed' });
   const crypto = require('crypto');
-  const sig = crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+  const sig = crypto.createHmac('sha256', process.env.KANTINE_KEY_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me')
     .update(String(booking.id)).digest('hex').slice(0, 16);
   const url = `${process.env.BASE_URL || 'http://localhost:3001'}/checkin?bid=${booking.id}&sig=${sig}`;
   res.json({ url, booking_id: booking.id });
@@ -282,6 +324,15 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
   const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
 
+  // Annulering atomair claimen vóór de refund: twee parallelle cancel-verzoeken
+  // zouden anders allebei een (deel)refund aanmaken.
+  const { rows: claimed } = await getPool().query(
+    "UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status != 'cancelled' RETURNING id",
+    [req.params.id]
+  );
+  if (!claimed[0])
+    return res.status(400).json({ error: 'Booking is already cancelled' });
+
   // Refund via Stripe if payment was confirmed
   let refundAmountCents = 0;
   if (refundPct > 0 && booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
@@ -302,11 +353,11 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
       await stripe.refunds.create(refundArgs);
     } catch (stripeErr) {
       console.error('Stripe refund failed:', stripeErr.message);
+      // Claim terugdraaien zodat de klant het opnieuw kan proberen
+      await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [req.params.id, booking.status]);
       return res.status(502).json({ error: 'Refund failed — please contact us to cancel' });
     }
   }
-
-  await queries.cancelBooking(req.params.id);
 
   // Membercredits terug (naar strippenkaart óf abonnement) — maar binnen 24u vóór de sessie ben je ze kwijt
   let creditsRestored = 0;

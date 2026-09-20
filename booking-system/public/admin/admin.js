@@ -1295,7 +1295,7 @@
     } catch { existing = []; }
 
     let overlapCount = 0;
-    const typeName = document.getElementById('gen-session-type').selectedOptions[0].text;
+    const typeName = escapeHtml(document.getElementById('gen-session-type').selectedOptions[0].text);
     const freeBadge = document.getElementById('gen-free').checked
       ? ' <span style="background:#2E7D32;color:#fff;font-size:10px;padding:1px 6px;border-radius:100px;margin-left:6px;">GRATIS</span>'
       : '';

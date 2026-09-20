@@ -2,7 +2,7 @@ const { BrevoClient } = require('@getbrevo/brevo');
 const crypto = require('crypto');
 
 function generateCheckinSig(bookingId) {
-  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+  return crypto.createHmac('sha256', process.env.KANTINE_KEY_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me')
     .update(String(bookingId))
     .digest('hex')
     .slice(0, 16);

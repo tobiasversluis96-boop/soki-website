@@ -38,6 +38,12 @@ async function requireAuth(req, res, next) {
   }
 }
 
+// E-mail genormaliseerd opslaan/opzoeken: anders zijn "Tobias@x.nl" en
+// "tobias@x.nl" twee verschillende accounts.
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
 function hashResetToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
@@ -54,7 +60,8 @@ function signCustomerToken(user) {
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, password } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!name || !email || !password)
     return res.status(400).json({ error: 'name, email and password are required' });
   if (password.length < 8)
@@ -113,7 +120,8 @@ router.post('/resend-verification', requireAuth, async (req, res) => {
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email || !password)
     return res.status(400).json({ error: 'email and password are required' });
 
@@ -150,7 +158,13 @@ router.post('/google', async (req, res) => {
     const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
     const ticket  = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name } = payload;
+    const { sub: googleId, name } = payload;
+    const email = normalizeEmail(payload.email);
+
+    // Zonder deze check kan iemand met een ongeverifieerd Google-adres het
+    // account van de echte eigenaar van dat adres overnemen.
+    if (payload.email_verified !== true)
+      return res.status(401).json({ error: 'Google account email is not verified' });
 
     const user  = await queries.findOrCreateUserByGoogle(googleId, email, name);
     // Google heeft het e-mailadres al geverifieerd
@@ -165,7 +179,7 @@ router.post('/google', async (req, res) => {
 
 // POST /api/auth/forgot-password
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ error: 'email is required' });
 
   const user = await queries.getUserByEmail(email);

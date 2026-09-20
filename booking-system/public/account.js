@@ -513,14 +513,14 @@
               '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:' +
               (r.from_admin ? '#D94D1A' : '#8C7B6B') + ';margin-bottom:4px;">' +
               (r.from_admin ? 'Soki team' : 'You') + ' · ' + fmtDateTime(r.created_at) + '</div>' +
-              '<div style="font-size:14px;white-space:pre-wrap;">' + r.body.replace(/</g,'&lt;') + '</div></div>';
+              '<div style="font-size:14px;white-space:pre-wrap;">' + esc(r.body) + '</div></div>';
           }).join('');
           return '<div style="background:#fff;border:1px solid var(--border-color,#E8D5BF);border-radius:14px;padding:20px;margin-bottom:12px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
-              '<div><div style="font-weight:700;font-size:15px;color:var(--brown,#4A1C0C);">' + m.subject.replace(/</g,'&lt;') + '</div>' +
+              '<div><div style="font-weight:700;font-size:15px;color:var(--brown,#4A1C0C);">' + esc(m.subject) + '</div>' +
               '<div style="font-size:12px;color:var(--text-muted,#8C7B6B);margin-top:2px;">' + fmtDateTime(m.created_at) + '</div></div>' +
             '</div>' +
-            '<div style="margin-top:10px;font-size:14px;white-space:pre-wrap;">' + m.body.replace(/</g,'&lt;') + '</div>' +
+            '<div style="margin-top:10px;font-size:14px;white-space:pre-wrap;">' + esc(m.body) + '</div>' +
             (replies ? '<div>' + replies + '</div>' : '') +
             '</div>';
         }).join('');

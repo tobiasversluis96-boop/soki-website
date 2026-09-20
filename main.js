@@ -362,7 +362,7 @@ document.head.appendChild(revealStyle);
       '</div>' +
       '<div class="session-card__sep"></div>' +
       '<div class="session-card__info">' +
-        '<h4>' + (isFree ? (s.session_name + tryOutSuffix) : s.session_name) +
+        '<h4>' + escText(isFree ? (s.session_name + tryOutSuffix) : s.session_name) +
           (s.artist ? ' <span style="font-weight:400;color:var(--terra);font-size:0.85em;">' + (isNL ? 'met' : 'with') + ': ' + escText(s.artist) + '</span>' : '') +
         '</h4>' +
         '<div class="session-card__meta">' +

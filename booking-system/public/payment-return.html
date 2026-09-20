@@ -93,11 +93,15 @@
       '<a class="btn" href="' + link + '">' + linkText + '</a>';
   }
 
+  function escText(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function showBookingSummary(conf) {
     var summaryHtml = '';
     if (conf.session_name || conf.date || conf.id) {
       summaryHtml = '<div style="background:#F1F8F1;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:left;">' +
-        (conf.session_name ? '<div style="font-weight:700;color:#2E7D32;margin-bottom:4px;">&#10003; <strong>' + conf.session_name + '</strong></div>' : '') +
+        (conf.session_name ? '<div style="font-weight:700;color:#2E7D32;margin-bottom:4px;">&#10003; <strong>' + escText(conf.session_name) + '</strong></div>' : '') +
         (conf.date ? '<div style="font-size:14px;color:var(--brown);">' + conf.date + (conf.start_time ? ' &middot; ' + conf.start_time + (conf.end_time ? '–' + conf.end_time : '') : '') + '</div>' : '') +
         (conf.id ? '<div style="font-size:13px;color:var(--muted);margin-top:4px;">Booking #' + conf.id + '</div>' : '') +
       '</div>';

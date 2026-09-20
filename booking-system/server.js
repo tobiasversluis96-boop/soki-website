@@ -116,6 +116,9 @@ app.use('/api/gift-cards/purchase', rateLimit({ windowMs: 15 * 60 * 1000, max: 1
 app.use('/api/gift-cards/confirm',  rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
 app.use('/api/gift-cards/check',    rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
 
+// Waitlist gaat via onze Brevo-API-key; zonder limiet is dat een gratis mass-subscribe-kanaal
+app.use('/api/waitlist', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
+
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -188,7 +191,8 @@ app.get('/api/upcoming-slots', async (req, res) => {
     : `HAVING (COALESCE(ts.max_capacity, st.max_capacity)) - COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0) > 0`;
 
   const { rows: slots } = await getPool().query(`
-    SELECT ts.*,
+    SELECT ts.id, ts.session_type_id, ts.date, ts.start_time, ts.end_time,
+           ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist,
            st.name         AS session_name,
            COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
            st.color        AS color,
@@ -245,8 +249,11 @@ app.get('/api/slots/:id', async (req, res) => {
 
 // ─── QR Check-in ──────────────────────────────────────────────────────────────
 const crypto = require('crypto');
+// QR/deellink-sleutels: eigen secret-basis zodat een JWT_SECRET-rotatie niet
+// alle geprinte QR-links stuk maakt. Zonder KANTINE_KEY_SECRET verandert er niets.
+const LINK_KEY_BASE = process.env.KANTINE_KEY_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
 function checkinSig(bookingId) {
-  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+  return crypto.createHmac('sha256', LINK_KEY_BASE)
     .update(String(bookingId)).digest('hex').slice(0, 16);
 }
 function validCheckinSig(sig, bookingId) {
@@ -257,10 +264,10 @@ function validCheckinSig(sig, bookingId) {
 }
 
 // ─── Combi-deal Kantine: permanente deelbare kokspagina ───────────────────
-// Sleutel is afgeleid van JWT_SECRET, dus de link blijft altijd geldig zonder
-// extra configuratie (verandert alleen als JWT_SECRET ooit wordt geroteerd).
+// Sleutel is afgeleid van LINK_KEY_BASE, dus de link blijft altijd geldig
+// zonder extra configuratie.
 function kantineKey() {
-  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev_secret_change_me')
+  return crypto.createHmac('sha256', LINK_KEY_BASE)
     .update('kantine-combi-view').digest('hex').slice(0, 32);
 }
 function validKantineKey(key) {
@@ -344,7 +351,6 @@ app.get('/api/checkin/:bookingId', async (req, res) => {
   res.json({
     id:            booking.id,
     customer_name: booking.customer_name,
-    customer_email: booking.customer_email,
     session_name:  booking.session_name,
     date:          booking.date,
     start_time:    booking.start_time,
@@ -356,14 +362,27 @@ app.get('/api/checkin/:bookingId', async (req, res) => {
   });
 });
 
-function isStaffOrAdminRequest(req) {
+async function isStaffOrAdminRequest(req) {
   const header = req.headers.authorization || '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return false;
+  let payload;
   try {
-    const payload = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
-    return payload.type === 'admin' || payload.type === 'staff';
+    payload = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
   } catch { return false; }
+  try {
+    // Revocatiecheck tegen de DB, net als requireAdmin/requireStaff: een
+    // gebumpte token_version (wachtwoordreset/deactivatie) telt hier ook.
+    if (payload.type === 'admin') {
+      const v = await queries.getAdminTokenVersion(payload.adminId);
+      return v !== null && (payload.tv || 0) === v;
+    }
+    if (payload.type === 'staff') {
+      const staff = await queries.getStaffById(payload.staffId);
+      return !!staff && staff.is_active && (payload.tv || 0) === (staff.token_version || 0);
+    }
+  } catch { return false; }
+  return false;
 }
 
 app.post('/api/checkin/:bookingId', async (req, res) => {
@@ -380,7 +399,7 @@ app.post('/api/checkin/:bookingId', async (req, res) => {
   // Via QR-link alleen op de sessiedag zelf inchecken (voorkomt dat gasten
   // zichzelf weken vooraf "aanwezig" melden); staff mag altijd.
   const todayNL = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
-  if (String(booking.date).slice(0, 10) !== todayNL && !isStaffOrAdminRequest(req))
+  if (String(booking.date).slice(0, 10) !== todayNL && !(await isStaffOrAdminRequest(req)))
     return res.status(403).json({ error: 'Inchecken kan alleen op de dag van de sessie zelf.' });
 
   await queries.checkInBooking(bookingId, true);

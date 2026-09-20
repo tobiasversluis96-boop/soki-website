@@ -357,6 +357,15 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS first_visit_thanks_sent BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_restored BOOLEAN DEFAULT FALSE');
+
+  // Voorkom dubbele accounts die alleen in hoofdletters verschillen. Bestaande
+  // duplicaten mogen de boot niet blokkeren: dan alleen waarschuwen.
+  try {
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email))');
+  } catch (e) {
+    console.warn('users_email_lower_idx niet aangemaakt (bestaande duplicaten?):', e.message);
+  }
 
   // Eenmalige kleurupdate sessietypes (alleen als de oude seed-kleur er nog staat)
   await pool.query(`UPDATE session_types SET color = '#3F6B4A' WHERE name = 'Extended Sauna' AND color = '#4A1C0C'`);
@@ -605,7 +614,8 @@ const queries = {
     const from = `${year}-${String(month).padStart(2, '0')}-01`;
     const to   = `${year}-${String(month).padStart(2, '0')}-31`;
     const { rows } = await pool.query(`
-      SELECT ts.*,
+      SELECT ts.id, ts.session_type_id, ts.date, ts.start_time, ts.end_time,
+             ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist,
              st.name         AS session_name,
              st.color        AS type_color,
              COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
@@ -642,7 +652,8 @@ const queries = {
 
   // Users
   getUserByEmail: async (email) => {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    // Case-insensitief: bestaande accounts kunnen met hoofdletters zijn opgeslagen
+    const { rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
     return rows[0] || null;
   },
 
@@ -665,7 +676,7 @@ const queries = {
     if (rows[0]) return rows[0];
 
     // 2. Find by email — link existing account
-    ({ rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]));
+    ({ rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]));
     if (rows[0]) {
       await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, rows[0].id]);
       return rows[0];
@@ -880,6 +891,44 @@ const queries = {
     );
   },
 
+  // Reserveer cadeaubonsaldo op een boeking, atomair onder een rijlock op de bon.
+  // Voorkomt dat twee parallelle boekingen allebei hetzelfde saldo reserveren.
+  reserveGiftCardOnBooking: async (bookingId, giftCardId, discountCents) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: cardRows } = await client.query(
+        'SELECT remaining_amount_cents, status FROM gift_cards WHERE id = $1 FOR UPDATE',
+        [giftCardId]
+      );
+      const card = cardRows[0];
+      let ok = false;
+      if (card && card.status !== 'pending' && card.status !== 'expired') {
+        const { rows: resRows } = await client.query(
+          `SELECT COALESCE(SUM(pending_discount_cents), 0)::int AS reserved
+           FROM bookings
+           WHERE pending_gift_card_id = $1 AND status = 'pending'
+             AND (hold_until IS NULL OR hold_until > NOW()) AND id != $2`,
+          [giftCardId, bookingId]
+        );
+        if (card.remaining_amount_cents - resRows[0].reserved >= discountCents) {
+          await client.query(
+            'UPDATE bookings SET pending_gift_card_id = $2, pending_discount_cents = $3 WHERE id = $1',
+            [bookingId, giftCardId, discountCents]
+          );
+          ok = true;
+        }
+      }
+      await client.query('COMMIT');
+      return ok;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  },
+
   // ── Kortingscodes (admin-beheerd) ──
   getDiscountCodeByCode: async (code) => {
     const { rows } = await pool.query('SELECT * FROM discount_codes WHERE UPPER(code) = UPPER($1)', [String(code).trim()]);
@@ -955,7 +1004,11 @@ const queries = {
     const p = rows[0];
     if (!p) return null;
     if (p.milestone_id) {
-      await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [p.milestone_id]);
+      const { rows: ms } = await pool.query(
+        'UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1 AND redeemed_at IS NULL RETURNING id',
+        [p.milestone_id]
+      );
+      if (!ms[0]) console.error(`Milestone ${p.milestone_id}: al ingewisseld bij bevestigen van boeking ${bookingId}`);
     }
     if (p.discount_code_id) {
       await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId });
@@ -1559,6 +1612,14 @@ const queries = {
 
   restoreCreditsForBooking: async (booking) => {
     if (!booking || !(booking.credits_used > 0)) return null;
+    // Atomaire claim: dubbel aanroepen (parallelle cancel, of klant + admin
+    // tegelijk) stort nooit dubbel terug.
+    const { rows: claim } = await pool.query(
+      `UPDATE bookings SET credits_restored = TRUE
+       WHERE id = $1 AND COALESCE(credits_restored, FALSE) = FALSE RETURNING id`,
+      [booking.id]
+    );
+    if (!claim[0]) return null;
     if (booking.punch_pass_id) {
       return queries.restorePunchPassCredits(booking.punch_pass_id, booking.credits_used);
     }
@@ -2075,8 +2136,13 @@ const queries = {
     return rows[0] || null;
   },
 
+  // Atomair: alleen de eerste inwisseling slaagt; retourneert of dat lukte.
   redeemMilestoneCode: async (id) => {
-    await pool.query('UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      'UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1 AND redeemed_at IS NULL RETURNING id',
+      [id]
+    );
+    return !!rows[0];
   },
 
   claimMilestone: async (userId, milestone, promoCode) => {
@@ -2132,11 +2198,19 @@ const queries = {
   },
 
   redeemGiftCard: async (id, amount_cents) => {
+    // Saldo dat gereserveerd is op lopende pending boekingen telt niet als
+    // beschikbaar — anders kan een directe (gratis-pad) redeem het saldo
+    // opeten dat een andere boeking al gereserveerd had.
     const { rows } = await pool.query(
-      `UPDATE gift_cards
+      `UPDATE gift_cards g
        SET remaining_amount_cents = remaining_amount_cents - $2,
            status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
-       WHERE id = $1 AND remaining_amount_cents >= $2
+       WHERE id = $1
+         AND remaining_amount_cents - COALESCE((
+           SELECT SUM(pending_discount_cents) FROM bookings
+           WHERE pending_gift_card_id = g.id AND status = 'pending'
+             AND (hold_until IS NULL OR hold_until > NOW())
+         ), 0) >= $2
        RETURNING *`,
       [id, amount_cents]
     );
