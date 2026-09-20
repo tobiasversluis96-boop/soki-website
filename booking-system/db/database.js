@@ -1165,6 +1165,15 @@ const queries = {
     await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [id]);
   },
 
+  getPendingBookingsByUser: async (userId) => {
+    const { rows } = await pool.query(
+      `SELECT id, stripe_payment_intent_id FROM bookings
+       WHERE user_id = $1 AND status = 'pending' AND COALESCE(is_walkin, FALSE) = FALSE`,
+      [userId]
+    );
+    return rows;
+  },
+
   getActiveBookingsForSlot: async (slotId) => {
     const { rows } = await pool.query(`
       SELECT b.*,

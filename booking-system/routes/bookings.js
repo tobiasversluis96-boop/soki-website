@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries, getPool } = require('../db/database');
 const { requireAuth } = require('./auth');
 const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/email');
@@ -16,6 +17,24 @@ router.post('/', requireAuth, async (req, res) => {
   let { group_size } = req.body;
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
+
+  // Max 1 open boeking per gebruiker: eerdere onafgemaakte boekingen worden
+  // vervangen door de nieuwe. Loopt de betaling van een oude boeking nog
+  // (of is die al gelukt), dan blijft die staan.
+  const stalePending = await queries.getPendingBookingsByUser(req.user.userId);
+  for (const old of stalePending) {
+    if (old.stripe_payment_intent_id) {
+      try {
+        await stripe.paymentIntents.cancel(old.stripe_payment_intent_id);
+      } catch (e) {
+        try {
+          const intent = await stripe.paymentIntents.retrieve(old.stripe_payment_intent_id);
+          if (intent && (intent.status === 'succeeded' || intent.status === 'processing')) continue;
+        } catch (e2) { /* intent onbekend bij Stripe — boeking kan gewoon weg */ }
+      }
+    }
+    await queries.cancelBooking(old.id);
+  }
 
   const slot = await queries.getSlotById(slot_id);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
