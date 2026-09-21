@@ -65,6 +65,13 @@ router.post('/', requireAuth, async (req, res) => {
     group_size = spotsLeft;
   } else if (group_size < 1 || group_size > 15) {
     return res.status(400).json({ error: 'group_size must be between 1 and 15' });
+  } else if (group_size > 6) {
+    // Max 6 p.p. boeking; grotere groepen alleen via privéverhuur (rust voor
+    // andere bezoekers) — daarvoor moet je contact opnemen.
+    return res.status(400).json({
+      error: 'Maximaal 6 personen per boeking. Grotere groep? Mail hello@sokisocialsauna.nl voor privéverhuur.',
+      code: 'GROUP_TOO_LARGE',
+    });
   }
 
   if (group_size > spotsLeft)

@@ -188,7 +188,7 @@
           state.sessionType = matchType;
           state.slot = slot; // ná loadCalendar (die wist state.slot)
           var saved = parseInt(localStorage.getItem('soki_last_group_size'));
-          state.groupSize = (saved && saved >= 1 && saved <= (slot.spots_left || 15)) ? saved : 1;
+          state.groupSize = (saved && saved >= 1 && saved <= Math.min(slot.spots_left || 15, 6)) ? saved : 1;
           updateGroup();
           showStep(3);
         });
@@ -496,7 +496,7 @@
       if (!wlClientSecret && wlGroupSize > 1) { wlGroupSize--; updateWlTotal(); }
     });
     document.getElementById('wl-plus').addEventListener('click', function () {
-      if (!wlClientSecret && wlGroupSize < 20) { wlGroupSize++; updateWlTotal(); }
+      if (!wlClientSecret && wlGroupSize < 6) { wlGroupSize++; updateWlTotal(); }
     });
 
     document.getElementById('wl-cancel-btn').addEventListener('click', function () {
@@ -589,9 +589,9 @@
 
   function selectSlot() {
     resetBookingState();
-    // Load saved group size preference
+    // Load saved group size preference (max 6 per boeking)
     var saved = parseInt(localStorage.getItem('soki_last_group_size'));
-    if (saved && saved >= 1 && saved <= (state.slot ? state.slot.spots_left : 15)) {
+    if (saved && saved >= 1 && saved <= Math.min(state.slot ? state.slot.spots_left : 15, 6)) {
       state.groupSize = saved;
     } else {
       state.groupSize = 1;
@@ -612,6 +612,7 @@
     var kTitle = document.querySelector('#kantine-addon-box [data-i18n="booking.kantine.title"]');
     if (kTitle && state.user && Number(state.user.discount_pct) > 0)
       kTitle.textContent = t('booking.kantine.title').replace('€12', '€10');
+    var contactBox = document.getElementById('group-contact-box');
     // Privéverhuur: vast aantal personen en één totaalprijs, afgesproken met SOKI
     if (state.slot && state.slot.is_private) {
       state.groupSize = state.slot.capacity || state.slot.spots_left || 1;
@@ -620,17 +621,22 @@
       document.getElementById('group-caption').textContent = personStr(state.groupSize);
       document.getElementById('group-minus').disabled = true;
       document.getElementById('group-plus').disabled  = true;
+      if (contactBox) contactBox.style.display = 'none';
       return;
     }
     var spotsLeft = state.slot ? state.slot.spots_left : 15;
-    if (state.groupSize > spotsLeft) state.groupSize = spotsLeft;
+    var maxGroup  = Math.min(spotsLeft, 6);
+    if (state.groupSize > maxGroup) state.groupSize = maxGroup;
+    if (contactBox) contactBox.style.display = spotsLeft > 6 ? 'block' : 'none';
     document.getElementById('group-count').textContent = state.groupSize;
     var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
     document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize + kantineCents());
     document.getElementById('group-caption').textContent =
-      personStr(state.groupSize) + (spotsLeft <= 5 ? ' · ' + spotsLeft + ' ' + t('booking.spots.left') : '');
+      personStr(state.groupSize) +
+      (spotsLeft <= 5 ? ' · ' + spotsLeft + ' ' + t('booking.spots.left') : '') +
+      (state.groupSize >= 6 && spotsLeft > 6 ? ' · ' + t('booking.group.max') : '');
     document.getElementById('group-minus').disabled = state.groupSize <= 1;
-    document.getElementById('group-plus').disabled  = state.groupSize >= spotsLeft;
+    document.getElementById('group-plus').disabled  = state.groupSize >= maxGroup;
   }
 
   // ─── Step 4: Auth ─────────────────────────────────────────────────────────
@@ -1125,7 +1131,7 @@
       if (state.groupSize > 1) { state.groupSize--; resetBookingState(); updateGroup(); }
     });
     document.getElementById('group-plus').addEventListener('click', function () {
-      if (state.groupSize < (state.slot ? state.slot.spots_left : 15)) {
+      if (state.groupSize < Math.min(state.slot ? state.slot.spots_left : 15, 6)) {
         state.groupSize++;
         resetBookingState();
         updateGroup();

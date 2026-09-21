@@ -26,8 +26,8 @@ router.post('/:slotId', requireAuth, async (req, res) => {
   const slotId    = parseInt(req.params.slotId);
   const groupSize = parseInt(req.body.group_size) || 1;
 
-  if (groupSize < 1 || groupSize > 20)
-    return res.status(400).json({ error: 'group_size must be between 1 and 20' });
+  if (groupSize < 1 || groupSize > 6)
+    return res.status(400).json({ error: 'group_size must be between 1 and 6' });
 
   const slot = await queries.getSlotById(slotId);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
