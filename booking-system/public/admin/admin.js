@@ -854,6 +854,7 @@
           group_size:    r.group_size,
           checked_in:    r.checked_in,
           admin_notes:   r.admin_notes || '',
+          past_visits:   r.past_visits || 0,
         });
       }
     });
@@ -887,7 +888,7 @@
             <div class="checkin-row ${b.checked_in ? 'checkin-row--in' : ''}" id="checkin-row-${b.id}">
               <div class="checkin-row__info">
                 <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
-                <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'}</div>
+                <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'} · ${b.past_visits === 0 ? '🌱 eerste bezoek' : b.past_visits + '× eerder geweest'}</div>
                 ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}
               </div>
               <button class="checkin-btn ${b.checked_in ? 'checkin-btn--in' : ''}"

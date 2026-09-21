@@ -762,7 +762,11 @@ const queries = {
         u.id          AS user_id,
         u.name        AS customer_name,
         u.email       AS customer_email,
-        u.admin_notes
+        u.admin_notes,
+        (SELECT COUNT(*)::int FROM bookings pb
+          WHERE pb.user_id = u.id AND pb.status = 'confirmed'
+            AND pb.checked_in = TRUE AND pb.id <> b.id
+        ) AS past_visits
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b  ON b.time_slot_id = ts.id AND b.status != 'cancelled'
