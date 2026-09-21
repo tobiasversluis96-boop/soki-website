@@ -226,6 +226,7 @@
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:13px;font-weight:600;">${formatEur(b.total_cents)}</div>
+            ${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}
             ${statusBadge(b.status)}
           </div>
         </div>
