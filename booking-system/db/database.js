@@ -1790,8 +1790,18 @@ const queries = {
     return rows[0].n;
   },
 
-  markConfirmationSent: async (bookingId) => {
-    await pool.query('UPDATE bookings SET confirmation_sent = TRUE WHERE id = $1', [bookingId]);
+  // Atomair claimen vóór het mailen: alleen de eerste aanroep wint, zodat
+  // webhook en /confirm nooit allebei een bevestigingsmail sturen.
+  claimConfirmationSend: async (bookingId) => {
+    const { rows } = await pool.query(
+      'UPDATE bookings SET confirmation_sent = TRUE WHERE id = $1 AND confirmation_sent = FALSE RETURNING id',
+      [bookingId]
+    );
+    return !!rows[0];
+  },
+
+  unclaimConfirmationSend: async (bookingId) => {
+    await pool.query('UPDATE bookings SET confirmation_sent = FALSE WHERE id = $1', [bookingId]);
   },
 
   confirmWalkinBooking: async (bookingId, paymentIntentId) => {

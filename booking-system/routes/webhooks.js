@@ -54,10 +54,14 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
             console.log(`✓ Walk-in booking #${bookingId} confirmed via QR checkout`);
             try {
               const fullBooking = await queries.getBookingById(bookingId);
-              if (fullBooking && !fullBooking.confirmation_sent) {
-                const { sendBookingConfirmation } = require('../utils/email');
-                await sendBookingConfirmation(fullBooking);
-                await queries.markConfirmationSent(bookingId);
+              if (fullBooking && await queries.claimConfirmationSend(bookingId)) {
+                try {
+                  const { sendBookingConfirmation } = require('../utils/email');
+                  await sendBookingConfirmation(fullBooking);
+                } catch (e) {
+                  await queries.unclaimConfirmationSend(bookingId).catch(() => {});
+                  throw e;
+                }
               }
             } catch (e) {
               console.error('Walk-in confirmation email failed (non-fatal):', e.message);
@@ -250,10 +254,14 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         // Bevestigingsmail als /confirm die (nog) niet heeft gestuurd
         try {
           const fresh = await queries.getBookingById(booking.id);
-          if (fresh && fresh.status === 'confirmed' && !fresh.confirmation_sent) {
-            const { sendBookingConfirmation } = require('../utils/email');
-            await sendBookingConfirmation(fresh);
-            await queries.markConfirmationSent(booking.id);
+          if (fresh && fresh.status === 'confirmed' && await queries.claimConfirmationSend(booking.id)) {
+            try {
+              const { sendBookingConfirmation } = require('../utils/email');
+              await sendBookingConfirmation(fresh);
+            } catch (e) {
+              await queries.unclaimConfirmationSend(booking.id).catch(() => {});
+              throw e;
+            }
           }
         } catch (e) {
           console.error('Webhook confirmation email failed (non-fatal):', e.message);

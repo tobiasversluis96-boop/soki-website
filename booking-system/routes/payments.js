@@ -110,9 +110,13 @@ async function settleMemberCombi(intent) {
 
   try {
     const fresh = await queries.getBookingById(bookingId);
-    if (fresh && fresh.status === 'confirmed' && !fresh.confirmation_sent) {
-      await sendBookingConfirmation(fresh);
-      await queries.markConfirmationSent(bookingId);
+    if (fresh && fresh.status === 'confirmed' && await queries.claimConfirmationSend(bookingId)) {
+      try {
+        await sendBookingConfirmation(fresh);
+      } catch (e) {
+        await queries.unclaimConfirmationSend(bookingId).catch(() => {});
+        throw e;
+      }
     }
   } catch (e) {
     console.error('Combi confirmation email failed (non-fatal):', e.message);
@@ -158,12 +162,12 @@ router.post('/confirm', requireAuth, async (req, res) => {
       await queries.redeemPendingPromo(booking.id);
     }
 
-    if (intent.status === 'succeeded' && !booking.confirmation_sent) {
+    if (intent.status === 'succeeded' && await queries.claimConfirmationSend(booking.id)) {
       try {
         await sendBookingConfirmation({ ...booking, group_size: booking.group_size });
-        await queries.markConfirmationSent(booking.id);
       } catch (emailErr) {
         console.error('Email failed (non-fatal):', emailErr.message);
+        await queries.unclaimConfirmationSend(booking.id).catch(() => {});
       }
     }
 

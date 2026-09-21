@@ -518,12 +518,15 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   // Redeem any promo attached at booking time (idempotent, no-op if none)
   await queries.redeemPendingPromo(bookingId);
 
-  // Send confirmation email (non-fatal, guarded by confirmation_sent flag)
-  if (!booking.confirmation_sent) {
+  // Send confirmation email (non-fatal, atomaire claim tegen dubbel versturen)
+  if (await queries.claimConfirmationSend(bookingId)) {
     try {
       const { sendBookingConfirmation } = require('../utils/email');
       await sendBookingConfirmation({ ...booking });
-    } catch (e) { console.error('Email failed:', e.message); }
+    } catch (e) {
+      console.error('Email failed:', e.message);
+      await queries.unclaimConfirmationSend(bookingId).catch(() => {});
+    }
   }
 
   res.json({ ok: true, booking_id: bookingId });

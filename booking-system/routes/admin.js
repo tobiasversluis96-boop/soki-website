@@ -1093,8 +1093,14 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
   if (payment_mode === 'free') {
     try {
       const fullBooking = await queries.getBookingById(booking.id);
-      await sendBookingConfirmation(fullBooking);
-      await queries.markConfirmationSent(booking.id);
+      if (await queries.claimConfirmationSend(booking.id)) {
+        try {
+          await sendBookingConfirmation(fullBooking);
+        } catch (e) {
+          await queries.unclaimConfirmationSend(booking.id).catch(() => {});
+          throw e;
+        }
+      }
     } catch (e) {
       console.error('Walk-in confirmation email failed (non-fatal):', e.message);
     }
