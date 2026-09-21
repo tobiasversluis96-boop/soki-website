@@ -1213,9 +1213,10 @@ const queries = {
   updateSlot: async (id, data) => {
     const price = (data.price_cents === null || data.price_cents === undefined) ? null : parseInt(data.price_cents);
     await pool.query(`
-      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7, artist = $8
+      UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7, artist = $8,
+        session_type_id = COALESCE($10, session_type_id)
       WHERE id = $9
-    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, data.artist || null, id]);
+    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, data.artist || null, id, data.session_type_id || null]);
   },
 
   cancelSlot: async (id) => {

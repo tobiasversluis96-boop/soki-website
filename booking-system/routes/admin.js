@@ -317,15 +317,20 @@ router.post('/slots', requireAdmin, async (req, res) => {
 });
 
 router.put('/slots/:id', requireAdmin, async (req, res) => {
-  const { date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist } = req.body;
+  const { session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist } = req.body;
   if (!date || !start_time || !end_time)
     return res.status(400).json({ error: 'date, start_time, end_time are required' });
+  if (session_type_id !== undefined && session_type_id !== null) {
+    const types = await queries.getSessionTypes();
+    if (!types.some(t => t.id === parseInt(session_type_id)))
+      return res.status(400).json({ error: 'Onbekend sessietype.' });
+  }
   if (is_private && (!max_capacity || !price_cents || price_cents <= 0))
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
-  await queries.updateSlot(req.params.id, { date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
+  await queries.updateSlot(req.params.id, { session_type_id: session_type_id ? parseInt(session_type_id) : null, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
   res.json({ ok: true });
 });
 
