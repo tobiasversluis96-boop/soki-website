@@ -166,7 +166,7 @@ router.get('/bookings/export.csv', requireStaff('bookings'), async (req, res) =>
   const bookings = await queries.getAllBookings(req.query);
   queries.auditLog({ ...actorOf(req), action: 'csv_export', target: 'bookings', detail: `${bookings.length} rows`, ip: req.ip });
 
-  const header = 'id,customer_name,customer_email,session_name,date,start_time,end_time,group_size,total_euros,status,created_at\n';
+  const header = 'id,customer_name,customer_email,session_name,date,start_time,end_time,group_size,total_euros,discount_code,status,created_at\n';
   const rows   = bookings.map(b => [
     b.id,
     b.customer_name,
@@ -180,6 +180,7 @@ router.get('/bookings/export.csv', requireStaff('bookings'), async (req, res) =>
     b.end_time,
     b.group_size,
     (b.total_cents / 100).toFixed(2),
+    b.discount_code || '',
     b.status,
     b.created_at instanceof Date ? b.created_at.toISOString() : b.created_at,
   ].map(csvCell).join(',')).join('\n');

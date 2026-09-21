@@ -556,7 +556,7 @@
         <td>${formatDate(b.date)}</td>
         <td>${b.start_time}–${b.end_time}</td>
         <td>${b.group_size}</td>
-        <td>${formatEur(b.total_cents)}</td>
+        <td>${formatEur(b.total_cents)}${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}</td>
         <td>${statusBadge(b.status)}</td>
         <td>
           ${b.status !== 'cancelled' && isAdminUser

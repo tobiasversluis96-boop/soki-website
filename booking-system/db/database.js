@@ -1141,11 +1141,15 @@ const queries = {
       SELECT b.*,
              u.name AS customer_name, u.email AS customer_email,
              ts.date, ts.start_time, ts.end_time,
-             st.name AS session_name
+             st.name AS session_name,
+             COALESCE(dc.code, pdc.code) AS discount_code
       FROM bookings b
       JOIN users u ON u.id = b.user_id
       JOIN time_slots ts ON ts.id = b.time_slot_id
       JOIN session_types st ON st.id = ts.session_type_id
+      LEFT JOIN discount_code_uses dcu ON dcu.booking_id = b.id
+      LEFT JOIN discount_codes dc  ON dc.id  = dcu.code_id
+      LEFT JOIN discount_codes pdc ON pdc.id = b.pending_discount_code_id
       WHERE 1=1
     `;
     const params = [];
