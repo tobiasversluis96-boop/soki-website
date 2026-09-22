@@ -172,6 +172,12 @@
     btn.addEventListener('click', () => { showView(btn.dataset.view); closeSidebar(); });
   });
 
+  // Vernieuwknop: als PWA op mobiel is er geen browser-refresh beschikbaar
+  document.getElementById('refresh-view').addEventListener('click', () => {
+    const active = document.querySelector('.nav-item.active[data-view]');
+    showView(active ? active.dataset.view : firstAllowedView());
+  });
+
   function showView(name) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
