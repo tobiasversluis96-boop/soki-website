@@ -627,7 +627,7 @@
     var spotsLeft = state.slot ? state.slot.spots_left : 15;
     var maxGroup  = Math.min(spotsLeft, 8);
     if (state.groupSize > maxGroup) state.groupSize = maxGroup;
-    if (contactBox) contactBox.style.display = spotsLeft > 8 ? 'block' : 'none';
+    if (contactBox) contactBox.style.display = (state.groupSize >= 8 && spotsLeft > 8) ? 'block' : 'none';
     document.getElementById('group-count').textContent = state.groupSize;
     var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
     document.getElementById('group-total').textContent = perPerson === 0 ? t('booking.free') : eur(perPerson * state.groupSize + kantineCents());
