@@ -590,7 +590,6 @@ async function initializeDB() {
     UNIQUE(requester_id, addressee_id),
     CHECK (requester_id <> addressee_id)
   )`);
-  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS buddy_hidden BOOLEAN NOT NULL DEFAULT FALSE');
 
   await seedSessionTypes();
   await seedTimeSlots();
@@ -1609,7 +1608,7 @@ const queries = {
              OR (bd.requester_id = u.id AND bd.addressee_id = $1)
           LIMIT 1) AS buddy_status
       FROM users u
-      WHERE u.id <> $1 AND u.buddy_hidden = FALSE AND u.name ILIKE $2
+      WHERE u.id <> $1 AND u.name ILIKE $2
       ORDER BY u.name
       LIMIT 10
     `, [userId, like]);
@@ -1663,10 +1662,6 @@ const queries = {
       [buddyRowId, userId]
     );
     return !!rows[0];
-  },
-
-  setBuddyHidden: async (userId, hidden) => {
-    await pool.query('UPDATE users SET buddy_hidden = $2 WHERE id = $1', [userId, hidden]);
   },
 
   // Aankomende bevestigde boekingen van geaccepteerde buddy's, per slot

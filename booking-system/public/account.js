@@ -290,9 +290,6 @@
       document.getElementById('buddy-outgoing').innerHTML = data.outgoing.map(function (b) {
         return buddyRow(b.name, buddyBtn(t('account.buddy.cancelreq'), 'removeBuddy(' + b.id + ',false)', true), t('account.buddy.pending'));
       }).join('');
-
-      var toggle = document.getElementById('buddy-hidden-toggle');
-      toggle.checked = !!data.hidden;
     } catch (e) { /* silent */ }
   }
 
@@ -342,14 +339,6 @@
             : '<p style="font-size:0.85rem;color:var(--text-muted);margin:10px 0 0;">' + t('account.buddy.noresults') + '</p>';
         } catch (e) { /* silent */ }
       }, 300);
-    });
-
-    document.getElementById('buddy-hidden-toggle').addEventListener('change', function () {
-      fetch('/api/buddies/visibility', {
-        method: 'PATCH',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hidden: this.checked }),
-      });
     });
   }
 

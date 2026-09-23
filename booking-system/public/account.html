@@ -106,10 +106,6 @@
             <input id="buddy-search" type="text" maxlength="60" autocomplete="off" data-i18n-placeholder="account.buddy.search" placeholder="Search members by name…" style="width:100%;padding:11px 14px;border:2px solid var(--border-color,#E8D5BF);border-radius:10px;font-size:15px;font-family:inherit;outline:none;">
             <div id="buddy-results"></div>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:0.9rem;color:var(--brown,#4A1C0C);cursor:pointer;">
-            <input type="checkbox" id="buddy-hidden-toggle" style="width:16px;height:16px;accent-color:var(--terra,#D94D1A);">
-            <span data-i18n="account.buddy.hidden">Don't show me in buddy search</span>
-          </label>
           <p data-i18n="account.buddy.privacy" style="margin:12px 0 0;font-size:0.8rem;color:var(--text-muted,#8C7B6B);">Buddies only see your upcoming bookings, and only after you've both accepted each other. You can remove a buddy at any time.</p>
         </div>
       </div>
@@ -255,9 +251,9 @@
 <div id="cancel-error" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#C62828;color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;z-index:1000;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="/translations.js?v=20260923-2"></script>
+<script src="/translations.js?v=20260923-3"></script>
 <script src="/main.js?v=20260920-1"></script>
-<script src="/account.js?v=20260923-1"></script>
+<script src="/account.js?v=20260923-2"></script>
 <script>
 function togglePastBookings() {
   var el   = document.getElementById('past-bookings');

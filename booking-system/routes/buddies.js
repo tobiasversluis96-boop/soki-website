@@ -21,7 +21,6 @@ router.get('/search', requireAuth, async (req, res) => {
 // GET /api/buddies — eigen buddy's + openstaande verzoeken
 router.get('/', requireAuth, async (req, res) => {
   const rows = await queries.getBuddyRelations(req.user.userId);
-  const me = await queries.getUserById(req.user.userId);
   res.json({
     buddies:  rows.filter(r => r.status === 'accepted')
                   .map(r => ({ id: r.id, user_id: r.other_id, name: r.other_name })),
@@ -29,7 +28,6 @@ router.get('/', requireAuth, async (req, res) => {
                   .map(r => ({ id: r.id, user_id: r.other_id, name: r.other_name })),
     outgoing: rows.filter(r => r.status === 'pending' && r.requester_id === req.user.userId)
                   .map(r => ({ id: r.id, user_id: r.other_id, name: r.other_name })),
-    hidden: !!(me && me.buddy_hidden),
   });
 });
 
@@ -40,9 +38,7 @@ router.post('/request', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Ongeldige gebruiker' });
 
   const target = await queries.getUserById(targetId);
-  // Verborgen users niet bevestigen als bestaand
-  if (!target || target.buddy_hidden)
-    return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+  if (!target) return res.status(404).json({ error: 'Gebruiker niet gevonden' });
 
   const existing = await queries.getBuddyBetween(req.user.userId, targetId);
   if (existing) {
@@ -83,12 +79,6 @@ router.get('/sessions', requireAuth, async (req, res) => {
     if (!map[r.slot_id].includes(r.name)) map[r.slot_id].push(r.name);
   }
   res.json(map);
-});
-
-// PATCH /api/buddies/visibility { hidden }
-router.patch('/visibility', requireAuth, async (req, res) => {
-  await queries.setBuddyHidden(req.user.userId, !!req.body.hidden);
-  res.json({ ok: true });
 });
 
 module.exports = router;
