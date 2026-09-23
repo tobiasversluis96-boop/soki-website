@@ -32,6 +32,8 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     const slot = await queries.getSlotById(booking.time_slot_id);
     if (!slot || slot.is_private)
       return res.status(400).json({ error: 'Deze sessie kan niet met credits worden geboekt.' });
+    if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
+      return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek — extra personen boeken via de gewone betaling.' });
     const sub    = await queries.getActiveSubscription(req.user.userId);
     const passes = await queries.getActivePunchPasses(req.user.userId);
     const groupSize  = booking.group_size || 1;

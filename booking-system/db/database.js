@@ -1570,6 +1570,19 @@ const queries = {
     return rows;
   },
 
+  // Credits zijn persoonlijk: max 1 credits-/membershipboeking per gebruiker per
+  // sessie, anders kan één kaart meerdere plekken in dezelfde sessie dekken.
+  // NULL-intent = bevestigd zonder Stripe-betaling (credits, unlimited of gratis pad).
+  hasCreditsBookingForSlot: async (userId, slotId) => {
+    const { rows } = await pool.query(`
+      SELECT 1 FROM bookings
+      WHERE user_id = $1 AND time_slot_id = $2 AND status = 'confirmed'
+        AND (credits_used > 0 OR stripe_payment_intent_id IS NULL)
+      LIMIT 1
+    `, [userId, slotId]);
+    return !!rows[0];
+  },
+
   getUserPunchPasses: async (userId) => {
     const { rows } = await pool.query(`
       SELECT * FROM punch_passes WHERE user_id = $1 AND refunded_at IS NULL ORDER BY created_at DESC

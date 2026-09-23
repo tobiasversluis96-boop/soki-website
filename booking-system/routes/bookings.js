@@ -472,6 +472,8 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
     return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
+  if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
+    return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek — extra personen boeken via de gewone betaling.' });
   // Unlimited membership = 0 credits
   const creditsToUse = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
 
