@@ -204,6 +204,8 @@
 
       loadSubscription();
       loadPunchPasses();
+      loadBuddies();
+      initBuddySearch();
       loadWaitlist();
       // loadMilestones();  // Milestones tijdelijk uit — sectie staat verborgen in account.html
       renderMessages();
@@ -254,6 +256,102 @@
     if (res.error) { alert(res.error); return; }
     loadWaitlist();
   };
+
+  // ─── Buddy's ─────────────────────────────────────────────────────────────
+  function buddyRow(name, buttonsHtml, note) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.07);">' +
+      '<div><span style="font-weight:600;font-size:0.9rem;">' + esc(name) + '</span>' +
+      (note ? '<span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px;">' + note + '</span>' : '') +
+      '</div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' + buttonsHtml + '</div></div>';
+  }
+
+  function buddyBtn(label, onclick, danger) {
+    return '<button onclick="' + onclick + '" style="background:' + (danger ? 'none' : 'rgba(217,77,26,0.08)') + ';color:' + (danger ? 'var(--text-muted,#8C7B6B)' : '#D94D1A') + ';border:' + (danger ? '1px solid rgba(0,0,0,0.15)' : 'none') + ';cursor:pointer;border-radius:100px;padding:5px 14px;font-size:12px;font-weight:700;font-family:inherit;">' + label + '</button>';
+  }
+
+  async function loadBuddies() {
+    try {
+      var data = await api('/buddies');
+      if (!data || data.error) return;
+
+      document.getElementById('buddy-incoming').innerHTML = data.incoming.map(function (b) {
+        return buddyRow(b.name,
+          buddyBtn(t('account.buddy.accept'), 'acceptBuddy(' + b.id + ')') +
+          buddyBtn(t('account.buddy.decline'), 'removeBuddy(' + b.id + ',false)', true),
+          t('account.buddy.wants'));
+      }).join('');
+
+      document.getElementById('buddy-list').innerHTML = data.buddies.length
+        ? data.buddies.map(function (b) {
+            return buddyRow(b.name, buddyBtn(t('account.buddy.remove'), 'removeBuddy(' + b.id + ',true)', true));
+          }).join('')
+        : '<p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 10px;">' + t('account.buddy.none') + '</p>';
+
+      document.getElementById('buddy-outgoing').innerHTML = data.outgoing.map(function (b) {
+        return buddyRow(b.name, buddyBtn(t('account.buddy.cancelreq'), 'removeBuddy(' + b.id + ',false)', true), t('account.buddy.pending'));
+      }).join('');
+
+      var toggle = document.getElementById('buddy-hidden-toggle');
+      toggle.checked = !!data.hidden;
+    } catch (e) { /* silent */ }
+  }
+
+  window.acceptBuddy = async function (id) {
+    var res = await postApi('/buddies/' + id + '/accept');
+    if (res.error) { alert(res.error); return; }
+    loadBuddies();
+  };
+
+  window.removeBuddy = async function (id, isBuddy) {
+    if (isBuddy && !confirm(t('account.buddy.removeconfirm'))) return;
+    var res = await fetch('/api/buddies/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); });
+    if (res.error) { alert(res.error); return; }
+    loadBuddies();
+  };
+
+  window.addBuddy = async function (userId) {
+    var res = await postApi('/buddies/request', { user_id: userId });
+    if (res.error) { alert(res.error); return; }
+    document.getElementById('buddy-results').innerHTML = '';
+    document.getElementById('buddy-search').value = '';
+    loadBuddies();
+  };
+
+  function initBuddySearch() {
+    var input = document.getElementById('buddy-search');
+    var resultsEl = document.getElementById('buddy-results');
+    var timer = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      var q = input.value.trim();
+      if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+      timer = setTimeout(async function () {
+        try {
+          var results = await api('/buddies/search?q=' + encodeURIComponent(q));
+          if (!Array.isArray(results)) return;
+          resultsEl.innerHTML = results.length
+            ? results.map(function (r) {
+                var action = r.buddy_status === 'accepted'
+                  ? '<span style="font-size:12px;color:var(--text-muted);">' + t('account.buddy.already') + '</span>'
+                  : r.buddy_status === 'pending'
+                    ? '<span style="font-size:12px;color:var(--text-muted);">' + t('account.buddy.pending') + '</span>'
+                    : buddyBtn(t('account.buddy.add'), 'addBuddy(' + r.id + ')');
+                return buddyRow(r.name, action);
+              }).join('')
+            : '<p style="font-size:0.85rem;color:var(--text-muted);margin:10px 0 0;">' + t('account.buddy.noresults') + '</p>';
+        } catch (e) { /* silent */ }
+      }, 300);
+    });
+
+    document.getElementById('buddy-hidden-toggle').addEventListener('change', function () {
+      fetch('/api/buddies/visibility', {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidden: this.checked }),
+      });
+    });
+  }
 
   // ─── Milestones ──────────────────────────────────────────────────────────
 

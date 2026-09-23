@@ -45,6 +45,7 @@ const waitlistRoutes      = require('./routes/waitlist');
 const webhookRoutes       = require('./routes/webhooks');
 const giftCardRoutes      = require('./routes/gift-cards');
 const punchPassRoutes     = require('./routes/punch-passes');
+const buddyRoutes         = require('./routes/buddies');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -119,6 +120,9 @@ app.use('/api/gift-cards/check',    rateLimit({ windowMs: 15 * 60 * 1000, max: 3
 // Waitlist gaat via onze Brevo-API-key; zonder limiet is dat een gratis mass-subscribe-kanaal
 app.use('/api/waitlist', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
 
+// Buddy-zoeken: limiet tegen het afscrapen van het ledenbestand
+app.use('/api/buddies/search', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false }));
+
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -141,6 +145,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/waitlist',      waitlistRoutes);
 app.use('/api/gift-cards',   giftCardRoutes);
 app.use('/api/punch-passes', punchPassRoutes);
+app.use('/api/buddies',      buddyRoutes);
 
 // Public config (non-secret values for frontend)
 app.get('/api/config', (_req, res) => {

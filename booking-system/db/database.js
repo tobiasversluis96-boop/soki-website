@@ -578,6 +578,20 @@ async function initializeDB() {
     expires_at               TIMESTAMPTZ NOT NULL
   )`);
 
+  // Buddy's: wederzijdse koppeling tussen members (AVG: boekingen pas zichtbaar
+  // na acceptatie door beide kanten)
+  await pool.query(`CREATE TABLE IF NOT EXISTS buddies (
+    id           SERIAL PRIMARY KEY,
+    requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    accepted_at  TIMESTAMPTZ,
+    UNIQUE(requester_id, addressee_id),
+    CHECK (requester_id <> addressee_id)
+  )`);
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS buddy_hidden BOOLEAN NOT NULL DEFAULT FALSE');
+
   await seedSessionTypes();
   await seedTimeSlots();
   await seedAdmin();
@@ -1583,6 +1597,93 @@ const queries = {
       LIMIT 1
     `, [userId, slotId]);
     return !!rows[0];
+  },
+
+  // ─── Buddy's ──────────────────────────────────────────────────────────────
+  searchBuddyUsers: async (userId, q) => {
+    const like = '%' + q.replace(/[\\%_]/g, '\\$&') + '%';
+    const { rows } = await pool.query(`
+      SELECT u.id, u.name,
+        (SELECT bd.status FROM buddies bd
+          WHERE (bd.requester_id = $1 AND bd.addressee_id = u.id)
+             OR (bd.requester_id = u.id AND bd.addressee_id = $1)
+          LIMIT 1) AS buddy_status
+      FROM users u
+      WHERE u.id <> $1 AND u.buddy_hidden = FALSE AND u.name ILIKE $2
+      ORDER BY u.name
+      LIMIT 10
+    `, [userId, like]);
+    return rows;
+  },
+
+  getBuddyRelations: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT bd.id, bd.status, bd.requester_id, bd.addressee_id,
+             CASE WHEN bd.requester_id = $1 THEN a.name ELSE r.name END AS other_name,
+             CASE WHEN bd.requester_id = $1 THEN bd.addressee_id ELSE bd.requester_id END AS other_id
+      FROM buddies bd
+      JOIN users r ON r.id = bd.requester_id
+      JOIN users a ON a.id = bd.addressee_id
+      WHERE bd.requester_id = $1 OR bd.addressee_id = $1
+      ORDER BY bd.created_at DESC
+    `, [userId]);
+    return rows;
+  },
+
+  getBuddyBetween: async (userA, userB) => {
+    const { rows } = await pool.query(`
+      SELECT * FROM buddies
+      WHERE (requester_id = $1 AND addressee_id = $2)
+         OR (requester_id = $2 AND addressee_id = $1)
+    `, [userA, userB]);
+    return rows[0];
+  },
+
+  createBuddyRequest: async (requesterId, addresseeId) => {
+    const { rows } = await pool.query(
+      `INSERT INTO buddies (requester_id, addressee_id) VALUES ($1, $2)
+       ON CONFLICT (requester_id, addressee_id) DO NOTHING RETURNING *`,
+      [requesterId, addresseeId]
+    );
+    return rows[0];
+  },
+
+  acceptBuddy: async (buddyRowId, userId) => {
+    const { rows } = await pool.query(
+      `UPDATE buddies SET status = 'accepted', accepted_at = NOW()
+       WHERE id = $1 AND addressee_id = $2 AND status = 'pending' RETURNING *`,
+      [buddyRowId, userId]
+    );
+    return rows[0];
+  },
+
+  deleteBuddy: async (buddyRowId, userId) => {
+    const { rows } = await pool.query(
+      `DELETE FROM buddies WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2) RETURNING id`,
+      [buddyRowId, userId]
+    );
+    return !!rows[0];
+  },
+
+  setBuddyHidden: async (userId, hidden) => {
+    await pool.query('UPDATE users SET buddy_hidden = $2 WHERE id = $1', [userId, hidden]);
+  },
+
+  // Aankomende bevestigde boekingen van geaccepteerde buddy's, per slot
+  getBuddyUpcomingSessions: async (userId) => {
+    const { rows } = await pool.query(`
+      SELECT b.time_slot_id AS slot_id, u.name
+      FROM buddies bd
+      JOIN users u ON u.id = CASE WHEN bd.requester_id = $1 THEN bd.addressee_id ELSE bd.requester_id END
+      JOIN bookings b ON b.user_id = u.id AND b.status = 'confirmed'
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      WHERE (bd.requester_id = $1 OR bd.addressee_id = $1)
+        AND bd.status = 'accepted'
+        AND ts.is_cancelled = FALSE
+        AND (ts.date::text || ' ' || ts.end_time)::timestamp > NOW() AT TIME ZONE 'Europe/Amsterdam'
+      ORDER BY ts.date, ts.start_time
+    `, [userId]);
+    return rows;
   },
 
   getUserPunchPasses: async (userId) => {

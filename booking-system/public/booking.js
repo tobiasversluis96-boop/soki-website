@@ -35,6 +35,7 @@
     clientSecret:   null,
     paymentIntentId: null,
     promoCode:      null,
+    buddySlots:     {},
   };
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -169,6 +170,15 @@
   // ─── Init: load session types, then open the full calendar ────────────────
   var allTypes = [];
   function initBooking() {
+    // Aankomende sessies van buddy's ophalen voor de "gaat ook"-badge in de kalender
+    if (state.token) {
+      api('/buddies/sessions').then(function (map) {
+        if (map && !map.error) {
+          state.buddySlots = map;
+          if (calSelectedDate) showSlotsForDate(calSelectedDate);
+        }
+      });
+    }
     api('/session-types').then(function (types) {
       allTypes = types;
       var params = new URLSearchParams(window.location.search);
@@ -365,6 +375,14 @@
         : '';
     }
 
+    function buddyLine(s) {
+      var names = state.buddySlots[s.id];
+      if (!names || !names.length) return '';
+      var shown = names.slice(0, 2).map(esc).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '');
+      return '<div class="slot-item__info" style="color:#2E7D32;font-weight:600;">👥 ' + shown + ' ' +
+        t(names.length === 1 ? 'booking.buddy.going' : 'booking.buddy.going.pl') + '</div>';
+    }
+
     listEl.innerHTML = available.map(function (s) {
       var spotsLeft  = s.spots_left;
       var spotsHtml  = '';
@@ -382,6 +400,7 @@
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
           ambientLine(s) +
+          buddyLine(s) +
           spotsHtml +
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
@@ -396,6 +415,7 @@
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
           artistLine +
           ambientLine(s) +
+          buddyLine(s) +
           '<div class="slot-item__info spots--red">' + t('booking.slot.full') + '</div>' +
         '</div>' +
         '<div>' +
