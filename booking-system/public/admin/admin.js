@@ -581,7 +581,13 @@
       'Boeking annuleren',
       'Weet je zeker dat je boeking #' + id + ' wilt annuleren?',
       async () => {
-        await api('/bookings/' + id + '/cancel', { method: 'PATCH' });
+        const r = await api('/bookings/' + id + '/cancel', { method: 'PATCH' });
+        const parts = [];
+        if (r.refunded) parts.push(formatEur(r.refunded_cents) + ' teruggestort via Stripe');
+        if (r.refund_failed) parts.push('⚠️ LET OP: terugbetaling via Stripe is MISLUKT — controleer het Stripe-dashboard en betaal zo nodig handmatig terug');
+        if (Number(r.credits_restored) > 0) parts.push(Number(r.credits_restored) + ' credit(s) teruggezet');
+        if (Number(r.gift_restored_cents) > 0) parts.push(formatEur(r.gift_restored_cents) + ' teruggezet op cadeaubon');
+        alert('Boeking geannuleerd. ' + (parts.length ? parts.join(' · ') + '.' : 'Geen terugbetaling van toepassing (geen online betaling).') + ' De klant heeft een mail ontvangen.');
         loadBookings();
       }
     );

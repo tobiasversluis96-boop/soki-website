@@ -203,11 +203,13 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   if (booking.status === 'cancelled') return res.status(400).json({ error: 'Booking is already cancelled' });
 
   let refunded = false;
+  let refundFailed = false;
   if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
     try {
       await stripe.refunds.create({ payment_intent: booking.stripe_payment_intent_id });
       refunded = true;
     } catch (stripeErr) {
+      refundFailed = true;
       console.error('Stripe refund failed (non-fatal):', stripeErr.message);
     }
   }
@@ -266,7 +268,14 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
     console.error('Waitlist auto-book error (non-fatal):', wErr.message);
   }
 
-  res.json({ ok: true, refunded });
+  res.json({
+    ok: true,
+    refunded,
+    refund_failed: refundFailed,
+    refunded_cents: refunded ? booking.total_cents : 0,
+    credits_restored: creditsRestored,
+    gift_restored_cents: giftRestored ? giftRestored.restored_cents : 0,
+  });
 });
 
 // ─── Slots ───────────────────────────────────────────────────────────────────
