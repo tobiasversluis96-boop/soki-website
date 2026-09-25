@@ -231,7 +231,7 @@
             <div style="font-size:12px;color:var(--muted)">Sessie: ${formatDate(typeof b.date === 'string' ? b.date.slice(0, 10) : b.date)} ${b.start_time ? b.start_time.slice(0, 5) : ''} · Geboekt: ${fmtDateTime(b.created_at)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
-            <div style="font-size:13px;font-weight:600;">${formatEur(b.total_cents)}</div>
+            <div class="rev-amount" style="font-size:13px;font-weight:600;">${formatEur(b.total_cents)}</div>
             ${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}
             ${statusBadge(b.status)}
           </div>
@@ -245,6 +245,7 @@
 
     // Staff without revenue: show only forward view
     if (!canSeeRevenue) {
+      document.getElementById('revenue-toggle-row').style.display = 'none';
       document.getElementById('revenue-charts').style.display = 'none';
       document.getElementById('stat-grid').style.display = 'none';
       document.getElementById('staff-forward-view').style.display = 'block';
@@ -288,19 +289,23 @@
 
     // ── Stat cards (row 1) ──
     const totalMembers = enhanced.subscriptionPlans.reduce((s, p) => s + p.active_count, 0);
+    const nowMonth   = new Date().toISOString().slice(0, 7);
+    const monthEntry = (enhanced.revenuePerMonth || []).find(m => m.month === nowMonth);
+    const monthRev   = monthEntry ? monthEntry.revenue_cents : 0;
+    const proj       = enhanced.currentMonthProjection;
     document.getElementById('stat-grid').innerHTML = [
       { label: 'Totaal boekingen',  value: data.totalBookings,         sub: 'actief' },
       { label: 'Bevestigd',         value: data.confirmedBookings,      sub: 'betaald' },
-      { label: 'Omzet (totaal)', value: formatEur(data.totalRevenue), sub: [
-          data.giftCardRevenue  > 0 ? `waarvan ${formatEur(data.giftCardRevenue)} cadeaubonnen` : '',
-          data.punchPassRevenue > 0 ? `waarvan ${formatEur(data.punchPassRevenue)} strippenkaarten` : '',
-        ].filter(Boolean).join('<br>') || 'boekingen + cadeaubonnen + strippenkaarten' },
-      { label: 'Abonnementen',      value: formatEur(enhanced.mrr),     sub: totalMembers + ' actieve leden' },
+      { label: 'Omzet deze maand', value: formatEur(monthRev), mask: true, sub: [
+          proj && proj.projected_cents > 0 ? `prognose ${formatEur(proj.projected_cents)}` : '',
+          `totaal ${formatEur(data.totalRevenue)}`,
+        ].filter(Boolean).join('<br>') },
+      { label: 'Abonnementen',      value: formatEur(enhanced.mrr), mask: true, sub: totalMembers + ' actieve leden' },
     ].map(s => `
       <div class="stat-card">
         <div class="stat-card__label">${s.label}</div>
-        <div class="stat-card__value">${s.value}</div>
-        <div class="stat-card__sub">${s.sub}</div>
+        <div class="stat-card__value${s.mask ? ' rev-amount' : ''}">${s.value}</div>
+        <div class="stat-card__sub${s.mask ? ' rev-amount' : ''}">${s.sub}</div>
       </div>
     `).join('');
 
@@ -312,6 +317,11 @@
     renderSubscriptions(enhanced.subscriptionPlans, enhanced.mrr);
     renderMonthlyRevenueChart(enhanced.revenuePerMonth, enhanced.currentMonthProjection);
   }
+
+  document.getElementById('revenue-toggle').addEventListener('click', () => {
+    const hidden = document.getElementById('view-dashboard').classList.toggle('rev-blur');
+    document.getElementById('revenue-toggle').textContent = hidden ? '👁 Omzet tonen' : '🙈 Omzet verbergen';
+  });
 
   function renderRevenueChart(weeks) {
     const maxRev = Math.max(...weeks.map(w => w.revenue_cents), 1);
@@ -501,7 +511,7 @@
       `;
     }).join('') + `<div style="padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:13px;font-weight:700;color:var(--brown);">Totaal (${total} leden)</span>
-      <span style="font-size:16px;font-weight:700;color:var(--terra);">${formatEur(mrr)}/maand</span>
+      <span class="rev-amount" style="font-size:16px;font-weight:700;color:var(--terra);">${formatEur(mrr)}/maand</span>
     </div>`;
   }
 

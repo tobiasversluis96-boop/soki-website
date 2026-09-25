@@ -153,6 +153,8 @@
     .stat-card__label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
     .stat-card__value { font-size: 32px; font-family: 'Barlow Condensed', Arial, sans-serif; font-weight: 700; color: var(--brown); }
     .stat-card__sub   { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    /* Omzet standaard onleesbaar; knop "Omzet tonen" haalt de blur weg */
+    .rev-blur .rev-amount { filter: blur(9px); pointer-events: none; user-select: none; }
 
     /* ── Table ── */
     .table-card {
@@ -640,7 +642,10 @@
       <div class="content-area">
 
         <!-- ── Dashboard view ── -->
-        <div class="view active" id="view-dashboard">
+        <div class="view active rev-blur" id="view-dashboard">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px;" id="revenue-toggle-row">
+            <button class="btn btn--outline btn--sm" id="revenue-toggle">👁 Omzet tonen</button>
+          </div>
           <!-- Stat cards -->
           <div class="stat-grid" id="stat-grid">
             <div class="loading">Laden…</div>
@@ -659,7 +664,7 @@
               <div class="table-card__header">
                 <span class="table-card__title">Omzet per maand (&euro;)</span>
               </div>
-              <div class="chart-wrap">
+              <div class="chart-wrap rev-amount">
                 <div class="chart-inner">
                   <div class="chart-grid" id="monthly-chart-grid">
                     <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
@@ -675,7 +680,7 @@
               <div class="table-card__header">
                 <span class="table-card__title">Omzet per week (&euro;)</span>
               </div>
-              <div class="chart-wrap">
+              <div class="chart-wrap rev-amount">
                 <div class="chart-inner">
                   <div class="chart-grid" id="chart-grid">
                     <div class="chart-grid-line"></div><div class="chart-grid-line"></div>
@@ -1360,7 +1365,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20260925-2"></script>
+<script src="/admin/admin.js?v=20260925-3"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>
