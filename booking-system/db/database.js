@@ -91,7 +91,7 @@ async function seedSessionTypes() {
   await pool.query(sql, ['Everyday Sauna',      'Free-flow access to our sauna and ice baths. Move at your own pace.',                        50,  1500,  15, '#C4704A']);
   await pool.query(sql, ['Extended Sauna',       'Extended session with sauna, ice baths and unlimited lounge time.',                          80,  2000,  15, '#3F6B4A']);
   await pool.query(sql, ['Ambient Sauna',        'Sauna meets immersive DJ set. Cushions, low lighting, deep rest.',                           80,  2500,  14, '#D94D1A']);
-  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  10, '#7A4069']);
+  await pool.query(sql, ['Aufguss / Opgieting',  'Traditional ritual with essential oils and a visualisation or meditation.',                                  90,  2500,  15, '#7A4069']);
 }
 
 async function seedTimeSlots() {
@@ -298,6 +298,8 @@ async function initializeDB() {
   await pool.query(`UPDATE session_types SET description='Traditional ritual with essential oils and a visualisation or meditation.' WHERE name='Aufguss / Opgieting'`);
   // Ambient: 3-uursblok met 80 minuten saunatijd, twee groepen van 14 per avond (sinds sept 2026)
   await pool.query(`UPDATE session_types SET duration_min=80, max_capacity=14 WHERE name='Ambient Sauna'`);
+  // Banken vergroot (sept 2026): standaard 15 plekken, behalve Ambient (blijft 14)
+  await pool.query(`UPDATE session_types SET max_capacity = 15 WHERE name <> 'Ambient Sauna'`);
   // Eenmalige herindeling van de al geplande Ambient-avonden (19 sep t/m 3 okt 2026):
   // 3 slots van 70 min (19:00/20:20/21:40) worden 2 groepen — 20:00-21:20 (sauna
   // eerst) en 21:30-23:00 (sauna als afsluiting). Bestaande boekingen en wachtlijst
@@ -590,6 +592,22 @@ async function initializeDB() {
     UNIQUE(requester_id, addressee_id),
     CHECK (requester_id <> addressee_id)
   )`);
+
+  // Eenmalige datamigraties: draaien exact één keer, ook na herstarts
+  await pool.query(`CREATE TABLE IF NOT EXISTS migration_flags (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ DEFAULT NOW())`);
+  // Banken vergroot (sept 2026): alle al ingeplande sessies naar 15 plekken,
+  // Ambient naar 14. Eenmalig, zodat handmatige aanpassingen daarna blijven staan.
+  const { rows: capFlag } = await pool.query(
+    `INSERT INTO migration_flags (name) VALUES ('capacity_15_sept2026') ON CONFLICT (name) DO NOTHING RETURNING name`);
+  if (capFlag.length) {
+    await pool.query(`
+      UPDATE time_slots ts SET max_capacity = CASE WHEN st.name = 'Ambient Sauna' THEN 14 ELSE 15 END
+      FROM session_types st
+      WHERE st.id = ts.session_type_id
+        AND ts.date >= '2026-09-25'
+        AND ts.is_cancelled = FALSE AND ts.is_private = FALSE
+        AND ts.max_capacity IS NOT NULL`);
+  }
 
   await seedSessionTypes();
   await seedTimeSlots();
