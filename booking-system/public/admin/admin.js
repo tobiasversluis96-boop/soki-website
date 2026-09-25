@@ -824,6 +824,9 @@
     input.addEventListener('change', loadSchedule);
   })();
 
+  let scheduleUsers = {};
+  let notesContext  = 'customers';
+
   async function loadSchedule() {
     const date = document.getElementById('schedule-date').value;
     const slotsEl   = document.getElementById('schedule-slots');
@@ -856,6 +859,7 @@
       if (r.booking_id) {
         slotMap.get(r.slot_id).bookings.push({
           id:            r.booking_id,
+          user_id:       r.user_id,
           customer_name: r.customer_name,
           customer_email:r.customer_email,
           group_size:    r.group_size,
@@ -867,6 +871,11 @@
     });
 
     const slots = [...slotMap.values()];
+
+    scheduleUsers = {};
+    slots.forEach(sl => sl.bookings.forEach(b => {
+      if (b.user_id) scheduleUsers[b.user_id] = { name: b.customer_name, notes: b.admin_notes };
+    }));
 
     if (!slots.length) {
       slotsEl.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px 0">Geen sessies gepland op deze dag.</p>';
@@ -893,7 +902,7 @@
       const bookingRows = sl.bookings.length
         ? sl.bookings.map(b => `
             <div class="checkin-row ${b.checked_in ? 'checkin-row--in' : ''}" id="checkin-row-${b.id}">
-              <div class="checkin-row__info">
+              <div class="checkin-row__info" ${b.user_id ? `style="cursor:pointer" title="Klik om notities te bewerken" onclick="openScheduleNotes(${b.user_id})"` : ''}>
                 <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
                 <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'} · ${b.past_visits === 0 ? '🌱 eerste bezoek' : b.past_visits + '× eerder geweest'}</div>
                 ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}
@@ -1142,9 +1151,22 @@
   window.openNotesModal = function (id) {
     const c = allCustomers.find(x => x.id === id);
     if (!c) return;
+    notesContext = 'customers';
     document.getElementById('notes-modal-title').textContent = 'Notities – ' + c.name;
     document.getElementById('notes-user-id').value  = id;
     document.getElementById('notes-textarea').value = c.admin_notes || '';
+    document.getElementById('notes-error').textContent = '';
+    document.getElementById('notes-modal').classList.add('open');
+  };
+
+  // Vanuit het rooster: zelfde modal, maar na opslaan het rooster verversen
+  window.openScheduleNotes = function (userId) {
+    const u = scheduleUsers[userId];
+    if (!u) return;
+    notesContext = 'schedule';
+    document.getElementById('notes-modal-title').textContent = 'Notities – ' + u.name;
+    document.getElementById('notes-user-id').value  = userId;
+    document.getElementById('notes-textarea').value = u.notes || '';
     document.getElementById('notes-error').textContent = '';
     document.getElementById('notes-modal').classList.add('open');
   };
@@ -1164,7 +1186,7 @@
         body: JSON.stringify({ notes }),
       });
       document.getElementById('notes-modal').classList.remove('open');
-      loadCustomers();
+      if (notesContext === 'schedule') loadSchedule(); else loadCustomers();
     } catch {
       document.getElementById('notes-error').textContent = 'Fout bij opslaan.';
     }

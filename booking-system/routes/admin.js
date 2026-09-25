@@ -72,7 +72,8 @@ function requireStaff(perm) {
         return res.status(401).json({ error: 'Session expired — please log in again' });
       if (!staff.is_active) return res.status(403).json({ error: 'Account deactivated' });
       const permissions = STAFF_PERM_KEYS.filter(k => staff['perm_' + k]);
-      if (perm && !permissions.includes(perm))
+      const needed = perm ? [].concat(perm) : [];
+      if (needed.length && !needed.some(p => permissions.includes(p)))
         return res.status(403).json({ error: 'Permission denied' });
       req.staff = { ...payload, is_active: staff.is_active, permissions };
       next();
@@ -453,7 +454,8 @@ router.get('/customers/:id', requireStaff('customers'), async (req, res) => {
   res.json(bookings);
 });
 
-router.patch('/customers/:id/notes', requireAdmin, async (req, res) => {
+// Ook voor roostermedewerkers: zij zien de notities al en moeten ze kunnen bijwerken
+router.patch('/customers/:id/notes', requireStaff(['customers', 'schedule']), async (req, res) => {
   const { notes } = req.body;
   await queries.updateUserAdminNotes(req.params.id, notes ?? null);
   res.json({ ok: true });
