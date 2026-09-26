@@ -424,6 +424,8 @@ router.get('/analytics', requireStaff('revenue'), async (req, res) => {
 router.get('/schedule', requireStaff('schedule'), async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   const rows = await queries.getScheduleByDate(date);
+  // Privé-notities zijn alleen voor de admin zelf
+  if (!req.admin) rows.forEach(r => { delete r.admin_notes_private; });
   res.json(rows);
 });
 
@@ -437,6 +439,8 @@ router.patch('/bookings/:id/checkin', requireStaff('schedule'), async (req, res)
 
 router.get('/customers', requireStaff('customers'), async (req, res) => {
   const users = await queries.getAllUsers();
+  // Privé-notities zijn alleen voor de admin zelf
+  if (!req.admin) users.forEach(u => { delete u.admin_notes_private; });
   res.json(users);
 });
 
@@ -465,8 +469,11 @@ router.get('/customers/:id', requireStaff('customers'), async (req, res) => {
 
 // Ook voor roostermedewerkers: zij zien de notities al en moeten ze kunnen bijwerken
 router.patch('/customers/:id/notes', requireStaff(['customers', 'schedule']), async (req, res) => {
-  const { notes } = req.body;
+  const { notes, private_notes } = req.body;
   await queries.updateUserAdminNotes(req.params.id, notes ?? null);
+  // Privé-notitie kan alleen de admin zelf lezen én schrijven
+  if (req.admin && private_notes !== undefined)
+    await queries.updateUserPrivateNotes(req.params.id, private_notes ?? null);
   res.json({ ok: true });
 });
 

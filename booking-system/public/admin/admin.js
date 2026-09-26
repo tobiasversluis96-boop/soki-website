@@ -881,6 +881,7 @@
           group_size:    r.group_size,
           checked_in:    r.checked_in,
           admin_notes:   r.admin_notes || '',
+          private_notes: r.admin_notes_private || '',
           past_visits:   r.past_visits || 0,
         });
       }
@@ -890,7 +891,7 @@
 
     scheduleUsers = {};
     slots.forEach(sl => sl.bookings.forEach(b => {
-      if (b.user_id) scheduleUsers[b.user_id] = { name: b.customer_name, notes: b.admin_notes };
+      if (b.user_id) scheduleUsers[b.user_id] = { name: b.customer_name, notes: b.admin_notes, private_notes: b.private_notes };
     }));
 
     if (!slots.length) {
@@ -922,6 +923,7 @@
                 <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
                 <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'} · ${b.past_visits === 0 ? '🌱 eerste bezoek' : b.past_visits + '× eerder geweest'}</div>
                 ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}
+                ${b.private_notes ? `<div class="checkin-row__notes">🔒 ${escapeHtml(b.private_notes)}</div>` : ''}
               </div>
               <button class="checkin-btn ${b.checked_in ? 'checkin-btn--in' : ''}"
                       onclick="toggleCheckin(${b.id}, ${!b.checked_in})">
@@ -1032,7 +1034,7 @@
         <td>${formatDate(c.created_at ? c.created_at.slice(0, 10) : '')}</td>
         <td>${c.booking_count}</td>
         <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:13px">
-          ${c.admin_notes ? escapeHtml(c.admin_notes) : '<em style="opacity:.4">–</em>'}
+          ${[c.admin_notes ? escapeHtml(c.admin_notes) : '', c.admin_notes_private ? '🔒 ' + escapeHtml(c.admin_notes_private) : ''].filter(Boolean).join(' · ') || '<em style="opacity:.4">–</em>'}
         </td>
         <td>
           <button class="btn btn--outline btn--sm" onclick="event.stopPropagation();openNotesModal(${c.id})">Notities</button>
@@ -1164,15 +1166,21 @@
   });
 
   // ─── Notes modal ──────────────────────────────────────────────────────────
+  function fillNotesModal(id, name, notes, privateNotes) {
+    document.getElementById('notes-modal-title').textContent = 'Notities – ' + name;
+    document.getElementById('notes-user-id').value  = id;
+    document.getElementById('notes-textarea').value = notes || '';
+    document.getElementById('notes-textarea-private').value = privateNotes || '';
+    document.getElementById('notes-private-block').style.display = isAdminUser ? '' : 'none';
+    document.getElementById('notes-error').textContent = '';
+    document.getElementById('notes-modal').classList.add('open');
+  }
+
   window.openNotesModal = function (id) {
     const c = allCustomers.find(x => x.id === id);
     if (!c) return;
     notesContext = 'customers';
-    document.getElementById('notes-modal-title').textContent = 'Notities – ' + c.name;
-    document.getElementById('notes-user-id').value  = id;
-    document.getElementById('notes-textarea').value = c.admin_notes || '';
-    document.getElementById('notes-error').textContent = '';
-    document.getElementById('notes-modal').classList.add('open');
+    fillNotesModal(id, c.name, c.admin_notes, c.admin_notes_private);
   };
 
   // Vanuit het rooster: zelfde modal, maar na opslaan het rooster verversen
@@ -1180,11 +1188,7 @@
     const u = scheduleUsers[userId];
     if (!u) return;
     notesContext = 'schedule';
-    document.getElementById('notes-modal-title').textContent = 'Notities – ' + u.name;
-    document.getElementById('notes-user-id').value  = userId;
-    document.getElementById('notes-textarea').value = u.notes || '';
-    document.getElementById('notes-error').textContent = '';
-    document.getElementById('notes-modal').classList.add('open');
+    fillNotesModal(userId, u.name, u.notes, u.private_notes);
   };
 
   document.getElementById('notes-modal-cancel').addEventListener('click', () => {
@@ -1194,12 +1198,14 @@
   document.getElementById('notes-modal-save').addEventListener('click', async () => {
     const id    = document.getElementById('notes-user-id').value;
     const notes = document.getElementById('notes-textarea').value.trim() || null;
+    const body  = { notes };
+    if (isAdminUser) body.private_notes = document.getElementById('notes-textarea-private').value.trim() || null;
     const btn   = document.getElementById('notes-modal-save');
     btn.disabled = true;
     try {
       await api('/customers/' + id + '/notes', {
         method: 'PATCH',
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify(body),
       });
       document.getElementById('notes-modal').classList.remove('open');
       if (notesContext === 'schedule') loadSchedule(); else loadCustomers();

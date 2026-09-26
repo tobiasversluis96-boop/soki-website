@@ -349,6 +349,7 @@ async function initializeDB() {
       AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
       AND ts.start_time = '19:00'`);
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes_private TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS discount_pct INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
@@ -742,7 +743,7 @@ const queries = {
 
   getAllUsers: async () => {
     const { rows } = await pool.query(`
-      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.waiver_signed_at, u.discount_pct,
+      SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.admin_notes_private, u.waiver_signed_at, u.discount_pct,
              COUNT(b.id)::int AS booking_count
       FROM users u
       LEFT JOIN bookings b ON b.user_id = u.id AND b.status != 'cancelled'
@@ -754,6 +755,10 @@ const queries = {
 
   updateUserAdminNotes: async (userId, notes) => {
     await pool.query('UPDATE users SET admin_notes = $1 WHERE id = $2', [notes, userId]);
+  },
+
+  updateUserPrivateNotes: async (userId, notes) => {
+    await pool.query('UPDATE users SET admin_notes_private = $1 WHERE id = $2', [notes, userId]);
   },
 
   setUserDiscount: async (userId, pct) => {
@@ -794,6 +799,7 @@ const queries = {
         u.name        AS customer_name,
         u.email       AS customer_email,
         u.admin_notes,
+        u.admin_notes_private,
         (SELECT COUNT(*)::int FROM bookings pb
           JOIN time_slots pts ON pts.id = pb.time_slot_id
           WHERE pb.user_id = u.id AND pb.status = 'confirmed'
@@ -2105,7 +2111,7 @@ const queries = {
     await pool.query('DELETE FROM messages WHERE user_id = $1', [userId]); // replies cascade
     await pool.query('DELETE FROM waitlist WHERE user_id = $1 AND claimed_booking_id IS NULL', [userId]);
     await pool.query(
-      "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL, token_version = token_version + 1 WHERE id = $1",
+      "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL, admin_notes_private = NULL, token_version = token_version + 1 WHERE id = $1",
       [userId]
     );
   },
