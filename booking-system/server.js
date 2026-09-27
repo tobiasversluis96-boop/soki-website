@@ -131,8 +131,9 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.static(path.join(__dirname, '..'), {
-  index:    'index.html',
-  dotfiles: 'deny',
+  index:      'index.html',
+  dotfiles:   'deny',
+  extensions: ['html'],
 }));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────

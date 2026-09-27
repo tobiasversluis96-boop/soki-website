@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Private rental | SOKI Social Sauna</title>
+  <meta name="description" content="Rent SOKI privately: the whole sauna, ice bath and kantine exclusively for your group. Team outings, birthdays, bachelor parties and events." />
+  <!-- Pagina is nog in opbouw: uit zoekmachines houden tot hij af is -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="styles.css?v=20260902-1" />
+  <link rel="icon" type="image/png" href="images/favicon.png" />
+  <style>
+    /* ===== RENTAL PAGE STYLES ===== */
+    .rental-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: var(--space-lg);
+    }
+
+    .rental-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      box-shadow: 0 4px 18px rgba(74,28,12,0.06);
+    }
+
+    .rental-card .rental-card__icon {
+      font-size: 1.8rem;
+      display: block;
+      margin-bottom: 0.75rem;
+    }
+
+    .rental-card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .rental-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .rental-incl {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.9rem 2rem;
+      margin-top: var(--space-lg);
+      list-style: none;
+      padding: 0;
+    }
+
+    .rental-incl li {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      font-size: 0.98rem;
+    }
+
+    .rental-incl li::before {
+      content: "✦";
+      color: var(--terra);
+      flex-shrink: 0;
+    }
+
+    .rental-practical {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-top: var(--space-lg);
+    }
+
+    .rental-practical h4 {
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--terra);
+      margin-bottom: 0.4rem;
+    }
+
+    .rental-practical p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    /* Contactformulier — zelfde opzet als about.html */
+    .contact-section {
+      padding-block: var(--space-2xl);
+      background: var(--white);
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+
+    .contact-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-block: var(--space-md) var(--space-lg);
+    }
+
+    .contact-details li {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .contact-form textarea {
+      width: 100%;
+      padding: 0.9rem 1.2rem;
+      border: 1.5px solid rgba(242,194,153,0.8);
+      border-radius: 12px;
+      background: var(--white);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .contact-form textarea:focus {
+      border-color: var(--terra);
+      box-shadow: 0 0 0 3px rgba(217,77,26,0.12);
+    }
+
+    .contact-form textarea::placeholder {
+      color: rgba(140,90,68,0.4);
+    }
+
+    .contact-form .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 860px) {
+      .rental-cards,
+      .rental-incl,
+      .contact-grid,
+      .contact-form .form-row {
+        grid-template-columns: 1fr;
+      }
+      .rental-practical {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <img src="images/soki-logo-nav.png" alt="SOKI" class="nav__logo-img" />
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+        <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+        <li><a href="/membership" data-i18n="nav.membership">Membership</a></li>
+        <li><a href="about.html" data-i18n="nav.about">About</a></li>
+        <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+        <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+        <li><a href="/gift-card" data-i18n="nav.giftcard">Gift card</a></li>
+        <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+      </ul>
+      <div class="nav__cta">
+        <a href="/account" class="nav__account" id="navAccount" style="display:none"></a>
+        <button class="lang-toggle" onclick="toggleLang()" aria-label="Switch language">NL</button>
+        <a href="sessions.html" class="btn btn--primary" data-i18n="book.now">Book now</a>
+      </div>
+      <button class="nav__toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="nav__mobile" id="navMobile">
+    <a href="index.html" data-i18n="nav.home">Home</a>
+    <a href="sessions.html" data-i18n="nav.sessions">Sessions</a>
+    <a href="/membership" data-i18n="nav.membership">Membership</a>
+    <a href="about.html" data-i18n="nav.about">About</a>
+    <a href="gallery.html" data-i18n="nav.gallery">Gallery</a>
+    <a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a>
+    <a href="/gift-card" data-i18n="nav.giftcard">Gift card</a>
+    <a href="faq.html" data-i18n="nav.faq">FAQ</a>
+    <a href="/account" id="navAccountMobile" style="display:none" data-i18n="nav.account">My account</a>
+    <a href="sessions.html" class="btn btn--primary" style="margin-top:1rem; justify-content:center;" data-i18n="book.now">Book now</a>
+    <button class="lang-toggle" onclick="toggleLang()" style="margin-top:0.5rem;">NL</button>
+  </div>
+
+
+  <!-- ===== PAGE HERO ===== -->
+  <section class="page-hero">
+    <div class="container">
+      <h1 data-i18n="rental.h1">Rent SOKI</h1>
+      <p data-i18n="rental.hero.p">The whole sauna, exclusively for your group.</p>
+    </div>
+  </section>
+
+
+  <!-- ===== INTRO ===== -->
+  <section class="section">
+    <div class="container" style="max-width:760px;">
+      <span class="eyebrow" data-i18n="rental.intro.eyebrow">Private hire</span>
+      <h2 style="margin-top:0.5rem; margin-bottom:1rem;" data-i18n="rental.intro.h2">The sauna all to yourselves</h2>
+      <p data-i18n="rental.intro.p">Book SOKI privately and you get the entire space to yourselves: the sauna, the ice bath and our kantine. Perfect for team outings, birthdays, bachelor(ette) parties or any occasion that deserves warmth. We are happy to help shape the session — with or without aufguss ritual, music or drinks afterwards.</p>
+    </div>
+  </section>
+
+
+  <!-- ===== FOR WHOM ===== -->
+  <section class="section section--peach">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="rental.for.eyebrow">For whom</span>
+        <h2 data-i18n="rental.for.h2">What can you celebrate at SOKI?</h2>
+      </div>
+      <div class="rental-cards">
+        <div class="rental-card">
+          <span class="rental-card__icon">🤝</span>
+          <h3 data-i18n="rental.for.teams.h">Team outings &amp; companies</h3>
+          <p data-i18n="rental.for.teams.p">Slow down together. A sauna session breaks the ice faster than any workshop — great as a team outing, celebration or reset.</p>
+        </div>
+        <div class="rental-card">
+          <span class="rental-card__icon">🎂</span>
+          <h3 data-i18n="rental.for.friends.h">Birthdays &amp; groups of friends</h3>
+          <p data-i18n="rental.for.friends.p">Celebrate warm. Book the space with your friends and make an evening of it: sauna, ice bath and drinks in the kantine.</p>
+        </div>
+        <div class="rental-card">
+          <span class="rental-card__icon">🎉</span>
+          <h3 data-i18n="rental.for.party.h">Bachelor(ette) parties</h3>
+          <p data-i18n="rental.for.party.p">An original start (or finish) of the day: sweating, plunging and laughing together — no awkward games required.</p>
+        </div>
+        <div class="rental-card">
+          <span class="rental-card__icon">🎙️</span>
+          <h3 data-i18n="rental.for.events.h">Workshops, shoots &amp; events</h3>
+          <p data-i18n="rental.for.events.p">Breathwork, yoga, a podcast recording or a photo shoot: our space lends itself to more than sauna alone. Tell us your idea.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== INCLUDED ===== -->
+  <section class="section">
+    <div class="container" style="max-width:860px;">
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="rental.incl.eyebrow">What you get</span>
+        <h2 data-i18n="rental.incl.h2">Included in your rental</h2>
+      </div>
+      <ul class="rental-incl">
+        <li data-i18n="rental.incl.1">The entire space, exclusively for your group</li>
+        <li data-i18n="rental.incl.2">Sauna (up to 15 people per round) and ice bath</li>
+        <li data-i18n="rental.incl.3">Showers, changing room and lockers</li>
+        <li data-i18n="rental.incl.4">Kantine with (non-)alcoholic drinks</li>
+        <li data-i18n="rental.incl.5">A SOKI host to take care of you</li>
+        <li data-i18n="rental.incl.6">Optional: aufguss ritual, DJ or your own music</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ===== PRACTICAL ===== -->
+  <section class="section section--peach">
+    <div class="container">
+      <div class="section-header">
+        <span class="eyebrow" data-i18n="rental.practical.eyebrow">Good to know</span>
+        <h2 data-i18n="rental.practical.h2">Practical</h2>
+      </div>
+      <div class="rental-practical">
+        <div>
+          <h4 data-i18n="rental.prac.1.h">Group size</h4>
+          <p data-i18n="rental.prac.1.p">Up to 15 people in the sauna at once; larger groups can rotate in rounds.</p>
+        </div>
+        <div>
+          <h4 data-i18n="rental.prac.2.h">Duration</h4>
+          <p data-i18n="rental.prac.2.p">Most rentals last 2 to 4 hours — we decide together what fits your plans.</p>
+        </div>
+        <div>
+          <h4 data-i18n="rental.prac.3.h">When</h4>
+          <p data-i18n="rental.prac.3.p">Also outside our regular opening hours, for example in the morning or on Monday/Tuesday.</p>
+        </div>
+        <div>
+          <h4 data-i18n="rental.prac.4.h">Price</h4>
+          <p data-i18n="rental.prac.4.p">Depends on group size, duration and extras. Tell us your plans and we will send a proposal.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== REQUEST FORM ===== -->
+  <section class="contact-section">
+    <div class="container">
+      <div class="contact-grid">
+
+        <div>
+          <span class="eyebrow" data-i18n="rental.form.eyebrow">Request</span>
+          <h2 style="margin-top:0.5rem; margin-bottom:var(--space-md);" data-i18n="rental.form.h2">Request a private rental</h2>
+          <p data-i18n="rental.form.p">Tell us what you have in mind and we will get back to you within two working days.</p>
+          <ul class="contact-details">
+            <li><span>📍</span><span>Europalaan 2B, 3526 KS Utrecht (just outside Vechtclub XL)</span></li>
+            <li><span>✉️</span><a href="mailto:hello@sokisocialsauna.nl" style="color:var(--terra);">hello@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <form class="contact-form" id="rentalForm" onsubmit="handleRental(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rental-name" data-i18n="about.name.label">Your name</label>
+                <input type="text" id="rental-name" name="name" placeholder="Your name" autocomplete="name" required data-i18n-placeholder="about.name.label" />
+              </div>
+              <div class="form-group">
+                <label for="rental-email" data-i18n="email.label">Email address</label>
+                <input type="email" id="rental-email" name="email" placeholder="your@email.com" autocomplete="email" required data-i18n-placeholder="email.placeholder" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rental-date" data-i18n="rental.form.date">Preferred date (optional)</label>
+                <input type="date" id="rental-date" name="date" />
+              </div>
+              <div class="form-group">
+                <label for="rental-size" data-i18n="rental.form.size">Group size (estimate)</label>
+                <input type="number" id="rental-size" name="size" min="1" max="200" placeholder="12" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="rental-msg" style="font-family:var(--font-sub); font-size:0.7rem; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);" data-i18n="rental.form.msg">Your plans</label>
+              <textarea id="rental-msg" name="message" placeholder="Tell us about the occasion, what you have in mind, and anything else we should know…" rows="5" required data-i18n-placeholder="rental.form.msg.ph"></textarea>
+            </div>
+            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+              <input type="text" id="rental-website" name="website" tabindex="-1" autocomplete="off" />
+            </div>
+            <div>
+              <button type="submit" class="btn btn--primary" data-i18n="rental.form.send">Send request</button>
+              <p id="rental-error" style="display:none;color:#c0392b;margin-top:0.75rem;font-size:0.85rem;"></p>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
+          <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.navigate">Navigate</h4>
+          <ul>
+            <li><a href="index.html" data-i18n="nav.home">Home</a></li>
+            <li><a href="sessions.html" data-i18n="nav.sessions">Sessions</a></li>
+            <li><a href="about.html" data-i18n="nav.about">About</a></li>
+            <li><a href="gallery.html" data-i18n="nav.gallery">Gallery</a></li>
+            <li><a href="newsletter.html" data-i18n="nav.newsletter">Newsletter</a></li>
+            <li><a href="faq.html" data-i18n="nav.faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h4 data-i18n="footer.findus">Find us</h4>
+          <ul>
+            <li><a href="#">Europalaan 2B</a></li>
+            <li><a href="#">3526 KS Utrecht</a></li>
+            <li><a href="#">Wed–Thu: 16:00–21:00</a></li>
+            <li><a href="#">Fri: 16:00–23:00</a></li>
+            <li><a href="#">Sat: 10:00–23:00</a></li>
+            <li><a href="#">Sun: 10:00–20:00</a></li>
+            <li><a href="mailto:hello@sokisocialsauna.nl">hello@sokisocialsauna.nl</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <p>© 2026 SOKI Social Sauna · KVK: 42063987 · <a href="/terms" style="color:inherit;text-decoration:underline;">Terms &amp; conditions</a> · <a href="/privacy" style="color:inherit;text-decoration:underline;">Privacy policy</a> · <a href="/cookies" style="color:inherit;text-decoration:underline;">Cookies</a></p>
+        <div class="footer__social">
+          <a href="#">Instagram</a>
+          <a href="newsletter.html">Newsletter</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="translations.js?v=20260927-2"></script>
+  <script src="main.js?v=20260920-1"></script>
+  <script>
+    /* ===== VERHUUR-AANVRAAG — gebruikt bestaand contact-endpoint ===== */
+    function handleRental(e) {
+      e.preventDefault();
+      var isNL = (localStorage.getItem('soki_lang') || 'en') === 'nl';
+      var btn = document.querySelector('#rentalForm button[type="submit"]');
+      var errEl = document.getElementById('rental-error');
+      btn.disabled = true;
+      errEl.style.display = 'none';
+
+      var parts = ['[Verhuur-aanvraag via /rental]'];
+      var date = document.getElementById('rental-date').value;
+      var size = document.getElementById('rental-size').value;
+      if (date) parts.push('Voorkeursdatum: ' + date);
+      if (size) parts.push('Groepsgrootte: ' + size);
+      parts.push('', document.getElementById('rental-msg').value);
+
+      fetch('/api/messages/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    document.getElementById('rental-name').value,
+          email:   document.getElementById('rental-email').value,
+          message: parts.join('\n'),
+          website: document.getElementById('rental-website').value,
+        }),
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+      }).then(function (res) {
+        if (!res.ok) throw new Error(res.d && res.d.error || '');
+        document.getElementById('rentalForm').innerHTML =
+          '<div style="padding: 1.5rem 0;">' +
+          '<p style="font-family:var(--font-display); font-size:1.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--terra);">' +
+          (isNL ? 'Aanvraag verzonden!' : 'Request sent!') + '</p>' +
+          '<p style="color:var(--text-muted); margin-top:0.5rem;">' +
+          (isNL ? 'Dankjewel — we nemen binnen twee werkdagen contact met je op.' : 'Thanks — we\'ll be in touch within two working days.') + '</p>' +
+          '</div>';
+      }).catch(function (err) {
+        btn.disabled = false;
+        errEl.textContent = err.message || (isNL ? 'Versturen is niet gelukt. Probeer het later opnieuw of mail hello@sokisocialsauna.nl.' : 'Something went wrong. Please try again later or email hello@sokisocialsauna.nl.');
+        errEl.style.display = 'block';
+      });
+    }
+  </script>
+
+</body>
+</html>
