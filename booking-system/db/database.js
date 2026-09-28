@@ -833,11 +833,14 @@ const queries = {
   getUserBookings: async (userId) => {
     const { rows } = await pool.query(`
       SELECT b.id, b.group_size, b.status, b.total_cents, b.credits_used, b.created_at,
+             b.punch_pass_id, b.paid_cents,
+             pp.price_cents AS punch_pass_price_cents,
              ts.date, ts.start_time, ts.end_time,
              st.name AS session_name
       FROM bookings b
       JOIN time_slots ts ON ts.id = b.time_slot_id
       JOIN session_types st ON st.id = ts.session_type_id
+      LEFT JOIN punch_passes pp ON pp.id = b.punch_pass_id
       WHERE b.user_id = $1
       ORDER BY ts.date DESC, ts.start_time DESC
     `, [userId]);
@@ -1181,7 +1184,8 @@ const queries = {
              u.name AS customer_name, u.email AS customer_email,
              ts.date, ts.start_time, ts.end_time,
              st.name AS session_name,
-             COALESCE(dc.code, pdc.code) AS discount_code
+             COALESCE(dc.code, pdc.code) AS discount_code,
+             pp.price_cents AS punch_pass_price_cents
       FROM bookings b
       JOIN users u ON u.id = b.user_id
       JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -1189,6 +1193,7 @@ const queries = {
       LEFT JOIN discount_code_uses dcu ON dcu.booking_id = b.id
       LEFT JOIN discount_codes dc  ON dc.id  = dcu.code_id
       LEFT JOIN discount_codes pdc ON pdc.id = b.pending_discount_code_id
+      LEFT JOIN punch_passes pp ON pp.id = b.punch_pass_id
       WHERE 1=1
     `;
     const params = [];

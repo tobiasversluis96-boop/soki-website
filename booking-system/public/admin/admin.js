@@ -36,6 +36,18 @@
     return '€' + (cents / 100).toFixed(2).replace('.', ',');
   }
 
+  // Creditsboekingen tonen credits + bron i.p.v. het geldbedrag
+  function formatBookingPayment(b) {
+    const credits = parseFloat(b.credits_used) || 0;
+    if (credits <= 0) return formatEur(b.total_cents);
+    const n = String(credits).replace('.', ',');
+    const bron = b.punch_pass_id
+      ? (Number(b.punch_pass_price_cents) === 0 ? 'gratis credits' : 'strippenkaart')
+      : 'abonnement';
+    const paid = Number(b.paid_cents) || 0;
+    return `${n} credit${credits === 1 ? '' : 's'} <span style="font-size:11px;color:var(--muted)">(${bron})</span>${paid > 0 ? ' + ' + formatEur(paid) : ''}`;
+  }
+
   // Escape ALL user-controlled values before interpolating into innerHTML (XSS)
   function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -231,7 +243,7 @@
             <div style="font-size:12px;color:var(--muted)">Sessie: ${formatDate(typeof b.date === 'string' ? b.date.slice(0, 10) : b.date)} ${b.start_time ? b.start_time.slice(0, 5) : ''} · Geboekt: ${fmtDateTime(b.created_at)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
-            <div class="rev-amount" style="font-size:13px;font-weight:600;">${formatEur(b.total_cents)}</div>
+            <div class="rev-amount" style="font-size:13px;font-weight:600;">${formatBookingPayment(b)}</div>
             ${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}
             ${statusBadge(b.status)}
           </div>
@@ -573,7 +585,7 @@
         <td>${formatDate(b.date)}</td>
         <td>${b.start_time}–${b.end_time}</td>
         <td>${b.group_size}</td>
-        <td>${formatEur(b.total_cents)}${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}</td>
+        <td>${formatBookingPayment(b)}${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}</td>
         <td>${statusBadge(b.status)}</td>
         <td>
           ${b.status !== 'cancelled' && isAdminUser
@@ -1152,7 +1164,7 @@
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${formatDate(b.date)}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${b.start_time}–${b.end_time}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${b.group_size}</td>
-              <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${formatEur(b.total_cents)}</td>
+              <td style="padding:10px 10px;border-bottom:1px solid var(--border)">${formatBookingPayment(b)}</td>
               <td style="padding:10px 10px;border-bottom:1px solid var(--border)"><span class="status-badge status-badge--${cls}">${label}</span></td>
             </tr>`;
           }).join('')}
