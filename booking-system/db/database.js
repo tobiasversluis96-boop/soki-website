@@ -1399,7 +1399,10 @@ const queries = {
     await pool.query('UPDATE bookings SET reminder_sent = TRUE WHERE id = $1', [bookingId]);
   },
 
-  // Bedankmail na eerste bezoek: gebruikers van wie de eerste check-in gisteren was
+  // Bedankmail na eerste bezoek: gebruikers van wie de eerste check-in gisteren was.
+  // Bewust exact één dag: de mailtekst zegt "gisteren", dus geen inhaalslag voor
+  // oudere bezoeken. ts.date is VARCHAR, dus de datum als tekst vergelijken
+  // (YYYY-MM-DD sorteert correct) — een echte date ernaast laat de query crashen.
   getUsersNeedingFirstVisitThanks: async () => {
     const { rows } = await pool.query(`
       SELECT u.id, u.name AS customer_name, u.email AS customer_email
@@ -1408,7 +1411,7 @@ const queries = {
       JOIN time_slots ts ON ts.id = b.time_slot_id
       WHERE u.first_visit_thanks_sent = FALSE
       GROUP BY u.id, u.name, u.email
-      HAVING MIN(ts.date) = (NOW() AT TIME ZONE 'Europe/Amsterdam')::date - 1
+      HAVING MIN(ts.date) = ((NOW() AT TIME ZONE 'Europe/Amsterdam')::date - 1)::text
     `);
     return rows;
   },
