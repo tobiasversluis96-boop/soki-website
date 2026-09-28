@@ -311,6 +311,8 @@
       { label: 'Omzet deze maand', value: formatEur(monthRev), mask: true, sub: [
           proj && proj.projected_cents > 0 ? `prognose ${formatEur(proj.projected_cents)}` : '',
           `totaal ${formatEur(data.totalRevenue)}`,
+          `waarvan ${formatEur(data.giftCardRevenue)} cadeaubonnen`,
+          `en ${formatEur(data.punchPassRevenue)} strippenkaarten`,
         ].filter(Boolean).join('<br>') },
       { label: 'Abonnementen',      value: formatEur(enhanced.mrr), mask: true, sub: totalMembers + ' actieve leden' },
     ].map(s => `
