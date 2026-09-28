@@ -1420,6 +1420,22 @@ const queries = {
     await pool.query('UPDATE users SET first_visit_thanks_sent = TRUE WHERE id = $1', [userId]);
   },
 
+  // Eenmalige inhaalactie: de cron crashte van 16 t/m 27 sept 2026, dus deze groep
+  // heeft de bedankmail gemist. Zij krijgen template 26 (zonder "gisteren"-tekst).
+  // Zodra iedereen gevlagd is, is deze query leeg; de code kan daarna weg.
+  getUsersNeedingFirstVisitCatchup: async () => {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.name AS customer_name, u.email AS customer_email
+      FROM users u
+      JOIN bookings b ON b.user_id = u.id AND b.status = 'confirmed' AND b.checked_in = TRUE
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      WHERE u.first_visit_thanks_sent = FALSE
+      GROUP BY u.id, u.name, u.email
+      HAVING MIN(ts.date) BETWEEN '2026-09-16' AND '2026-09-26'
+    `);
+    return rows;
+  },
+
   // Messages
   createFeedbackMessage: async ({ userId, guestName, guestEmail, rating, subject, body }) => {
     const { rows } = await pool.query(

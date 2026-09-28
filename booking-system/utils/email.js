@@ -259,6 +259,20 @@ async function sendFirstVisitThanksEmail({ customer_name, customer_email }) {
   );
 }
 
+// Eenmalige inhaalversie van de bedankmail (template 26, zonder "gisteren"-tekst)
+// voor eerste bezoeken 16-26 sept 2026 die door de cron-crash zijn gemist.
+async function sendFirstVisitCatchupEmail({ customer_name, customer_email }) {
+  await send(
+    26,
+    customer_email,
+    customer_name,
+    {
+      CUSTOMER_NAME:  customer_name,
+      CUSTOMER_EMAIL: customer_email,
+    }
+  );
+}
+
 // Bevestiging als de gast zélf annuleert (template 8)
 async function sendSelfCancelledEmail({ customer_name, customer_email, session_name, date, start_time, end_time, refund_amount_cents = 0, refund_pct = 0, credits_restored = 0 }) {
   await send(
@@ -512,6 +526,7 @@ module.exports = {
   sendMessageReply,
   sendMilestoneEmail,
   sendFirstVisitThanksEmail,
+  sendFirstVisitCatchupEmail,
   sendGiftCardEmail,
   sendGiftCardPurchaseEmail,
   sendSelfCancelledEmail,

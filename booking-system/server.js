@@ -574,6 +574,20 @@ setInterval(async () => {
         console.error(`First-visit thanks failed for user #${user.id}:`, err.message);
       }
     }
+
+    // Eenmalige inhaalactie (gemiste groep 16-26 sept 2026 door cron-crash);
+    // query is leeg zodra iedereen gevlagd is — code kan daarna verwijderd worden.
+    const catchupUsers = await queries.getUsersNeedingFirstVisitCatchup();
+    for (const user of catchupUsers) {
+      try {
+        const { sendFirstVisitCatchupEmail } = require('./utils/email');
+        await sendFirstVisitCatchupEmail(user);
+        await queries.markFirstVisitThanksSent(user.id);
+        console.log(`✓ First-visit catch-up sent: user #${user.id}`);
+      } catch (err) {
+        console.error(`First-visit catch-up failed for user #${user.id}:`, err.message);
+      }
+    }
   } catch (err) {
     console.error('First-visit thanks cron error:', err.message);
   }
