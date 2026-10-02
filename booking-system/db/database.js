@@ -808,7 +808,7 @@ const queries = {
         ) AS past_visits
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
-      LEFT JOIN bookings b  ON b.time_slot_id = ts.id AND b.status != 'cancelled'
+      LEFT JOIN bookings b  ON b.time_slot_id = ts.id AND b.status = 'confirmed'
       LEFT JOIN users u     ON u.id = b.user_id
       WHERE ts.date = $1 AND ts.is_cancelled = FALSE
       ORDER BY ts.start_time, b.id
