@@ -78,6 +78,28 @@ router.post('/purchase', async (req, res) => {
   });
 });
 
+// Activeer een cadeaubon op basis van een geslaagde intent en verstuur de
+// mails. Idempotent: activateGiftCard wint alleen op status 'pending', dus de
+// webhook en de browser-/confirm kunnen dit allebei veilig aanroepen.
+async function activateGiftCardFromIntent(intent) {
+  const cardId = parseInt(intent.metadata.gift_card_id);
+  if (isNaN(cardId)) return null;
+  const activated = await queries.activateGiftCard(cardId, intent.id);
+  if (!activated) return null; // al geactiveerd (of onbekend)
+
+  try {
+    await sendGiftCardEmail(activated);
+  } catch (e) {
+    console.error('Gift card email error:', e.message);
+  }
+  try {
+    await sendGiftCardPurchaseEmail(activated);
+  } catch (e) {
+    console.error('Gift card purchase email error:', e.message);
+  }
+  return activated;
+}
+
 // POST /api/gift-cards/confirm  — called after Stripe payment succeeds on frontend
 router.post('/confirm', async (req, res) => {
   const { payment_intent_id } = req.body;
@@ -90,6 +112,10 @@ router.post('/confirm', async (req, res) => {
     console.error('Gift card confirm: Stripe retrieve failed:', err.message);
     return res.status(400).json({ error: 'Betaling niet gevonden.' });
   }
+  // Async betaalmethodes (SEPA, trage iDEAL): nog niet geslaagd maar ook niet
+  // mislukt — de webhook activeert de bon zodra de betaling definitief is.
+  if (intent.status === 'processing')
+    return res.json({ ok: false, processing: true });
   if (intent.status !== 'succeeded')
     return res.status(400).json({ error: 'Betaling niet geslaagd.' });
 
@@ -97,23 +123,11 @@ router.post('/confirm', async (req, res) => {
   if (isNaN(cardId)) return res.status(400).json({ error: 'Cadeaubon niet gevonden.' });
   const card   = await queries.getGiftCardById(cardId);
   if (!card) return res.status(404).json({ error: 'Cadeaubon niet gevonden.' });
-  if (card.status === 'active') return res.json({ ok: true, code: card.code }); // idempotent
+  if (card.status !== 'pending') return res.json({ ok: true, code: card.code }); // idempotent
 
-  const activated = await queries.activateGiftCard(cardId, payment_intent_id);
-
-  try {
-    await sendGiftCardEmail(activated);
-  } catch (e) {
-    console.error('Gift card email error:', e.message);
-  }
-
-  try {
-    await sendGiftCardPurchaseEmail(activated);
-  } catch (e) {
-    console.error('Gift card purchase email error:', e.message);
-  }
-
-  res.json({ ok: true, code: activated.code });
+  const activated = await activateGiftCardFromIntent(intent);
+  res.json({ ok: true, code: (activated || card).code });
 });
 
 module.exports = router;
+module.exports.activateGiftCardFromIntent = activateGiftCardFromIntent;

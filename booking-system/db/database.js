@@ -289,65 +289,85 @@ async function migrateWeeklyPrice() {
 
 async function initializeDB() {
   await pool.query(SCHEMA);
-  // Sessietype hernoemd (sept 2026): Social Sauna heet voortaan Extended Sauna
-  await pool.query(`UPDATE session_types SET name='Extended Sauna' WHERE name='Social Sauna'`);
-  // Fix session type prices/durations if they were seeded with wrong values
-  await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Extended Sauna'`);
-  await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
-  // Salt scrub is uit het Aufguss-programma; live DB had nog de oude omschrijving
-  await pool.query(`UPDATE session_types SET description='Traditional ritual with essential oils and a visualisation or meditation.' WHERE name='Aufguss / Opgieting'`);
-  // Ambient: 3-uursblok met 80 minuten saunatijd, twee groepen van 14 per avond (sinds sept 2026)
-  await pool.query(`UPDATE session_types SET duration_min=80, max_capacity=14 WHERE name='Ambient Sauna'`);
-  // Banken vergroot (sept 2026): standaard 15 plekken, behalve Ambient (blijft 14)
-  await pool.query(`UPDATE session_types SET max_capacity = 15 WHERE name <> 'Ambient Sauna'`);
+  // Eenmalige datamigraties lopen via migration_flags: zonder vlag draaiden de
+  // blokken hieronder bij élke herstart opnieuw en draaiden ze handmatige
+  // prijs-/capaciteitsaanpassingen in het admin-paneel telkens terug.
+  await pool.query(`CREATE TABLE IF NOT EXISTS migration_flags (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ DEFAULT NOW())`);
+  async function runOnce(flagName, fn) {
+    const { rows } = await pool.query(
+      `INSERT INTO migration_flags (name) VALUES ($1) ON CONFLICT (name) DO NOTHING RETURNING name`, [flagName]);
+    if (rows.length) await fn();
+  }
+
+  // NB: de runOnce-migratieblokken staan verderop, ná alle CREATE TABLE/ALTER
+  // statements — ze verwijzen o.a. naar de waitlist-tabel die hier nog niet
+  // bestaat op een verse database.
+  async function runSept2026Migrations() {
+  await runOnce('session_type_fixes_sept2026', async () => {
+    // Sessietype hernoemd (sept 2026): Social Sauna heet voortaan Extended Sauna
+    await pool.query(`UPDATE session_types SET name='Extended Sauna' WHERE name='Social Sauna'`);
+    // Fix session type prices/durations if they were seeded with wrong values
+    await pool.query(`UPDATE session_types SET duration_min=80, price_cents=2000 WHERE name='Extended Sauna'`);
+    await pool.query(`UPDATE session_types SET duration_min=90, price_cents=2500 WHERE name='Aufguss / Opgieting'`);
+    // Salt scrub is uit het Aufguss-programma; live DB had nog de oude omschrijving
+    await pool.query(`UPDATE session_types SET description='Traditional ritual with essential oils and a visualisation or meditation.' WHERE name='Aufguss / Opgieting'`);
+    // Ambient: 3-uursblok met 80 minuten saunatijd, twee groepen van 14 per avond (sinds sept 2026)
+    await pool.query(`UPDATE session_types SET duration_min=80, max_capacity=14 WHERE name='Ambient Sauna'`);
+    // Banken vergroot (sept 2026): standaard 15 plekken, behalve Ambient (blijft 14)
+    await pool.query(`UPDATE session_types SET max_capacity = 15 WHERE name <> 'Ambient Sauna'`);
+  });
+
   // Eenmalige herindeling van de al geplande Ambient-avonden (19 sep t/m 3 okt 2026):
   // 3 slots van 70 min (19:00/20:20/21:40) worden 2 groepen — 20:00-21:20 (sauna
   // eerst) en 21:30-23:00 (sauna als afsluiting). Bestaande boekingen en wachtlijst
   // gaan naar groep 1. Datumbereik is bewust begrensd zodat nieuw gegenereerde
   // slots nooit geraakt worden.
-  await pool.query(`
-    UPDATE bookings b SET time_slot_id = g1.id
-    FROM time_slots old
-    JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
-    JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
-                      AND g1.date = old.date AND g1.start_time = '19:00'
-    WHERE b.time_slot_id = old.id
-      AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND old.start_time IN ('20:20', '21:40')`);
-  await pool.query(`
-    UPDATE waitlist w SET time_slot_id = g1.id
-    FROM time_slots old
-    JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
-    JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
-                      AND g1.date = old.date AND g1.start_time = '19:00'
-    WHERE w.time_slot_id = old.id
-      AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND old.start_time IN ('20:20', '21:40')
-      AND NOT EXISTS (SELECT 1 FROM waitlist w2
-                      WHERE w2.user_id = w.user_id AND w2.time_slot_id = g1.id)`);
-  await pool.query(`
-    DELETE FROM waitlist w USING time_slots ts, session_types st
-    WHERE w.time_slot_id = ts.id AND ts.session_type_id = st.id
-      AND st.name = 'Ambient Sauna'
-      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND ts.start_time = '21:40'`);
-  await pool.query(`
-    DELETE FROM time_slots ts USING session_types st
-    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
-      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND ts.start_time = '21:40'`);
-  await pool.query(`
-    UPDATE time_slots ts SET start_time = '21:30', end_time = '23:00', max_capacity = 14
-    FROM session_types st
-    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
-      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND ts.start_time = '20:20'`);
-  await pool.query(`
-    UPDATE time_slots ts SET start_time = '20:00', end_time = '21:20', max_capacity = 14
-    FROM session_types st
-    WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
-      AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
-      AND ts.start_time = '19:00'`);
+  await runOnce('ambient_reslot_sept2026', async () => {
+    await pool.query(`
+      UPDATE bookings b SET time_slot_id = g1.id
+      FROM time_slots old
+      JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
+      JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
+                        AND g1.date = old.date AND g1.start_time = '19:00'
+      WHERE b.time_slot_id = old.id
+        AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND old.start_time IN ('20:20', '21:40')`);
+    await pool.query(`
+      UPDATE waitlist w SET time_slot_id = g1.id
+      FROM time_slots old
+      JOIN session_types st ON st.id = old.session_type_id AND st.name = 'Ambient Sauna'
+      JOIN time_slots g1 ON g1.session_type_id = old.session_type_id
+                        AND g1.date = old.date AND g1.start_time = '19:00'
+      WHERE w.time_slot_id = old.id
+        AND old.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND old.start_time IN ('20:20', '21:40')
+        AND NOT EXISTS (SELECT 1 FROM waitlist w2
+                        WHERE w2.user_id = w.user_id AND w2.time_slot_id = g1.id)`);
+    await pool.query(`
+      DELETE FROM waitlist w USING time_slots ts, session_types st
+      WHERE w.time_slot_id = ts.id AND ts.session_type_id = st.id
+        AND st.name = 'Ambient Sauna'
+        AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND ts.start_time = '21:40'`);
+    await pool.query(`
+      DELETE FROM time_slots ts USING session_types st
+      WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+        AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND ts.start_time = '21:40'`);
+    await pool.query(`
+      UPDATE time_slots ts SET start_time = '21:30', end_time = '23:00', max_capacity = 14
+      FROM session_types st
+      WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+        AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND ts.start_time = '20:20'`);
+    await pool.query(`
+      UPDATE time_slots ts SET start_time = '20:00', end_time = '21:20', max_capacity = 14
+      FROM session_types st
+      WHERE ts.session_type_id = st.id AND st.name = 'Ambient Sauna'
+        AND ts.date BETWEEN '2026-09-19' AND '2026-10-03'
+        AND ts.start_time = '19:00'`);
+  });
+  }
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes_private TEXT');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT');
@@ -466,7 +486,6 @@ async function initializeDB() {
   // token_version makes JWTs revocable: bump it and all outstanding tokens die
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
-  await pool.query('ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
 
   // Append-only security audit log — never UPDATE or DELETE rows in this table
   await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
@@ -553,6 +572,8 @@ async function initializeDB() {
     perm_messages  BOOLEAN    DEFAULT FALSE,
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`);
+  // Ná de CREATE: op een verse database bestaat staff_users hierboven nog niet
+  await pool.query('ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
 
   await pool.query(`CREATE TABLE IF NOT EXISTS user_milestones (
     id           SERIAL PRIMARY KEY,
@@ -594,8 +615,10 @@ async function initializeDB() {
     CHECK (requester_id <> addressee_id)
   )`);
 
-  // Eenmalige datamigraties: draaien exact één keer, ook na herstarts
-  await pool.query(`CREATE TABLE IF NOT EXISTS migration_flags (name TEXT PRIMARY KEY, done_at TIMESTAMPTZ DEFAULT NOW())`);
+  // Eenmalige datamigraties: draaien exact één keer, ook na herstarts.
+  // Nu pas uitvoeren: alle tabellen waar ze naar verwijzen bestaan inmiddels.
+  await runSept2026Migrations();
+
   // Banken vergroot (sept 2026): alle al ingeplande sessies naar 15 plekken,
   // Ambient naar 14. Eenmalig, zodat handmatige aanpassingen daarna blijven staan.
   const { rows: capFlag } = await pool.query(
@@ -608,6 +631,21 @@ async function initializeDB() {
         AND ts.date >= '2026-09-25'
         AND ts.is_cancelled = FALSE AND ts.is_private = FALSE
         AND ts.max_capacity IS NOT NULL`);
+  }
+
+  // Veelgebruikte lookups (bezetting per slot, boekingen per klant) hadden
+  // geen enkele index — elke capaciteitscheck was een volledige table scan.
+  await pool.query('CREATE INDEX IF NOT EXISTS bookings_time_slot_id_idx ON bookings (time_slot_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS bookings_user_id_idx ON bookings (user_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS bookings_payment_intent_idx ON bookings (stripe_payment_intent_id)');
+
+  // Max 1 lopend abonnement per gebruiker — afgedwongen op DB-niveau zodat twee
+  // parallel afgeronde Checkout-sessies nooit allebei een abonnement opleveren.
+  try {
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_one_active_per_user_idx
+      ON subscriptions (user_id) WHERE status IN ('active', 'past_due')`);
+  } catch (e) {
+    console.warn('subscriptions_one_active_per_user_idx niet aangemaakt (bestaande dubbelen?):', e.message);
   }
 
   await seedSessionTypes();
@@ -1013,14 +1051,15 @@ const queries = {
 
   // Gebruik registreren ná geslaagde betaling. De teller is een guard tegen max_uses,
   // maar een al betaalde korting wordt nooit teruggedraaid — alleen luid gelogd.
-  redeemDiscountCode: async (codeId, userId, { bookingId = null, punchPassId = null } = {}) => {
-    const { rows } = await pool.query(
+  // `db` kan een transactie-client zijn (redeemPendingPromo) of de pool.
+  redeemDiscountCode: async (codeId, userId, { bookingId = null, punchPassId = null } = {}, db = pool) => {
+    const { rows } = await db.query(
       `UPDATE discount_codes SET use_count = use_count + 1
        WHERE id = $1 AND (max_uses IS NULL OR use_count < max_uses) RETURNING id`,
       [codeId]
     );
     if (!rows[0]) console.error(`Kortingscode ${codeId}: max_uses overschreden bij inwisselen (boeking ${bookingId}, pass ${punchPassId})`);
-    await pool.query(
+    await db.query(
       'INSERT INTO discount_code_uses (code_id, user_id, booking_id, punch_pass_id) VALUES ($1, $2, $3, $4)',
       [codeId, userId, bookingId, punchPassId]
     );
@@ -1028,61 +1067,76 @@ const queries = {
 
   // Redeem a gift card / milestone code attached to a booking, exactly once.
   // The atomic clear-and-return makes concurrent calls (webhook + /confirm) safe:
-  // only the first caller gets the pending values back.
+  // only the first caller gets the pending values back. Alles in één transactie:
+  // een crash halverwege mag nooit de pending-velden wissen zonder dat de bon
+  // gedebiteerd en applied_gift_card_id (nodig voor refunds) gezet is.
   redeemPendingPromo: async (bookingId) => {
-    const { rows } = await pool.query(
-      `UPDATE bookings b
-       SET pending_gift_card_id = NULL, pending_milestone_id = NULL, pending_discount_cents = NULL,
-           pending_discount_code_id = NULL
-       FROM (SELECT id, user_id, pending_gift_card_id, pending_milestone_id, pending_discount_cents,
-                    pending_discount_code_id
-             FROM bookings WHERE id = $1 FOR UPDATE) old
-       WHERE b.id = old.id
-         AND (old.pending_gift_card_id IS NOT NULL OR old.pending_milestone_id IS NOT NULL
-              OR old.pending_discount_code_id IS NOT NULL)
-       RETURNING old.user_id,
-                 old.pending_gift_card_id AS gift_card_id,
-                 old.pending_milestone_id AS milestone_id,
-                 old.pending_discount_cents AS discount_cents,
-                 old.pending_discount_code_id AS discount_code_id`,
-      [bookingId]
-    );
-    const p = rows[0];
-    if (!p) return null;
-    if (p.milestone_id) {
-      const { rows: ms } = await pool.query(
-        'UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1 AND redeemed_at IS NULL RETURNING id',
-        [p.milestone_id]
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `UPDATE bookings b
+         SET pending_gift_card_id = NULL, pending_milestone_id = NULL, pending_discount_cents = NULL,
+             pending_discount_code_id = NULL
+         FROM (SELECT id, user_id, pending_gift_card_id, pending_milestone_id, pending_discount_cents,
+                      pending_discount_code_id
+               FROM bookings WHERE id = $1 FOR UPDATE) old
+         WHERE b.id = old.id
+           AND (old.pending_gift_card_id IS NOT NULL OR old.pending_milestone_id IS NOT NULL
+                OR old.pending_discount_code_id IS NOT NULL)
+         RETURNING old.user_id,
+                   old.pending_gift_card_id AS gift_card_id,
+                   old.pending_milestone_id AS milestone_id,
+                   old.pending_discount_cents AS discount_cents,
+                   old.pending_discount_code_id AS discount_code_id`,
+        [bookingId]
       );
-      if (!ms[0]) console.error(`Milestone ${p.milestone_id}: al ingewisseld bij bevestigen van boeking ${bookingId}`);
-    }
-    if (p.discount_code_id) {
-      await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId });
-    }
-    if (p.gift_card_id) {
-      const { rows: debited } = await pool.query(
-        `UPDATE gift_cards
-         SET remaining_amount_cents = remaining_amount_cents - $2,
-             status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
-         WHERE id = $1 AND remaining_amount_cents >= $2
-         RETURNING id`,
-        [p.gift_card_id, p.discount_cents || 0]
-      );
-      if (!debited[0]) {
-        // Saldo intussen elders gebruikt: rest afboeken en luid loggen — de
-        // reserveringscheck bij het aanmaken hoort dit normaal te voorkomen.
-        console.error(`Gift card ${p.gift_card_id}: onvoldoende saldo bij inwisselen voor boeking ${bookingId}; rest afgeboekt`);
-        await pool.query(
-          `UPDATE gift_cards SET remaining_amount_cents = 0, status = 'depleted' WHERE id = $1`,
-          [p.gift_card_id]
+      const p = rows[0];
+      if (!p) {
+        await client.query('COMMIT');
+        return null;
+      }
+      if (p.milestone_id) {
+        const { rows: ms } = await client.query(
+          'UPDATE user_milestones SET redeemed_at = NOW() WHERE id = $1 AND redeemed_at IS NULL RETURNING id',
+          [p.milestone_id]
+        );
+        if (!ms[0]) console.error(`Milestone ${p.milestone_id}: al ingewisseld bij bevestigen van boeking ${bookingId}`);
+      }
+      if (p.discount_code_id) {
+        await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId }, client);
+      }
+      if (p.gift_card_id) {
+        const { rows: debited } = await client.query(
+          `UPDATE gift_cards
+           SET remaining_amount_cents = remaining_amount_cents - $2,
+               status = CASE WHEN remaining_amount_cents - $2 <= 0 THEN 'depleted' ELSE status END
+           WHERE id = $1 AND remaining_amount_cents >= $2
+           RETURNING id`,
+          [p.gift_card_id, p.discount_cents || 0]
+        );
+        if (!debited[0]) {
+          // Saldo intussen elders gebruikt: rest afboeken en luid loggen — de
+          // reserveringscheck bij het aanmaken hoort dit normaal te voorkomen.
+          console.error(`Gift card ${p.gift_card_id}: onvoldoende saldo bij inwisselen voor boeking ${bookingId}; rest afgeboekt`);
+          await client.query(
+            `UPDATE gift_cards SET remaining_amount_cents = 0, status = 'depleted' WHERE id = $1`,
+            [p.gift_card_id]
+          );
+        }
+        await client.query(
+          'UPDATE bookings SET applied_gift_card_id = $2, applied_gift_discount_cents = $3 WHERE id = $1',
+          [bookingId, p.gift_card_id, p.discount_cents || 0]
         );
       }
-      await pool.query(
-        'UPDATE bookings SET applied_gift_card_id = $2, applied_gift_discount_cents = $3 WHERE id = $1',
-        [bookingId, p.gift_card_id, p.discount_cents || 0]
-      );
+      await client.query('COMMIT');
+      return p;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-    return p;
   },
 
   // Stort de ingewisselde cadeaubon-portie van een boeking terug (pct = deel in %).
@@ -1232,16 +1286,19 @@ const queries = {
     return rows;
   },
 
-  findOverlappingSlot: async (date, startTime, endTime) => {
+  // excludeId: bij het bijwerken van een bestaand slot telt het slot zelf niet
+  // als overlap.
+  findOverlappingSlot: async (date, startTime, endTime, excludeId = null) => {
     const { rows } = await pool.query(`
       SELECT ts.id, ts.start_time, ts.end_time, st.name AS session_name
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       WHERE ts.date = $1 AND ts.is_cancelled = FALSE
         AND ts.start_time < $3 AND ts.end_time > $2
+        AND ($4::int IS NULL OR ts.id != $4)
       ORDER BY ts.start_time
       LIMIT 1
-    `, [date, startTime, endTime]);
+    `, [date, startTime, endTime, excludeId]);
     return rows[0] || null;
   },
 
@@ -1526,14 +1583,28 @@ const queries = {
     return rows[0] || null;
   },
 
+  // Retourneert null als de gebruiker al een lopend abonnement heeft (de
+  // partial unique index vangt de race van twee parallel afgeronde Checkouts);
+  // de webhook moet het dubbele Stripe-abonnement dan direct opzeggen.
   createSubscription: async (userId, planId, stripeSubId, stripeCustomerId, creditsPerMonth, periodEnd) => {
     const creditsRemaining = creditsPerMonth; // null for unlimited
     const resetAt = periodEnd;
-    const { rows } = await pool.query(`
-      INSERT INTO subscriptions (user_id, plan_id, stripe_subscription_id, stripe_customer_id, credits_remaining, credits_reset_at, current_period_end, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING *
-    `, [userId, planId, stripeSubId, stripeCustomerId, creditsRemaining, resetAt, periodEnd]);
-    return rows[0];
+    try {
+      const { rows } = await pool.query(`
+        INSERT INTO subscriptions (user_id, plan_id, stripe_subscription_id, stripe_customer_id, credits_remaining, credits_reset_at, current_period_end, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING *
+      `, [userId, planId, stripeSubId, stripeCustomerId, creditsRemaining, resetAt, periodEnd]);
+      return rows[0];
+    } catch (err) {
+      if (err.code === '23505') {
+        // Zelfde Stripe-abonnement nogmaals (webhook-retry): idempotent, geef de bestaande rij terug
+        const { rows: existing } = await pool.query(
+          'SELECT * FROM subscriptions WHERE stripe_subscription_id = $1', [stripeSubId]);
+        if (existing[0]) return existing[0];
+        return null; // ander abonnement al actief voor deze gebruiker: duplicaat
+      }
+      throw err;
+    }
   },
 
   updateSubscriptionFromWebhook: async (stripeSubId, status, periodEnd, cancelAtPeriodEnd) => {
@@ -1988,9 +2059,10 @@ const queries = {
     return rows[0] || null;
   },
 
-  // Waiver
+  // Waiver — COALESCE: een tweede ondertekening mag de oorspronkelijke
+  // (juridisch relevante) tekendatum nooit overschrijven.
   signWaiver: async (userId) => {
-    await pool.query('UPDATE users SET waiver_signed_at = NOW() WHERE id = $1', [userId]);
+    await pool.query('UPDATE users SET waiver_signed_at = COALESCE(waiver_signed_at, NOW()) WHERE id = $1', [userId]);
   },
 
   // Waitlist
@@ -2045,11 +2117,15 @@ const queries = {
     return rows[0] || null;
   },
 
+  // Atomair: alleen de eerste claim wint. Twee gelijktijdige annuleringen op
+  // hetzelfde slot zouden anders dezelfde betaalde entry allebei promoveren
+  // (twee boekingen op één betaling). Retourneert of de claim gelukt is.
   claimWaitlistEntry: async (waitlistId, bookingId) => {
-    await pool.query(
-      'UPDATE waitlist SET claimed_booking_id = $2, notified_at = NOW() WHERE id = $1',
+    const { rows } = await pool.query(
+      'UPDATE waitlist SET claimed_booking_id = $2, notified_at = NOW() WHERE id = $1 AND claimed_booking_id IS NULL RETURNING id',
       [waitlistId, bookingId]
     );
+    return !!rows[0];
   },
 
   leaveWaitlist: async (userId, slotId) => {
@@ -2113,6 +2189,26 @@ const queries = {
     await pool.query('UPDATE waitlist SET notified_at = NOW() WHERE id = $1', [waitlistId]);
   },
 
+  // Betaalde wachtlijstplekken waarvan de sessie al begonnen is en die nooit
+  // tot een boeking zijn gepromoveerd: die horen automatisch terugbetaald te
+  // worden (de klant is "charged upfront, refunded if never claimed").
+  getExpiredPaidWaitlistEntries: async () => {
+    const { rows } = await pool.query(`
+      SELECT w.id, w.user_id, w.total_cents, w.stripe_payment_intent_id,
+             u.name AS customer_name, u.email AS customer_email,
+             ts.date, ts.start_time, ts.end_time, st.name AS session_name
+      FROM waitlist w
+      JOIN users u ON u.id = w.user_id
+      JOIN time_slots ts ON ts.id = w.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE w.stripe_payment_status = 'paid'
+        AND w.claimed_booking_id IS NULL
+        AND w.stripe_payment_intent_id IS NOT NULL
+        AND (ts.date::text || ' ' || ts.start_time)::timestamp < NOW() AT TIME ZONE 'Europe/Amsterdam'
+    `);
+    return rows;
+  },
+
   getUserWaitlist: async (userId) => {
     const { rows } = await pool.query(`
       SELECT w.id, w.time_slot_id, w.created_at, w.group_size, w.total_cents, w.stripe_payment_status, w.claimed_booking_id,
@@ -2132,8 +2228,53 @@ const queries = {
     // GDPR: remove personal content, anonymise the account row.
     // Bookings stay (anonymised via the users row) for the 7-year fiscal
     // retention duty; gift cards are financial records and stay too.
+
+    // Lopend abonnement éérst bij Stripe opzeggen: na anonimisering is er geen
+    // account meer om vanuit op te zeggen en zou Stripe eeuwig blijven incasseren.
+    // Een Stripe-fout (behalve 'bestaat niet meer') blokkeert de verwijdering,
+    // zodat de klant het opnieuw kan proberen i.p.v. stilletjes door te betalen.
+    const { rows: subs } = await pool.query(
+      `SELECT id, stripe_subscription_id FROM subscriptions
+       WHERE user_id = $1 AND status IN ('active', 'past_due', 'paused') AND stripe_subscription_id IS NOT NULL`,
+      [userId]
+    );
+    for (const sub of subs) {
+      try {
+        await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+      } catch (e) {
+        if (e.code !== 'resource_missing') throw e;
+      }
+      await pool.query("UPDATE subscriptions SET status = 'expired', cancel_at_period_end = FALSE WHERE id = $1", [sub.id]);
+    }
+
+    // Vooruitbetaalde, nog niet geclaimde wachtlijstplekken terugbetalen vóór
+    // verwijdering — anders verdwijnt het enige record dat recht op refund geeft.
+    const { rows: paidWaits } = await pool.query(
+      `SELECT id, stripe_payment_intent_id FROM waitlist
+       WHERE user_id = $1 AND claimed_booking_id IS NULL
+         AND stripe_payment_status = 'paid' AND stripe_payment_intent_id IS NOT NULL`,
+      [userId]
+    );
+    for (const w of paidWaits) {
+      try {
+        await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
+        await pool.query("UPDATE waitlist SET stripe_payment_status = 'refunded' WHERE id = $1", [w.id]);
+      } catch (e) {
+        if (e.code === 'charge_already_refunded') {
+          await pool.query("UPDATE waitlist SET stripe_payment_status = 'refunded' WHERE id = $1", [w.id]);
+        } else {
+          // Rij bewust laten staan (de delete hieronder slaat 'paid' over)
+          console.error(`Wachtlijst-refund bij accountverwijdering mislukt (entry ${w.id}):`, e.message);
+        }
+      }
+    }
+
     await pool.query('DELETE FROM messages WHERE user_id = $1', [userId]); // replies cascade
-    await pool.query('DELETE FROM waitlist WHERE user_id = $1 AND claimed_booking_id IS NULL', [userId]);
+    await pool.query(
+      `DELETE FROM waitlist WHERE user_id = $1 AND claimed_booking_id IS NULL
+         AND stripe_payment_status IS DISTINCT FROM 'paid'`,
+      [userId]
+    );
     await pool.query(
       "UPDATE users SET name = 'Deleted User', email = 'deleted_' || id || '@deleted.local', password_hash = 'DELETED', google_id = NULL, admin_notes = NULL, admin_notes_private = NULL, token_version = token_version + 1 WHERE id = $1",
       [userId]
@@ -2367,9 +2508,12 @@ const queries = {
     return rows[0] || null;
   },
 
+  // Atomair pending → active: alleen de eerste aanroep (browser-/confirm óf
+  // webhook) krijgt de rij terug en mag de e-mails versturen.
   activateGiftCard: async (id, stripe_payment_intent_id) => {
     const { rows } = await pool.query(
-      `UPDATE gift_cards SET status = 'active', stripe_payment_intent_id = $2 WHERE id = $1 RETURNING *`,
+      `UPDATE gift_cards SET status = 'active', stripe_payment_intent_id = $2
+       WHERE id = $1 AND status = 'pending' RETURNING *`,
       [id, stripe_payment_intent_id]
     );
     return rows[0] || null;

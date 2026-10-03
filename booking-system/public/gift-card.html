@@ -280,12 +280,26 @@
       body: JSON.stringify({ payment_intent_id: window._gcPaymentIntentId }),
     }).then(function (r) { return r.json(); }).then(function (res) {
       if (res.error) return showError(res.error);
+      if (res.processing) return showProcessingNotice();
       trackGiftCardPurchase();
       document.getElementById('gc-form').style.display = 'none';
       document.getElementById('success-box').style.display = 'block';
       document.getElementById('success-code').textContent = res.code;
     });
   });
+
+  // Async betaalmethode (SEPA, trage iDEAL): betaling is onderweg — de bon
+  // wordt door de webhook geactiveerd en per e-mail bezorgd zodra het geld
+  // binnen is. Geen foutmelding tonen, en zeker geen "undefined"-code.
+  function showProcessingNotice() {
+    document.getElementById('gc-form').style.display = 'none';
+    var box = document.getElementById('success-box');
+    box.style.display = 'block';
+    box.innerHTML = '<h2>Betaling wordt verwerkt…</h2>' +
+      '<p>Zodra je betaling binnen is (bij SEPA kan dat enkele dagen duren), ' +
+      'ontvangen jij en de ontvanger de cadeaubon automatisch per e-mail. ' +
+      'Je hoeft niets meer te doen.</p>';
+  }
 
   function trackGiftCardPurchase() {
     if (!window.sokiTrack) return;
@@ -312,6 +326,8 @@
         document.getElementById('gc-form').style.display = 'none';
         document.getElementById('success-box').style.display = 'block';
         document.getElementById('success-code').textContent = res.code;
+      } else if (res.processing) {
+        showProcessingNotice();
       }
     });
   }

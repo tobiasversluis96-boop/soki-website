@@ -149,7 +149,9 @@
       if (navEl) { navEl.textContent = user.name.split(' ')[0]; navEl.style.display = ''; }
 
       api('/bookings').then(function (bookings) {
-        var now = new Date().toISOString().slice(0, 10);
+        // Sessiedatums zijn NL-tijd; toISOString (UTC) telt tussen middernacht
+        // en ~02:00 NL de sessies van vandaag nog bij "gisteren"
+        var now = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
         var pending  = bookings.filter(function (b) { return b.status === 'pending' && b.date >= now; });
         var upcoming = bookings.filter(function (b) { return b.date >= now && b.status === 'confirmed'; });
         var past     = bookings.filter(function (b) { return b.date < now || b.status === 'cancelled'; });

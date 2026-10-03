@@ -40,11 +40,6 @@ router.post('/', requireAuth, async (req, res) => {
   if (!slot_id || !group_size)
     return res.status(400).json({ error: 'slot_id and group_size are required' });
 
-  // Max 1 open boeking per gebruiker: eerdere onafgemaakte boekingen worden
-  // vervangen door de nieuwe. Loopt de betaling van een oude boeking nog
-  // (of is die al gelukt), dan blijft die staan.
-  await supersedePendingBookings(req.user.userId);
-
   const slot = await queries.getSlotById(slot_id);
   if (!slot)             return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_cancelled) return res.status(400).json({ error: 'This slot has been cancelled' });
@@ -55,7 +50,19 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'This session has already started and can no longer be booked' });
 
   const capacity  = slot.max_capacity || slot.type_capacity;
-  const spotsLeft = capacity - slot.booked;
+  // Eigen oude pending boekingen op dit slot tellen niet mee als bezet: die
+  // worden vlak vóór het aanmaken vervangen (supersedePendingBookings). De
+  // supersede zelf gebeurt bewust pas ná alle validaties, zodat een afgewezen
+  // request nooit iemands lopende boeking annuleert.
+  const { rows: ownPendingRows } = await getPool().query(
+    `SELECT COALESCE(SUM(group_size), 0)::int AS seats FROM bookings
+     WHERE user_id = $1 AND time_slot_id = $2 AND status = 'pending'
+       AND COALESCE(is_walkin, FALSE) = FALSE
+       AND (hold_until IS NULL OR hold_until > NOW())
+       AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')`,
+    [req.user.userId, slot_id]
+  );
+  const spotsLeft = capacity - slot.booked + ownPendingRows[0].seats;
 
   if (slot.is_private) {
     // Privéverhuur: één boeking claimt het hele slot voor de afgesproken totaalprijs;
@@ -140,13 +147,14 @@ router.post('/', requireAuth, async (req, res) => {
       if (giftCard.status === 'expired' || new Date(giftCard.expires_at) < new Date())
         return res.status(400).json({ error: 'Deze cadeaubon is verlopen.' });
       // Saldo dat al gereserveerd is op andere lopende (pending) boekingen telt niet
-      // mee als beschikbaar — voorkomt dubbel besteden van dezelfde bon.
+      // mee als beschikbaar — voorkomt dubbel besteden van dezelfde bon. Eigen
+      // pendings tellen niet mee: die worden zo direct gesuperseded.
       const { rows: reservedRows } = await getPool().query(
         `SELECT COALESCE(SUM(pending_discount_cents), 0)::int AS reserved
          FROM bookings
-         WHERE pending_gift_card_id = $1 AND status = 'pending'
+         WHERE pending_gift_card_id = $1 AND status = 'pending' AND user_id != $2
            AND (hold_until IS NULL OR hold_until > NOW())`,
-        [giftCard.id]
+        [giftCard.id, req.user.userId]
       );
       const available = giftCard.remaining_amount_cents - reservedRows[0].reserved;
       if (available <= 0)
@@ -162,22 +170,23 @@ router.post('/', requireAuth, async (req, res) => {
         if (slot.is_private)
           return res.status(400).json({ error: 'Promotiecodes zijn niet geldig voor privéverhuur.' });
         const { rows: msPending } = await getPool().query(
-          `SELECT 1 FROM bookings WHERE pending_milestone_id = $1 AND status = 'pending'
+          `SELECT 1 FROM bookings WHERE pending_milestone_id = $1 AND status = 'pending' AND user_id != $2
              AND (hold_until IS NULL OR hold_until > NOW()) LIMIT 1`,
-          [milestoneEntry.id]
+          [milestoneEntry.id, req.user.userId]
         );
         if (msPending[0])
           return res.status(400).json({ error: 'Deze code is al in gebruik voor een andere boeking.' });
-        const { MILESTONES } = require('../utils/milestones');
-        const milestoneDef = MILESTONES.find(m => m.visits === milestoneEntry.milestone);
-        if (milestoneDef) {
-          if (milestoneEntry.milestone === 5) {
-            if (group_size < 2)
-              return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
-            discountCents = slot.price_cents;
-          } else if (milestoneEntry.milestone === 25) {
-            discountCents = grossTotal;
-          }
+        if (milestoneEntry.milestone === 5) {
+          if (group_size < 2)
+            return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
+          discountCents = slot.price_cents;
+        } else if (milestoneEntry.milestone === 25) {
+          discountCents = grossTotal;
+        } else {
+          // Mijlpaal 10 (sauna hat) en 50 (VIP) zijn geen boekingskorting: niet
+          // als €0-korting aan de boeking hangen — de code zou bij betaling
+          // verbrand worden zonder dat de klant er iets voor terugkrijgt.
+          return res.status(400).json({ error: 'Deze beloning wissel je niet in bij een boeking — neem hem mee naar de balie of mail ons.' });
         }
       } else {
         // Try admin-managed discount code
@@ -196,6 +205,13 @@ router.post('/', requireAuth, async (req, res) => {
   }
 
   const totalCents = isFree ? 0 : Math.max(0, grossTotal - cotenantCents + kantineCents - discountCents);
+
+  // Max 1 open boeking per gebruiker: eerdere onafgemaakte boekingen worden
+  // vervangen door de nieuwe. Loopt de betaling van een oude boeking nog
+  // (of is die al gelukt), dan blijft die staan. Dit gebeurt pas nu, ná alle
+  // validaties: een afgewezen request laat bestaande boekingen ongemoeid.
+  await supersedePendingBookings(req.user.userId);
+
   let booking;
   try {
     booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents, isFree ? 0 : kantineCents);
@@ -326,7 +342,12 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     : String(booking.date).slice(0, 10);
   const timeStr = String(booking.start_time).length === 5 ? booking.start_time + ':00' : String(booking.start_time);
   const sessionDatetime = new Date(`${dateStr}T${timeStr}`);
-  const hoursUntil = (sessionDatetime - Date.now()) / 36e5;
+  // date/start_time zijn NL-wandkloktijd, maar de server draait in UTC: Date.now()
+  // vergelijken zou hoursUntil 1-2 uur opblazen (verkeerde refund-tier, en
+  // annuleren tot 2 uur ná de start). Vergelijk daarom met "nu" in dezelfde
+  // NL-wandklok, net als de boekingscheck bovenaan dit bestand.
+  const nowNL = new Date(new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace(' ', 'T'));
+  const hoursUntil = (sessionDatetime - nowNL) / 36e5;
   if (Number.isNaN(hoursUntil))
     return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
   const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
@@ -404,19 +425,26 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   try {
     const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
     if (paidWaiter) {
-      // Create a confirmed booking for them (payment already collected)
+      // Create a booking for them (payment already collected), then claim the
+      // waitlist entry atomically. Verliezen we de claim-race (twee annuleringen
+      // tegelijk), dan wordt de zojuist aangemaakte boeking weer geannuleerd —
+      // anders ontstaan er twee boekingen op dezelfde betaling.
       const newBooking = await queries.createBooking(
         paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
       );
-      const pool = require('../db/database').getPool();
-      await pool.query(
-        "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
-        [newBooking.id, paidWaiter.stripe_payment_intent_id]
-      );
-      await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
-      const fullBooking = await queries.getBookingById(newBooking.id);
-      await sendAutoBookedEmail(fullBooking);
-      console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+      const claimed = await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
+      if (!claimed) {
+        await queries.cancelBooking(newBooking.id);
+      } else {
+        const pool = require('../db/database').getPool();
+        await pool.query(
+          "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
+          [newBooking.id, paidWaiter.stripe_payment_intent_id]
+        );
+        const fullBooking = await queries.getBookingById(newBooking.id);
+        await sendAutoBookedEmail(fullBooking);
+        console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+      }
     } else {
       // No paid waiters — notify first unpaid waitlist user
       const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
@@ -477,44 +505,15 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   // Unlimited membership = 0 credits
   const creditsToUse = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
 
-  // Deduct credits + confirm booking in a single transaction
-  const pool = getPool();
-  const client = await pool.connect();
-  let punchPassId = null;
-  try {
-    await client.query('BEGIN');
-    if (creditsToUse > 0) {
-      // Eerst het abonnement proberen, anders één strippenkaart (vroegst-verlopend) met genoeg saldo
-      const { rows } = await client.query(
-        'UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN (\'active\', \'past_due\') AND credits_remaining >= $1 RETURNING *',
-        [creditsToUse, req.user.userId]
-      );
-      if (!rows[0]) {
-        const pp = await client.query(`
-          UPDATE punch_passes SET credits_remaining = credits_remaining - $1
-          WHERE id = (
-            SELECT id FROM punch_passes
-            WHERE user_id = $2 AND credits_remaining >= $1 AND expires_at > NOW()
-            ORDER BY expires_at LIMIT 1
-          ) RETURNING id
-        `, [creditsToUse, req.user.userId]);
-        if (!pp.rows[0]) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Insufficient credits' });
-        }
-        punchPassId = pp.rows[0].id;
-      }
-    }
-    await client.query(
-      "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3 WHERE id = $1",
-      [bookingId, creditsToUse, punchPassId]
-    );
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
+  // Credits afschrijven + bevestigen via de kanonieke, idempotente helper: die
+  // locket de boekingsrij en bevestigt alléén een pending boeking. Een dubbel-
+  // klik of een race met de betaalwebhook kan zo nooit dubbel afschrijven.
+  const result = await queries.confirmBookingWithCredits(bookingId, req.user.userId, creditsToUse, null, null);
+  if (result.insufficient)
+    return res.status(400).json({ error: 'Insufficient credits' });
+  if (result.already) {
+    if (result.ok) return res.json({ ok: true, booking_id: bookingId, already_confirmed: true });
+    return res.status(400).json({ error: 'Booking already processed' });
   }
 
   // Redeem any promo attached at booking time (idempotent, no-op if none)

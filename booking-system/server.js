@@ -127,7 +127,16 @@ app.use('/api/buddies/search', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, st
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
-  if (req.path.toLowerCase().startsWith('/booking-system')) return res.status(404).end();
+  // express.static decodeert het pad vóór het resolven, dus deze guard moet
+  // op het gedecodeerde pad matchen — anders omzeilt bijv. /%62ooking-system
+  // de check en is de hele backend-broncode downloadbaar.
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(req.path);
+  } catch {
+    return res.status(400).end(); // malformed percent-encoding
+  }
+  if (decodedPath.toLowerCase().startsWith('/booking-system')) return res.status(404).end();
   next();
 });
 app.use(express.static(path.join(__dirname, '..'), {
@@ -596,16 +605,45 @@ setInterval(async () => {
 // ─── Pending booking cleanup (runs every 15 minutes) ─────────────────────────
 setInterval(async () => {
   try {
+    // Niet opruimen zolang de betaling geslaagd of nog onderweg is: SEPA-intents
+    // staan dagen op 'processing' en worden pas via de webhook bevestigd.
     const { rowCount } = await getPool().query(`
       UPDATE bookings SET status = 'cancelled'
       WHERE status = 'pending'
         AND created_at < NOW() - INTERVAL '1 hour'
+        AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')
     `);
     if (rowCount > 0) console.log(`✓ Cleaned up ${rowCount} expired pending booking(s)`);
   } catch (err) {
     console.error('Pending cleanup error:', err.message);
   }
 }, 15 * 60 * 1000); // every 15 minutes
+
+// ─── Wachtlijst-refund (runs every hour) ─────────────────────────────────────
+// Vooruitbetaalde wachtlijstplekken die nooit tot een boeking zijn gepromoveerd
+// worden na afloop van de sessie automatisch terugbetaald — de belofte bij het
+// aanmelden is "charged upfront, refunded if never claimed".
+setInterval(async () => {
+  try {
+    const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const entries = await queries.getExpiredPaidWaitlistEntries();
+    for (const entry of entries) {
+      try {
+        await stripe.refunds.create({ payment_intent: entry.stripe_payment_intent_id });
+        await queries.markWaitlistRefunded(entry.id);
+        console.log(`✓ Wachtlijst-entry #${entry.id} terugbetaald (sessie voorbij, nooit geclaimd)`);
+      } catch (err) {
+        if (err.code === 'charge_already_refunded') {
+          await queries.markWaitlistRefunded(entry.id);
+        } else {
+          console.error(`Wachtlijst-refund mislukt voor entry #${entry.id}:`, err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Waitlist refund cron error:', err.message);
+  }
+}, 60 * 60 * 1000); // every hour
 
 // ─── Walk-in hold cleanup (runs every minute) ────────────────────────────────
 setInterval(async () => {

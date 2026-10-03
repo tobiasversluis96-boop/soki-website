@@ -4,11 +4,27 @@
  */
 
 const express = require('express');
+const jwt     = require('jsonwebtoken');
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
 const { sendMessageReceivedEmail, sendContactFormEmail } = require('../utils/email');
 
 const router = express.Router();
+
+// Publieke formulieren koppelen een bericht alleen aan een account als de
+// inzender daar aantoonbaar zelf ingelogd is. Koppelen op het ingevulde
+// e-mailadres zou iedereen berichten op andermans account laten zetten.
+function authenticatedUserId(req) {
+  const header = req.headers.authorization || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
+    return payload.type === 'customer' ? payload.userId : null;
+  } catch {
+    return null;
+  }
+}
 
 // POST /api/messages — customer sends a message
 router.post('/', requireAuth, async (req, res) => {
@@ -55,11 +71,7 @@ router.post('/feedback', async (req, res) => {
   const guestName  = String(name || '').trim() || null;
   const guestEmail = String(email || '').trim().toLowerCase() || null;
 
-  let userId = null;
-  if (guestEmail) {
-    const user = await queries.getUserByEmail(guestEmail);
-    if (user) userId = user.id;
-  }
+  const userId = authenticatedUserId(req);
 
   const subject = `Feedback: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (${stars}/5)`;
   const msg = await queries.createFeedbackMessage({
@@ -83,9 +95,7 @@ router.post('/contact', async (req, res) => {
   if (body.length > 5000 || guestName.length > 200 || guestEmail.length > 200)
     return res.status(400).json({ error: 'Bericht te lang.' });
 
-  let userId = null;
-  const user = await queries.getUserByEmail(guestEmail);
-  if (user) userId = user.id;
+  const userId = authenticatedUserId(req);
 
   const msg = await queries.createFeedbackMessage({
     userId, guestName, guestEmail, rating: null,

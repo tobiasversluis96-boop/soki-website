@@ -193,7 +193,9 @@
           if (!slot || slot.error) return;
           var matchType = types.find(function (t_) { return t_.id === slot.session_type_id || t_.id === slot.type_id; });
           if (!matchType) return;
-          var todayStr = new Date().toISOString().slice(0, 10);
+          // Sessiedatums zijn NL-tijd; toISOString (UTC) wijst tussen 00:00 en
+          // ~02:00 NL nog naar gisteren
+          var todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
           if (slot.is_cancelled || slot.is_full || slot.date < todayStr) return;
           state.sessionType = matchType;
           state.slot = slot; // ná loadCalendar (die wist state.slot)
@@ -274,9 +276,11 @@
   }
 
   function renderCalGrid(year, month, slots) {
-    var now       = new Date();
-    var todayStr  = now.toISOString().slice(0, 10);
-    var nowTime   = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    // Sessiedata/-tijden zijn NL-wandklok: "vandaag" en "nu" dus ook in NL-tijd
+    // bepalen (toISOString is UTC en loopt 's nachts een dag achter)
+    var nowNL     = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+    var todayStr  = nowNL.slice(0, 10);
+    var nowTime   = nowNL.slice(11, 16);
 
     // Build maps: date → available slot count / any (incl. full) slot count
     var available = {};
@@ -343,9 +347,9 @@
     dateEl.textContent = fmtDate(dateStr);
     panel.style.display = 'block';
 
-    var now     = new Date();
-    var todayStr = now.toISOString().slice(0, 10);
-    var nowTime  = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    var nowNL    = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+    var todayStr = nowNL.slice(0, 10);
+    var nowTime  = nowNL.slice(11, 16);
 
     var daySlots = calAllSlots.filter(function (s) {
       if (s.date !== dateStr) return false;

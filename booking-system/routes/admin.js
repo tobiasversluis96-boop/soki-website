@@ -202,6 +202,15 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'cancelled') return res.status(400).json({ error: 'Booking is already cancelled' });
 
+  // Annulering atomair claimen vóórdat er gerefund wordt: annuleert de klant
+  // zelf op hetzelfde moment, dan zouden beide paden refunden en komt de klant
+  // boven de 100% uit (deelrefund klant + volledige rest-refund admin).
+  const { rows: claimed } = await require('../db/database').getPool().query(
+    "UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status != 'cancelled' RETURNING id",
+    [req.params.id]
+  );
+  if (!claimed[0]) return res.status(400).json({ error: 'Booking is already cancelled' });
+
   let refunded = false;
   let refundFailed = false;
   if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
@@ -213,8 +222,6 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
       console.error('Stripe refund failed (non-fatal):', stripeErr.message);
     }
   }
-
-  await queries.cancelBooking(req.params.id);
 
   let creditsRestored = 0;
   if (Number(booking.credits_used) > 0) {
@@ -237,18 +244,25 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   try {
     const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
     if (paidWaiter) {
+      // Boeking aanmaken en daarna de wachtlijst-entry atomair claimen; bij een
+      // verloren claim-race (gelijktijdige annulering elders) wordt de nieuwe
+      // boeking weer geannuleerd — nooit twee boekingen op één betaling.
       const newBooking = await queries.createBooking(
         paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
       );
-      const pool = require('../db/database').getPool();
-      await pool.query(
-        "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
-        [newBooking.id, paidWaiter.stripe_payment_intent_id]
-      );
-      await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
-      const fullBooking = await queries.getBookingById(newBooking.id);
-      await sendAutoBookedEmail(fullBooking);
-      console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+      const claimedEntry = await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
+      if (!claimedEntry) {
+        await queries.cancelBooking(newBooking.id);
+      } else {
+        const pool = require('../db/database').getPool();
+        await pool.query(
+          "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
+          [newBooking.id, paidWaiter.stripe_payment_intent_id]
+        );
+        const fullBooking = await queries.getBookingById(newBooking.id);
+        await sendAutoBookedEmail(fullBooking);
+        console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
+      }
     } else {
       const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
       if (waitUser) {
@@ -322,6 +336,11 @@ router.post('/slots', requireAdmin, async (req, res) => {
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
+  // Zelfde overlapcheck als /slots/bulk: er is maar één sauna
+  const overlap = await queries.findOverlappingSlot(date, start_time, end_time);
+  if (overlap)
+    return res.status(409).json({ error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
+
   const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private, artist ? String(artist).trim() : null);
   res.status(201).json({ id: slot.id });
 });
@@ -339,6 +358,11 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
+
+  // Zelfde overlapcheck als /slots/bulk (het slot zelf telt niet mee)
+  const overlap = await queries.findOverlappingSlot(date, start_time, end_time, parseInt(req.params.id));
+  if (overlap)
+    return res.status(409).json({ error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
 
   await queries.updateSlot(req.params.id, { session_type_id: session_type_id ? parseInt(session_type_id) : null, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
   res.json({ ok: true });
@@ -769,9 +793,13 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
   const currentEntry = revenuePerMonth.rows.find(r => r.month === currentMonth);
   const daysElapsed = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const currentMonthProjection = currentEntry && daysElapsed > 0
-    ? Math.round(currentEntry.revenue_cents / daysElapsed * daysInMonth)
-    : 0;
+  // Als object met projected_cents: zo leest de admin-frontend hem (stat-kaart
+  // én maandgrafiek) — als kaal getal rendert de prognose nooit.
+  const currentMonthProjection = {
+    projected_cents: currentEntry && daysElapsed > 0
+      ? Math.round(currentEntry.revenue_cents / daysElapsed * daysInMonth)
+      : 0,
+  };
 
   res.json({
     revenuePerWeek:    revenuePerWeek.rows,
@@ -1086,8 +1114,13 @@ router.get('/walkin/upcoming-slots', requireAdmin, async (req, res) => {
 // POST /api/admin/walkin/book
 // body: { user_id, slot_id, group_size, payment_mode: 'free' | 'stripe_qr' }
 router.post('/walkin/book', requireAdmin, async (req, res) => {
-  const { user_id, slot_id, group_size, payment_mode } = req.body;
+  const { user_id, slot_id, payment_mode } = req.body;
+  // group_size valideren: een negatieve of niet-numerieke waarde zou via
+  // SUM(group_size) alle capaciteitsberekeningen van het slot corrumperen.
+  const group_size = parseInt(req.body.group_size);
   if (!user_id || !slot_id || !group_size) return res.status(400).json({ error: 'user_id, slot_id, group_size required' });
+  if (!Number.isInteger(group_size) || group_size < 1 || group_size > 15)
+    return res.status(400).json({ error: 'group_size must be between 1 and 15' });
   if (!['free', 'stripe_qr'].includes(payment_mode)) return res.status(400).json({ error: 'payment_mode must be free or stripe_qr' });
 
   // Fetch slot to know price

@@ -146,6 +146,19 @@
       return r.json();
     })
     .then(function(conf) {
+      // Wachtlijstbetaling: er is (nog) geen boeking — wel een geslaagde betaling
+      if (conf.type === 'waitlist') {
+        if (conf.confirmed) {
+          show('✅', t('payment.confirmed.title'),
+            'Je staat op de wachtlijst! Komt er een plek vrij, dan boeken we je automatisch in. / You’re on the waitlist! If a spot opens up, we’ll book you in automatically.',
+            '/account', t('payment.confirmed.btn'), showBookingSummary(conf));
+        } else if (conf.status === 'processing') {
+          showProcessing();
+        } else {
+          show('❌', t('payment.failed.title'), t('payment.failed.msg'), '/booking', t('payment.failed.btn'));
+        }
+        return;
+      }
       if (conf.confirmed) {
         var summary = showBookingSummary(conf);
         if (!conf.session_name && conf.booking_id) {
@@ -169,6 +182,10 @@
           show('✅', t('payment.confirmed.title'), t('payment.confirmed.msg'),
             '/account', t('payment.confirmed.btn'), summary);
         }
+      } else if (conf.status === 'processing' || conf.status === 'requires_action') {
+        // SEPA of trage iDEAL/3DS: de betaling is onderweg, niet mislukt.
+        // "Mislukt" tonen zou de klant opnieuw laten boeken en dubbel betalen.
+        showProcessing();
       } else {
         show('❌', t('payment.failed.title'), t('payment.failed.msg'),
           '/booking', t('payment.failed.btn'));
@@ -194,7 +211,35 @@
     });
   }
 
-  if (!intentId || !secret || !token) {
+  // Betaling nog in verwerking (SEPA/trage iDEAL): even blijven pollen; daarna
+  // uitleggen dat de bevestiging per e-mail volgt zodra de betaling binnen is.
+  var processingPolls = 0;
+  function showProcessing() {
+    processingPolls++;
+    if (processingPolls <= 12) {
+      document.getElementById('card').innerHTML =
+        '<div class="spinner"></div>' +
+        '<h1>' + t('payment.processing') + '</h1>' +
+        '<p>Je betaling wordt verwerkt — een moment geduld. / Your payment is being processed — one moment.</p>';
+      setTimeout(confirmPayment, 5000);
+    } else {
+      show('⏳', t('payment.processing'),
+        'Je betaling wordt nog verwerkt (dit kan bij SEPA enkele dagen duren). Je ontvangt automatisch een bevestiging per e-mail — boek niet opnieuw. / Your payment is still processing (SEPA can take a few days). You’ll receive a confirmation email automatically — please don’t book again.',
+        '/account', t('payment.confirmed.btn'));
+    }
+  }
+
+  // Walk-in via Stripe Checkout-QR: gasten komen hier terug met een session_id
+  // en hebben geen account/token — nooit naar het "sessie verlopen"-loginscherm.
+  if (params.get('cancelled') === '1') {
+    show('❌', t('payment.failed.title'),
+      'De betaling is geannuleerd. Scan de QR-code opnieuw om het nog een keer te proberen. / The payment was cancelled. Scan the QR code again to retry.',
+      '/', t('payment.error.btn'));
+  } else if (params.get('session_id')) {
+    show('✅', t('payment.confirmed.title'),
+      'Bedankt! Zodra je betaling is verwerkt, ontvang je de bevestiging per e-mail. / Thank you! You’ll receive a confirmation email as soon as your payment is processed.',
+      '/', t('payment.error.btn'));
+  } else if (!intentId || !secret || !token) {
     show('⚠️', t('payment.expired.title'), t('payment.expired.msg'), '/login', t('payment.expired.btn'));
   } else {
     confirmPayment();

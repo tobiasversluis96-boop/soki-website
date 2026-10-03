@@ -85,7 +85,11 @@ router.post('/:slotId', requireAuth, async (req, res) => {
 
 // DELETE /api/waitlist/:slotId — leave waitlist; refund if already paid
 router.delete('/:slotId', requireAuth, async (req, res) => {
-  const entry = await queries.leaveWaitlist(req.user.userId, parseInt(req.params.slotId));
+  const slotId = parseInt(req.params.slotId);
+  // Eerst lezen en pas verwijderen NA een geslaagde refund: delete-first
+  // betekende bij een mislukte refund dat de betaalde entry verdween (of als
+  // 'pending' met verse datum herboren werd) terwijl het geld binnen bleef.
+  const entry = await queries.getWaitlistEntry(req.user.userId, slotId);
 
   if (!entry) return res.json({ ok: true, refunded: false });
 
@@ -100,21 +104,36 @@ router.delete('/:slotId', requireAuth, async (req, res) => {
       await stripe.refunds.create({ payment_intent: entry.stripe_payment_intent_id });
       refunded = true;
     } catch (err) {
-      console.error('Waitlist refund failed:', err.message);
-      // Re-insert so we don't lose the record if refund fails
-      await queries.joinWaitlist(req.user.userId, entry.time_slot_id, entry.group_size, entry.total_cents, entry.stripe_payment_intent_id);
-      return res.status(502).json({ error: 'Refund failed — please contact us' });
+      if (err.code === 'charge_already_refunded') {
+        refunded = true;
+      } else {
+        console.error('Waitlist refund failed:', err.message);
+        return res.status(502).json({ error: 'Refund failed — please contact us' });
+      }
     }
   } else if (entry.stripe_payment_intent_id && entry.stripe_payment_status === 'pending') {
     // Payment not completed yet — cancel the intent
     try {
       await stripe.paymentIntents.cancel(entry.stripe_payment_intent_id);
     } catch (err) {
-      // Best-effort cancel; payment may already be cancelled or succeeded
-      console.error('PaymentIntent cancel error:', err.message);
+      // Annuleren kan mislukken doordat de betaling tóch al (bijna) binnen is
+      // (webhook nog onderweg): dan terugbetalen of de klant laten wachten —
+      // nooit stilletjes het geld houden.
+      try {
+        const intent = await stripe.paymentIntents.retrieve(entry.stripe_payment_intent_id);
+        if (intent.status === 'succeeded') {
+          await stripe.refunds.create({ payment_intent: intent.id });
+          refunded = true;
+        } else if (intent.status === 'processing') {
+          return res.status(409).json({ error: 'Je betaling wordt nog verwerkt — probeer het over een paar minuten opnieuw. / Your payment is still processing — please try again in a few minutes.' });
+        }
+      } catch (e2) {
+        console.error('PaymentIntent cancel error:', err.message, '/ follow-up:', e2.message);
+      }
     }
   }
 
+  await queries.leaveWaitlist(req.user.userId, slotId);
   res.json({ ok: true, refunded });
 });
 

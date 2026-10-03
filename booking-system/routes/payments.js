@@ -45,11 +45,52 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     if (!covered)
       return res.status(400).json({ error: 'Onvoldoende credits voor deze sessie.' });
     amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
+    // Gereserveerde cadeaubon-/promokorting telt ook hier mee: zonder deze
+    // aftrek rekent Stripe het volle bedrag af terwijl settleMemberCombi de
+    // bon bij het bevestigen alsnog debiteert — dubbel betalen dus.
+    const pendingDiscount = booking.pending_discount_cents || 0;
+    if (pendingDiscount >= amount && amount > 0)
+      return res.status(400).json({ error: 'Je korting dekt het bij te betalen bedrag al volledig. Boek zonder credits, of mail ons — dan regelen we het handmatig.' });
+    amount -= pendingDiscount;
     if (!(amount > 0))
       return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
     extraMetadata.credits_to_use = String(perPerson);
     extraMetadata.type = 'member_combi';
     extraMetadata.user_id = String(req.user.userId);
+  }
+
+  // Hergebruik een bestaande intent waar mogelijk: elke nieuwe intent zou de
+  // oude overschrijven terwijl die betaalbaar blijft. Een betaling die daarna
+  // op de oude intent binnenkomt (bv. iDEAL app-naar-app op mobiel) zou dan
+  // nergens meer bij horen: geld binnen, boeking door de cron geannuleerd.
+  if (booking.stripe_payment_intent_id && booking.stripe_payment_intent_id.startsWith('pi_')) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id);
+      if (existing.status === 'succeeded' || existing.status === 'processing')
+        return res.status(409).json({ error: 'Er loopt al een betaling voor deze boeking. Ververs de pagina of kijk in je account.' });
+      const sameShape = existing.amount === amount
+        && (existing.metadata?.type || '') === (extraMetadata.type || '');
+      if (sameShape && ['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(existing.status)) {
+        return res.json({
+          client_secret:     existing.client_secret,
+          payment_intent_id: existing.id,
+          amount:            existing.amount,
+          publishable_key:   process.env.STRIPE_PUBLISHABLE_KEY,
+        });
+      }
+      // Bedrag of vorm veranderd: oude intent annuleren zodat er nooit twee
+      // betaalbare intents voor dezelfde boeking bestaan. Lukt dat niet (net
+      // in 'processing' beland), dan geen nieuwe maken.
+      try {
+        await stripe.paymentIntents.cancel(existing.id);
+      } catch (cancelErr) {
+        const recheck = await stripe.paymentIntents.retrieve(existing.id);
+        if (recheck.status === 'succeeded' || recheck.status === 'processing')
+          return res.status(409).json({ error: 'Er loopt al een betaling voor deze boeking. Ververs de pagina of kijk in je account.' });
+      }
+    } catch (e) {
+      // Intent onbekend bij Stripe — gewoon een nieuwe aanmaken
+    }
   }
 
   try {
@@ -135,7 +176,27 @@ router.post('/confirm', requireAuth, async (req, res) => {
     const intent  = await stripe.paymentIntents.retrieve(payment_intent_id);
     const booking = await queries.getBookingByPaymentIntent(payment_intent_id);
 
-    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!booking) {
+      // Wachtlijstbetalingen horen niet bij een boeking: zonder deze afhandeling
+      // kreeg de klant na een geslaagde wachtlijstbetaling een foutscherm (404).
+      const entry = await queries.getWaitlistEntryByPaymentIntent(payment_intent_id);
+      if (entry) {
+        if (entry.user_id !== req.user.userId)
+          return res.status(403).json({ error: 'Access denied' });
+        if (intent.status === 'succeeded' && entry.stripe_payment_status !== 'paid')
+          await queries.markWaitlistPaidById(entry.id);
+        return res.json({
+          status:       intent.status,
+          type:         'waitlist',
+          confirmed:    intent.status === 'succeeded',
+          session_name: entry.session_name,
+          date:         entry.date,
+          start_time:   entry.start_time,
+          end_time:     entry.end_time,
+        });
+      }
+      return res.status(404).json({ error: 'Booking not found' });
+    }
     if (booking.user_id !== req.user.userId)
       return res.status(403).json({ error: 'Access denied' });
     if (booking.status === 'cancelled')

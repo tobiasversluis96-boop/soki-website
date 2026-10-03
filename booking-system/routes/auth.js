@@ -139,7 +139,14 @@ router.post('/login', async (req, res) => {
   }
 
   const token = signCustomerToken(user);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+  // waiver_signed_at/email_verified_at meegeven: de boekingsflow bewaart dit
+  // user-object en zou zonder deze velden elke ingelogde klant opnieuw de
+  // waiver laten tekenen.
+  res.json({ token, user: {
+    id: user.id, name: user.name, email: user.email,
+    waiver_signed_at: user.waiver_signed_at || null,
+    email_verified_at: user.email_verified_at || null,
+  } });
 });
 
 // GET /api/auth/me
@@ -170,7 +177,11 @@ router.post('/google', async (req, res) => {
     // Google heeft het e-mailadres al geverifieerd
     await queries.markEmailVerified(user.id);
     const token = signCustomerToken(user);
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ token, user: {
+      id: user.id, name: user.name, email: user.email,
+      waiver_signed_at: user.waiver_signed_at || null,
+      email_verified_at: user.email_verified_at || new Date().toISOString(),
+    } });
   } catch (err) {
     console.error('Google auth error:', err.message);
     res.status(401).json({ error: 'Invalid Google credential' });

@@ -21,13 +21,14 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       console.error('Webhook signature failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-  } else if (process.env.NODE_ENV === 'production') {
-    // Never accept unverified payment events in production
+  } else if (process.env.NODE_ENV === 'development') {
+    // No webhook secret configured -- accept without verification (dev only).
+    // Fail closed voor elke andere omgeving: valt NODE_ENV ooit weg in
+    // productie, dan mogen ongetekende betaalevents nooit geaccepteerd worden.
+    try { event = JSON.parse(req.body); } catch { return res.status(400).send('Invalid JSON'); }
+  } else {
     console.error('Webhook rejected: STRIPE_WEBHOOK_SECRET is not configured');
     return res.status(500).send('Webhook not configured');
-  } else {
-    // No webhook secret configured -- accept without verification (dev only)
-    try { event = JSON.parse(req.body); } catch { return res.status(400).send('Invalid JSON'); }
   }
 
   try {
@@ -127,10 +128,33 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         const plan  = plans.find(p => p.id === planId);
         if (!plan) break;
 
-        await queries.createSubscription(
+        const createdSub = await queries.createSubscription(
           userId, planId, stripeSubId, stripeCustomer,
           plan.credits_per_month, periodEnd
         );
+        if (!createdSub) {
+          // Gebruiker had al een lopend abonnement (twee Checkout-tabs): het
+          // dubbele Stripe-abonnement direct opzeggen en de eerste incasso
+          // terugbetalen — anders blijft een onzichtbaar abonnement eeuwig
+          // maandelijks afschrijven zonder dat de klant het kan opzeggen.
+          console.error(`User ${userId} had al een actief abonnement — duplicaat ${stripeSubId} wordt opgezegd en terugbetaald`);
+          try {
+            await stripe.subscriptions.cancel(stripeSubId);
+            const invoiceId = typeof stripeSub.latest_invoice === 'string'
+              ? stripeSub.latest_invoice
+              : stripeSub.latest_invoice && stripeSub.latest_invoice.id;
+            if (invoiceId) {
+              const invoice = await stripe.invoices.retrieve(invoiceId);
+              const piId = typeof invoice.payment_intent === 'string'
+                ? invoice.payment_intent
+                : invoice.payment_intent && invoice.payment_intent.id;
+              if (piId) await stripe.refunds.create({ payment_intent: piId });
+            }
+          } catch (e) {
+            console.error('Opzeggen/terugbetalen van dubbel abonnement mislukt — handmatig oplossen:', e.message);
+          }
+          break;
+        }
         console.log(`✓ Subscription created for user ${userId}`);
 
         try {
@@ -235,8 +259,41 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           break;
         }
 
+        // Cadeaubon: activeren + mails versturen. De browser-/confirm kan
+        // uitblijven (iDEAL-redirect nooit afgemaakt, SEPA nog 'processing' bij
+        // terugkomst) — de webhook is de betrouwbare route, anders blijft de
+        // bon na een geslaagde betaling eeuwig op 'pending' staan.
+        if (intent.metadata?.gift_card_id) {
+          const { activateGiftCardFromIntent } = require('./gift-cards');
+          const activated = await activateGiftCardFromIntent(intent);
+          if (activated) console.log(`✓ Gift card #${activated.id} geactiveerd via webhook`);
+          break;
+        }
+
         // Otherwise confirm regular booking
-        const booking = await queries.getBookingByPaymentIntent(intent.id);
+        let booking = await queries.getBookingByPaymentIntent(intent.id);
+        if (!booking && intent.metadata?.booking_id) {
+          // De boeking kan intussen een nieuwere intent hebben gekregen (klant
+          // opende de betaalstap opnieuw) terwijl deze oudere intent alsnog
+          // betaald werd (bv. iDEAL app-naar-app). Zoek de boeking via de
+          // metadata; anders is dit geld binnen zonder boeking én zonder refund.
+          const byMeta = await queries.getBookingById(parseInt(intent.metadata.booking_id));
+          if (byMeta) {
+            if (byMeta.stripe_payment_status === 'succeeded' && byMeta.stripe_payment_intent_id !== intent.id) {
+              // Al via een andere intent betaald: dit is een dubbele betaling
+              console.error(`Booking #${byMeta.id}: tweede geslaagde betaling (${intent.id}) — refund gestart`);
+              try { await stripe.refunds.create({ payment_intent: intent.id }); }
+              catch (e) { console.error('Double-payment refund failed:', e.message); }
+              break;
+            }
+            // Nieuwere onbetaalde intent annuleren zodat er niet alsnog dubbel betaald wordt
+            if (byMeta.stripe_payment_intent_id && byMeta.stripe_payment_intent_id !== intent.id) {
+              try { await stripe.paymentIntents.cancel(byMeta.stripe_payment_intent_id); }
+              catch (e) { /* kan al verlopen of geannuleerd zijn */ }
+            }
+            booking = byMeta;
+          }
+        }
         if (!booking) break;
         if (booking.status === 'cancelled') {
           // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
