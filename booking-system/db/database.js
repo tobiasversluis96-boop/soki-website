@@ -939,7 +939,7 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT b.*,
              u.name AS customer_name, u.email AS customer_email,
-             ts.date, ts.start_time, ts.end_time,
+             ts.date, ts.start_time, ts.end_time, ts.artist,
              st.name AS session_name, st.duration_min
       FROM bookings b
       JOIN users u ON u.id = b.user_id
@@ -1437,7 +1437,7 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT b.id, b.group_size, b.total_cents,
              u.name AS customer_name, u.email AS customer_email,
-             ts.date, ts.start_time, ts.end_time,
+             ts.date, ts.start_time, ts.end_time, ts.artist,
              st.name AS session_name
       FROM bookings b
       JOIN users u ON u.id = b.user_id

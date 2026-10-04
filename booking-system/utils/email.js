@@ -38,9 +38,19 @@ async function send(templateId, to, name, params) {
   });
 }
 
+// Ambient-sessies krijgen een eigen bevestigings- en remindermail (sfeer,
+// DJ-set, kussens). Zolang de Ambient-template-ID's niet geconfigureerd zijn,
+// valt alles terug op de standaardtemplates — mails blijven dus nooit liggen.
+function isAmbientBooking(booking) {
+  return /ambient/i.test(booking.session_name || '');
+}
+function pickTemplate(standardId, ambientId, booking) {
+  return (ambientId && isAmbientBooking(booking)) ? ambientId : standardId;
+}
+
 async function sendBookingConfirmation(booking) {
   await send(
-    process.env.BREVO_TEMPLATE_CONFIRMATION,
+    pickTemplate(process.env.BREVO_TEMPLATE_CONFIRMATION, process.env.BREVO_TEMPLATE_CONFIRMATION_AMBIENT, booking),
     booking.customer_email,
     booking.customer_name,
     {
@@ -54,6 +64,9 @@ async function sendBookingConfirmation(booking) {
       // Lege string bij boekingen zonder combi-deal: de Brevo-template plakt deze
       // param direct in het detailblok, dus de regel verdwijnt dan volledig.
       KANTINE_LINE:   booking.kantine_addon_cents > 0 ? 'Combi ticket Kantine: vegan 2-gangendiner / vegan 2-course dinner ✓<br>' : '',
+      // Alleen gevuld bij slots met een artiest (Ambient): lege string laat de
+      // regel in de template volledig verdwijnen.
+      ARTIST_LINE:    booking.artist ? `DJ: ${booking.artist}<br>` : '',
       TOTAL:          `€${(booking.total_cents / 100).toFixed(2)}`,
       CHECKIN_URL:    `${process.env.BASE_URL || 'http://localhost:3001'}/ticket?bid=${booking.id}&sig=${generateCheckinSig(booking.id)}`,
       MANAGE_URL:     `${process.env.BASE_URL || 'http://localhost:3001'}/account`,
@@ -63,7 +76,7 @@ async function sendBookingConfirmation(booking) {
 
 async function sendReminderEmail(booking) {
   await send(
-    process.env.BREVO_TEMPLATE_REMINDER,
+    pickTemplate(process.env.BREVO_TEMPLATE_REMINDER, process.env.BREVO_TEMPLATE_REMINDER_AMBIENT, booking),
     booking.customer_email,
     booking.customer_name,
     {
@@ -74,6 +87,7 @@ async function sendReminderEmail(booking) {
       END_TIME:      booking.end_time,
       GROUP_SIZE:    booking.group_size,
       TOTAL:         `€${(booking.total_cents / 100).toFixed(2)}`,
+      ARTIST_LINE:   booking.artist ? `DJ: ${booking.artist}<br>` : '',
       CHECKIN_URL:   `${process.env.BASE_URL || 'http://localhost:3001'}/ticket?bid=${booking.id}&sig=${generateCheckinSig(booking.id)}`,
     }
   );
