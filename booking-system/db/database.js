@@ -602,6 +602,15 @@ async function initializeDB() {
     expires_at               TIMESTAMPTZ NOT NULL
   )`);
 
+  // Dagnotities op het rooster: één notitie per dag, leesbaar voor iedereen
+  // met rooster-toegang (admin schrijft)
+  await pool.query(`CREATE TABLE IF NOT EXISTS schedule_notes (
+    date       VARCHAR(10) PRIMARY KEY,
+    note       TEXT        NOT NULL,
+    updated_by TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   // Buddy's: wederzijdse koppeling tussen members (AVG: boekingen pas zichtbaar
   // na acceptatie door beide kanten)
   await pool.query(`CREATE TABLE IF NOT EXISTS buddies (
@@ -856,6 +865,26 @@ const queries = {
 
   checkInBooking: async (bookingId, value) => {
     await pool.query('UPDATE bookings SET checked_in = $1 WHERE id = $2', [value, bookingId]);
+  },
+
+  // Dagnotitie op het rooster
+  getScheduleNote: async (date) => {
+    const { rows } = await pool.query('SELECT date, note, updated_by, updated_at FROM schedule_notes WHERE date = $1', [date]);
+    return rows[0] || null;
+  },
+
+  setScheduleNote: async (date, note, updatedBy) => {
+    if (!note || !note.trim()) {
+      await pool.query('DELETE FROM schedule_notes WHERE date = $1', [date]);
+      return null;
+    }
+    const { rows } = await pool.query(`
+      INSERT INTO schedule_notes (date, note, updated_by, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (date) DO UPDATE SET note = $2, updated_by = $3, updated_at = NOW()
+      RETURNING date, note, updated_by, updated_at
+    `, [date, note.trim(), updatedBy || null]);
+    return rows[0];
   },
 
   // Atomair: alleen de eerste verzilvering slaagt (voorkomt dubbel gebruik bij Kantine)

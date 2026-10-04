@@ -857,6 +857,43 @@
   let scheduleUsers = {};
   let notesContext  = 'customers';
 
+  // Dagnotitie: admin kan schrijven, personeel met rooster-toegang leest mee
+  function renderScheduleNote(date, noteRow) {
+    const el = document.getElementById('schedule-note');
+    if (!el) return;
+    const note = (noteRow && noteRow.note) || '';
+
+    if (isAdminUser) {
+      el.innerHTML = `
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:0 0 16px;">
+          <div style="font-weight:700;color:var(--brown);margin-bottom:8px;">📌 Dagnotitie voor het team</div>
+          <textarea id="schedule-note-text" rows="2" maxlength="2000" placeholder="Zichtbaar voor al het personeel op deze roosterdag — bijv. 'IJsbad 2 is in onderhoud' of 'Groep van 8 om 16:00, graag extra handdoeken klaarleggen'" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:14px;resize:vertical;">${escapeHtml(note)}</textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+            <button class="btn btn--primary btn--sm" id="schedule-note-save">Opslaan</button>
+            <span id="schedule-note-status" style="font-size:13px;color:var(--muted);"></span>
+          </div>
+        </div>`;
+      document.getElementById('schedule-note-save').addEventListener('click', async () => {
+        const text   = document.getElementById('schedule-note-text').value;
+        const status = document.getElementById('schedule-note-status');
+        status.textContent = 'Opslaan…';
+        try {
+          await api('/schedule-note', { method: 'PUT', body: JSON.stringify({ date, note: text }) });
+          status.textContent = text.trim() ? 'Opgeslagen ✓' : 'Notitie verwijderd ✓';
+        } catch {
+          status.textContent = 'Opslaan mislukt — probeer het opnieuw';
+        }
+      });
+    } else {
+      // Personeel: alleen tonen als er een notitie is
+      el.innerHTML = note ? `
+        <div style="background:#FFF4E3;border:1px solid #F2C299;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
+          <div style="font-weight:700;color:var(--brown);margin-bottom:4px;">📌 Dagnotitie</div>
+          <div style="font-size:14px;color:var(--brown);white-space:pre-wrap;">${escapeHtml(note)}</div>
+        </div>` : '';
+    }
+  }
+
   async function loadSchedule() {
     const date = document.getElementById('schedule-date').value;
     const slotsEl   = document.getElementById('schedule-slots');
@@ -864,13 +901,19 @@
     slotsEl.innerHTML = '<div class="loading">Laden…</div>';
     summaryEl.innerHTML = '';
 
-    let rows;
+    let rows, noteRow;
     try {
-      rows = await api('/schedule?date=' + date);
+      [rows, noteRow] = await Promise.all([
+        api('/schedule?date=' + date),
+        api('/schedule-note?date=' + date).catch(() => null),
+      ]);
     } catch {
       slotsEl.innerHTML = '<p style="color:#C62828">Fout bij laden.</p>';
       return;
     }
+
+    // Dagnotitie altijd tonen — ook op dagen zonder sessies
+    renderScheduleNote(date, noteRow);
 
     // Group rows by slot_id
     const slotMap = new Map();

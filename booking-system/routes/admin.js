@@ -459,6 +459,29 @@ router.patch('/bookings/:id/checkin', requireStaff('schedule'), async (req, res)
   res.json({ ok: true });
 });
 
+// ─── Dagnotitie op het rooster ───────────────────────────────────────────
+// Lezen: iedereen met rooster-toegang. Schrijven: alleen de admin.
+
+function validNoteDate(d) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+}
+
+router.get('/schedule-note', requireStaff('schedule'), async (req, res) => {
+  if (!validNoteDate(req.query.date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' });
+  const note = await queries.getScheduleNote(req.query.date);
+  res.json(note || { date: req.query.date, note: '' });
+});
+
+router.put('/schedule-note', requireAdmin, async (req, res) => {
+  const { date, note } = req.body;
+  if (!validNoteDate(date)) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' });
+  if (note && String(note).length > 2000)
+    return res.status(400).json({ error: 'Notitie is te lang (max 2000 tekens).' });
+  const saved = await queries.setScheduleNote(date, String(note || ''), 'admin');
+  queries.auditLog({ ...actorOf(req), action: saved ? 'schedule_note_saved' : 'schedule_note_deleted', target: `schedule_note:${date}`, ip: req.ip });
+  res.json(saved || { date, note: '' });
+});
+
 // ─── Customers ───────────────────────────────────────────────────────────
 
 router.get('/customers', requireStaff('customers'), async (req, res) => {
