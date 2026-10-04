@@ -787,18 +787,57 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
   // Compute MRR
   const mrr = subscriptionMRR.rows.reduce((sum, p) => sum + (p.price_cents * p.active_count), 0);
 
-  // Compute current month projection
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const currentEntry = revenuePerMonth.rows.find(r => r.month === currentMonth);
-  const daysElapsed = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  // Als object met projected_cents: zo leest de admin-frontend hem (stat-kaart
-  // én maandgrafiek) — als kaal getal rendert de prognose nooit.
+  // ── Prognose lopende maand ──
+  // Niet lineair extrapoleren op "omzet tot nu ÷ verstreken dagen": sessies in
+  // de eerste dagen van de maand zijn grotendeels in de vórige maand geboekt,
+  // waardoor de prognose begin oktober absurd hoog uitviel. In plaats daarvan:
+  //   gerealiseerd (sessies t/m vandaag)
+  // + MAX(al geboekte omzet voor de rest van de maand,
+  //       gemiddelde sessieomzet/dag over de laatste 28 dagen × resterende dagen)
+  // + cadeaubon-/strippenkaartverkoop deze maand + hun 28-daags gemiddelde × resterende dagen.
+  // De MAX zorgt dat al vastgelegde vooruitboekingen de bodem vormen en het
+  // historische gemiddelde alleen aanvult waar de rest van de maand nog
+  // ondergeboekt is — nooit dubbel geteld.
+  const { rows: [proj] } = await pool.query(`
+    WITH nl AS (SELECT (NOW() AT TIME ZONE 'Europe/Amsterdam')::date AS today),
+    booking_rev AS (
+      SELECT ts.date::date AS d,
+             SUM(CASE WHEN b.credits_used > 0 THEN COALESCE(b.paid_cents, b.kantine_addon_cents, 0)
+                      ELSE b.total_cents END)::bigint AS cents
+      FROM bookings b
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      WHERE b.status = 'confirmed' AND b.stripe_payment_intent_id IS NOT NULL
+      GROUP BY ts.date::date
+    ),
+    sales AS (
+      SELECT (g.created_at AT TIME ZONE 'Europe/Amsterdam')::date AS d, g.initial_amount_cents::bigint AS cents
+      FROM gift_cards g WHERE g.stripe_payment_intent_id IS NOT NULL
+      UNION ALL
+      SELECT (p.created_at AT TIME ZONE 'Europe/Amsterdam')::date, p.price_cents::bigint
+      FROM punch_passes p WHERE p.stripe_payment_intent_id IS NOT NULL AND p.refunded_at IS NULL
+    )
+    SELECT
+      (SELECT COALESCE(SUM(cents), 0) FROM booking_rev, nl
+        WHERE d >= date_trunc('month', today)::date AND d <= today)::int                        AS realized_cents,
+      (SELECT COALESCE(SUM(cents), 0) FROM booking_rev, nl
+        WHERE d > today AND d < (date_trunc('month', today) + INTERVAL '1 month')::date)::int   AS committed_cents,
+      (SELECT COALESCE(SUM(cents), 0) FROM booking_rev, nl
+        WHERE d >= today - 28 AND d < today)::int                                               AS bookings_last28_cents,
+      (SELECT COALESCE(SUM(cents), 0) FROM sales, nl
+        WHERE d >= date_trunc('month', today)::date AND d <= today)::int                        AS sales_mtd_cents,
+      (SELECT COALESCE(SUM(cents), 0) FROM sales, nl
+        WHERE d >= today - 28 AND d < today)::int                                               AS sales_last28_cents,
+      (SELECT ((date_trunc('month', today) + INTERVAL '1 month')::date - today) - 1 FROM nl)::int AS days_remaining
+  `);
+  const expectedRestOfMonth = Math.max(
+    proj.committed_cents,
+    Math.round(proj.bookings_last28_cents / 28 * proj.days_remaining)
+  );
+  const expectedSales = Math.round(proj.sales_last28_cents / 28 * proj.days_remaining);
   const currentMonthProjection = {
-    projected_cents: currentEntry && daysElapsed > 0
-      ? Math.round(currentEntry.revenue_cents / daysElapsed * daysInMonth)
-      : 0,
+    projected_cents: proj.realized_cents + expectedRestOfMonth + proj.sales_mtd_cents + expectedSales,
+    realized_cents:  proj.realized_cents + proj.sales_mtd_cents,
+    committed_cents: proj.committed_cents,
   };
 
   res.json({

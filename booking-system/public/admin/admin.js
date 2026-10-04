@@ -309,7 +309,7 @@
       { label: 'Totaal boekingen',  value: data.totalBookings,         sub: 'actief' },
       { label: 'Bevestigd',         value: data.confirmedBookings,      sub: 'betaald' },
       { label: 'Omzet deze maand', value: formatEur(monthRev), mask: true, sub: [
-          proj && proj.projected_cents > 0 ? `prognose ${formatEur(proj.projected_cents)}` : '',
+          proj && proj.projected_cents > 0 ? `prognose ${formatEur(proj.projected_cents)}${proj.committed_cents > 0 ? ` (waarvan ${formatEur(proj.committed_cents)} al geboekt)` : ''}` : '',
           `totaal ${formatEur(data.totalRevenue)}`,
           `waarvan ${formatEur(data.giftCardRevenue)} cadeaubonnen`,
           `en ${formatEur(data.punchPassRevenue)} strippenkaarten`,
