@@ -663,6 +663,39 @@
     document.getElementById('group-plus').disabled  = state.groupSize >= maxGroup;
   }
 
+  // Marketing-opt-in voor al-ingelogde boekers: eenmalige checkbox in stap 4.
+  // Alleen tonen zolang er nog geen toestemming is; aanvinken slaat direct op
+  // en meldt de gebruiker aan op de mailinglijst.
+  function refreshLoggedInOptIn() {
+    var box = document.getElementById('optin-loggedin');
+    if (!box) return;
+    var show = state.user && !state.user.marketing_opt_in_at;
+    box.style.display = show ? 'block' : 'none';
+    if (show) {
+      document.getElementById('marketing-opt-in-li').checked = false;
+      document.getElementById('optin-li-msg').textContent = '';
+    }
+  }
+  (function initLoggedInOptIn() {
+    var cb = document.getElementById('marketing-opt-in-li');
+    if (!cb) return;
+    cb.addEventListener('change', function () {
+      if (!cb.checked) return;
+      cb.disabled = true;
+      api('/auth/me/marketing-consent', { method: 'POST', body: JSON.stringify({ opt_in: true }) })
+        .then(function (res) {
+          cb.disabled = false;
+          if (res && res.ok) {
+            if (state.user) state.user.marketing_opt_in_at = res.marketing_opt_in_at || new Date().toISOString();
+            document.getElementById('optin-li-msg').textContent = t('booking.optin.saved');
+          } else {
+            cb.checked = false;
+          }
+        })
+        .catch(function () { cb.disabled = false; cb.checked = false; });
+    });
+  })();
+
   // ─── Step 4: Auth ─────────────────────────────────────────────────────────
   function showStep4() {
     showStep(4);
@@ -675,6 +708,7 @@
           document.getElementById('logged-in-name').textContent = user.name;
           document.getElementById('step4-logged-in').style.display = 'block';
           document.getElementById('step4-auth').style.display = 'none';
+          refreshLoggedInOptIn();
         } else {
           showAuthForms();
         }
@@ -754,6 +788,7 @@
       document.getElementById('logged-in-name').textContent = res.user.name;
       document.getElementById('step4-logged-in').style.display = 'block';
       document.getElementById('step4-auth').style.display = 'none';
+      refreshLoggedInOptIn();
     });
   }
 
@@ -1250,6 +1285,7 @@
           name:     document.getElementById('reg-name').value,
           email:    document.getElementById('reg-email').value,
           password: document.getElementById('reg-password').value,
+          marketing_opt_in: !!(document.getElementById('marketing-opt-in') && document.getElementById('marketing-opt-in').checked),
         }),
       }).then(function (res) {
         btn.disabled = false;

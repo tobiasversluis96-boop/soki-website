@@ -634,6 +634,8 @@ var SOKI_I18N = {
 
     /* --- Booking GDPR --- */
     'booking.gdpr.label':   'I agree to the <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">Privacy Policy</a> and consent to my data being stored to process my booking.',
+    'booking.optin.label':  'Email me about new sessions and events (optional \u2014 unsubscribe anytime).',
+    'booking.optin.saved':  'Great \u2014 you\u2019re on the list!',
 
     /* --- Account extras --- */
     'account.datarights':   'Your data rights',
@@ -1287,6 +1289,8 @@ var SOKI_I18N = {
 
     /* --- Booking GDPR --- */
     'booking.gdpr.label':   'Ik ga akkoord met het <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">privacybeleid</a> en geef toestemming om mijn gegevens op te slaan voor het verwerken van mijn boeking.',
+    'booking.optin.label':  'Houd me per e-mail op de hoogte van nieuwe sessies en events (optioneel \u2014 altijd uit te schrijven).',
+    'booking.optin.saved':  'Top \u2014 je staat op de lijst!',
 
     /* --- Account extras --- */
     'account.datarights':   'Jouw gegevensrechten',

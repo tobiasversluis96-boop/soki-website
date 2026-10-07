@@ -74,6 +74,19 @@ router.post('/register', async (req, res) => {
   const user  = await queries.createUser(name, email, hash);
   const token = signCustomerToken(user);
 
+  // Marketing-opt-in (expliciet aangevinkt): vastleggen + direct aanmelden op
+  // de Brevo-mailinglijst. Mag registratie nooit blokkeren.
+  let marketingOptInAt = null;
+  if (req.body.marketing_opt_in === true) {
+    try {
+      marketingOptInAt = await queries.setMarketingOptIn(user.id, true);
+      const { subscribeToMarketingList } = require('../utils/email');
+      await subscribeToMarketingList(email, name);
+    } catch (err) {
+      console.error('Marketing opt-in bij registratie (non-fatal):', err.message);
+    }
+  }
+
   // Verificatiecode versturen mag registratie of boeken nooit blokkeren
   try {
     await startEmailVerification(user.id, name, email);
@@ -81,7 +94,7 @@ router.post('/register', async (req, res) => {
     console.error('Verification email failed (non-fatal):', err.message);
   }
 
-  res.status(201).json({ token, user: { id: user.id, name, email } });
+  res.status(201).json({ token, user: { id: user.id, name, email, marketing_opt_in_at: marketingOptInAt } });
 });
 
 async function startEmailVerification(userId, name, email) {
@@ -146,6 +159,7 @@ router.post('/login', async (req, res) => {
     id: user.id, name: user.name, email: user.email,
     waiver_signed_at: user.waiver_signed_at || null,
     email_verified_at: user.email_verified_at || null,
+    marketing_opt_in_at: user.marketing_opt_in_at || null,
   } });
 });
 
@@ -181,6 +195,7 @@ router.post('/google', async (req, res) => {
       id: user.id, name: user.name, email: user.email,
       waiver_signed_at: user.waiver_signed_at || null,
       email_verified_at: user.email_verified_at || new Date().toISOString(),
+      marketing_opt_in_at: user.marketing_opt_in_at || null,
     } });
   } catch (err) {
     console.error('Google auth error:', err.message);
@@ -243,6 +258,26 @@ router.get('/me/export', requireAuth, async (req, res) => {
   queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'data_export', ip: req.ip });
   res.setHeader('Content-Disposition', 'attachment; filename="my-soki-data.json"');
   res.json(data);
+});
+
+// POST /api/auth/me/marketing-consent — marketingmail aan-/uitzetten
+// Zet de toestemming in de DB en synct direct met de Brevo-mailinglijst.
+router.post('/me/marketing-consent', requireAuth, async (req, res) => {
+  const optIn = req.body.opt_in === true;
+  const user  = await queries.getUserById(req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const optInAt = await queries.setMarketingOptIn(user.id, optIn);
+  try {
+    const { subscribeToMarketingList, unsubscribeFromMarketingList } = require('../utils/email');
+    if (optIn) await subscribeToMarketingList(user.email, user.name);
+    else       await unsubscribeFromMarketingList(user.email);
+  } catch (err) {
+    // DB is leidend; Brevo-sync mislukking alleen loggen
+    console.error('Brevo marketing-sync (non-fatal):', err.message);
+  }
+  queries.auditLog({ actor_type: 'customer', actor_id: user.id, action: optIn ? 'marketing_opt_in' : 'marketing_opt_out', ip: req.ip });
+  res.json({ ok: true, marketing_opt_in_at: optInAt });
 });
 
 // PATCH /api/auth/me/waiver — sign health waiver

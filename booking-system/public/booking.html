@@ -146,6 +146,13 @@
     <div id="step4-logged-in" style="display:none">
       <p style="color:var(--text-muted); margin-bottom:1.5rem;"><span data-i18n="booking.s4.loggedin">Logged in as</span> <strong id="logged-in-name"></strong>.</p>
       <div id="step4-summary" class="booking-summary-box"></div>
+      <div id="optin-loggedin" style="display:none;margin:1rem 0 0.5rem;">
+        <label style="display:flex;align-items:flex-start;gap:0.75rem;font-size:0.85rem;line-height:1.5;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" id="marketing-opt-in-li" style="margin-top:3px;flex-shrink:0;accent-color:var(--terra);">
+          <span data-i18n="booking.optin.label">Email me about new sessions and events (optional — unsubscribe anytime).</span>
+        </label>
+        <p id="optin-li-msg" style="font-size:0.8rem;color:var(--terra);margin:0.35rem 0 0 1.95rem;min-height:1em;"></p>
+      </div>
       <div class="step-nav">
         <button class="btn btn--outline" id="back-3a" data-i18n="booking.btn.back">← Back</button>
         <button class="btn btn--primary" id="next-4a" data-i18n="booking.s4.topayment">To payment →</button>
@@ -215,6 +222,12 @@
           <input type="checkbox" id="gdpr-consent" name="gdpr-consent" style="margin-top:3px;flex-shrink:0;accent-color:var(--terra);">
           <label for="gdpr-consent" style="font-size:0.85rem;line-height:1.5;color:var(--text-muted);cursor:pointer;" data-i18n-html="booking.gdpr.label">
             I agree to the <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">Privacy Policy</a> and consent to my data being stored to process my booking.
+          </label>
+        </div>
+        <div class="booking-field" style="flex-direction:row;align-items:flex-start;gap:0.75rem;margin-top:0.25rem;">
+          <input type="checkbox" id="marketing-opt-in" name="marketing-opt-in" style="margin-top:3px;flex-shrink:0;accent-color:var(--terra);">
+          <label for="marketing-opt-in" style="font-size:0.85rem;line-height:1.5;color:var(--text-muted);cursor:pointer;" data-i18n="booking.optin.label">
+            Email me about new sessions and events (optional — unsubscribe anytime).
           </label>
         </div>
         <div class="field-error" id="reg-error"></div>
@@ -367,9 +380,9 @@
   </div>
 </footer>
 
-<script src="/translations.js?v=20260923-3"></script>
+<script src="/translations.js?v=20261007-1"></script>
 <script src="/main.js?v=20260920-1"></script>
-<script src="/booking.js?v=20260923-1"></script>
+<script src="/booking.js?v=20261007-1"></script>
 <script>
 (function() {
   var forgotLink = document.getElementById('forgot-link');

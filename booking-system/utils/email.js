@@ -529,6 +529,43 @@ async function sendContactFormEmail({ name, email, message }) {
   });
 }
 
+// ── Brevo-mailinglijst (marketing-opt-in) ────────────────────────────────────
+// Aparte lijst via BREVO_MARKETING_LIST_ID; zonder die var wordt dezelfde
+// lijst als de nieuwsbrief-aanmelding gebruikt (BREVO_LIST_ID).
+function marketingListId() {
+  return parseInt(process.env.BREVO_MARKETING_LIST_ID || process.env.BREVO_LIST_ID || '3');
+}
+
+async function subscribeToMarketingList(email, name) {
+  const response = await fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      email,
+      attributes:    name ? { FIRSTNAME: String(name).split(' ')[0], FULLNAME: name } : undefined,
+      listIds:       [marketingListId()],
+      updateEnabled: true,
+    }),
+  });
+  if (response.status === 201 || response.status === 204) return true;
+  const data = await response.json().catch(() => ({}));
+  if (data.code === 'duplicate_parameter') return true; // bestond al — prima
+  throw new Error(`Brevo subscribe failed (${response.status}): ${data.message || 'unknown'}`);
+}
+
+async function unsubscribeFromMarketingList(email) {
+  const response = await fetch(`https://api.brevo.com/v3/contacts/lists/${marketingListId()}/contacts/remove`, {
+    method: 'POST',
+    headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ emails: [email] }),
+  });
+  if (response.ok) return true;
+  const data = await response.json().catch(() => ({}));
+  // Contact stond niet (meer) op de lijst: doel bereikt
+  if (response.status === 404 || data.code === 'invalid_parameter') return true;
+  throw new Error(`Brevo unsubscribe failed (${response.status}): ${data.message || 'unknown'}`);
+}
+
 module.exports = {
   sendBookingConfirmation,
   sendBookingCancelledEmail,
@@ -552,4 +589,6 @@ module.exports = {
   sendPunchPassEmail,
   sendContactFormEmail,
   generateCheckinSig,
+  subscribeToMarketingList,
+  unsubscribeFromMarketingList,
 };

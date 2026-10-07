@@ -380,6 +380,8 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS first_visit_thanks_sent BOOLEAN DEFAULT FALSE');
+  // AVG: expliciete toestemming voor marketingmail; NULL = geen toestemming
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_opt_in_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_restored BOOLEAN DEFAULT FALSE');
 
   // Voorkom dubbele accounts die alleen in hoofdletters verschillen. Bestaande
@@ -737,8 +739,20 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct, marketing_opt_in_at FROM users WHERE id = $1', [id]);
     return rows[0] || null;
+  },
+
+  // Marketingtoestemming: eerste opt-in-datum blijft bewaard (bewijs van
+  // toestemming); opt-out wist hem weer.
+  setMarketingOptIn: async (userId, optIn) => {
+    const { rows } = await pool.query(
+      optIn
+        ? 'UPDATE users SET marketing_opt_in_at = COALESCE(marketing_opt_in_at, NOW()) WHERE id = $1 RETURNING marketing_opt_in_at'
+        : 'UPDATE users SET marketing_opt_in_at = NULL WHERE id = $1 RETURNING marketing_opt_in_at',
+      [userId]
+    );
+    return rows[0] ? rows[0].marketing_opt_in_at : null;
   },
 
   createUser: async (name, email, passwordHash) => {
