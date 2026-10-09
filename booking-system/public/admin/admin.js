@@ -783,13 +783,27 @@
     const btn = document.getElementById('slot-modal-submit');
     btn.disabled = true;
     try {
-      if (id) {
-        await api('/slots/' + id, { method: 'PUT', body: JSON.stringify(body) });
-      } else {
-        await api('/slots', { method: 'POST', body: JSON.stringify(body) });
+      const save = payload => id
+        ? api('/slots/' + id, { method: 'PUT', body: JSON.stringify(payload) })
+        : api('/slots', { method: 'POST', body: JSON.stringify(payload) });
+
+      let res = await save(body);
+      // Overlap met een bestaand slot: bewust doorzetten kan (bijv. een
+      // publiek slot naast een privéboeking op dezelfde tijd openzetten)
+      if (res && res.code === 'OVERLAP') {
+        if (confirm(res.error + '\n\nWeet je zeker dat je dit slot tóch wilt ' + (id ? 'opslaan' : 'aanmaken') + '? Beide slots verkopen dan tegelijk plekken voor dezelfde sauna.')) {
+          res = await save({ ...body, allow_overlap: true });
+        } else {
+          btn.disabled = false;
+          return;
+        }
       }
-      closeSlotModal();
-      loadSlots();
+      if (res && res.error) {
+        document.getElementById('slot-error').textContent = res.error;
+      } else {
+        closeSlotModal();
+        loadSlots();
+      }
     } catch (err) {
       document.getElementById('slot-error').textContent = 'Fout bij opslaan.';
     }

@@ -336,10 +336,14 @@ router.post('/slots', requireAdmin, async (req, res) => {
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
-  // Zelfde overlapcheck als /slots/bulk: er is maar één sauna
-  const overlap = await queries.findOverlappingSlot(date, start_time, end_time);
-  if (overlap)
-    return res.status(409).json({ error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
+  // Zelfde overlapcheck als /slots/bulk: er is maar één sauna. Met
+  // allow_overlap kan de admin bewust doorzetten (bijv. een publiek slot
+  // naast een privéboeking op dezelfde tijd openzetten).
+  if (req.body.allow_overlap !== true) {
+    const overlap = await queries.findOverlappingSlot(date, start_time, end_time);
+    if (overlap)
+      return res.status(409).json({ code: 'OVERLAP', error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
+  }
 
   const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private, artist ? String(artist).trim() : null);
   res.status(201).json({ id: slot.id });
@@ -359,10 +363,13 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
 
-  // Zelfde overlapcheck als /slots/bulk (het slot zelf telt niet mee)
-  const overlap = await queries.findOverlappingSlot(date, start_time, end_time, parseInt(req.params.id));
-  if (overlap)
-    return res.status(409).json({ error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
+  // Zelfde overlapcheck als /slots/bulk (het slot zelf telt niet mee);
+  // allow_overlap laat de admin bewust doorzetten
+  if (req.body.allow_overlap !== true) {
+    const overlap = await queries.findOverlappingSlot(date, start_time, end_time, parseInt(req.params.id));
+    if (overlap)
+      return res.status(409).json({ code: 'OVERLAP', error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
+  }
 
   await queries.updateSlot(req.params.id, { session_type_id: session_type_id ? parseInt(session_type_id) : null, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
   res.json({ ok: true });
