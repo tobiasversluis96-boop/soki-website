@@ -315,6 +315,7 @@
           `en ${formatEur(data.punchPassRevenue)} strippenkaarten`,
         ].filter(Boolean).join('<br>') },
       { label: 'Abonnementen',      value: formatEur(enhanced.mrr), mask: true, sub: totalMembers + ' actieve leden' },
+      { label: 'Mailinglijst',      value: data.marketingOptIns ?? 0,  sub: 'opt-ins via het boekingsproces' },
     ].map(s => `
       <div class="stat-card">
         <div class="stat-card__label">${s.label}</div>

@@ -2378,7 +2378,7 @@ const queries = {
   },
 
   getAnalytics: async () => {
-    const [total, confirmed, revenue, giftRevenue, punchRevenue, perType, perWeek, avgGroup, cancelRate] = await Promise.all([
+    const [total, confirmed, revenue, giftRevenue, punchRevenue, perType, perWeek, avgGroup, cancelRate, optIns] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS n FROM bookings WHERE status = 'confirmed'"),
       // Alleen echt via Stripe betaalde boekingen; credits/cadeaubon-boekingen zijn geen kasomzet.
@@ -2407,6 +2407,7 @@ const queries = {
       `),
       pool.query("SELECT COALESCE(AVG(group_size),0)::numeric(4,1) AS n FROM bookings WHERE status != 'cancelled'"),
       pool.query("SELECT COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled, COUNT(*)::int AS total FROM bookings"),
+      pool.query('SELECT COUNT(*)::int AS n FROM users WHERE marketing_opt_in_at IS NOT NULL'),
     ]);
     return {
       totalBookings:     total.rows[0].n,
@@ -2418,6 +2419,7 @@ const queries = {
       bookingsPerWeek:   perWeek.rows,
       avgGroupSize:      avgGroup.rows[0].n,
       cancellationRate:  cancelRate.rows[0],
+      marketingOptIns:   optIns.rows[0].n,
     };
   },
 
