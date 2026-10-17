@@ -65,6 +65,8 @@
       <span class="eyebrow" data-i18n="account.eyebrow">Your account</span>
       <h1 id="account-name">–</h1>
       <p id="account-email"></p>
+      <p style="margin:0.25rem 0 0;"><a href="#" id="change-email-link" style="font-size:0.8rem;color:var(--terra);text-decoration:underline;display:none;"></a></p>
+      <div id="change-email-form" style="display:none;max-width:420px;margin:0.75rem auto 0;text-align:left;background:rgba(74,28,12,0.05);border-radius:12px;padding:1.25rem;"></div>
     </div>
   </div>
 
@@ -253,7 +255,8 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="/translations.js?v=20260923-3"></script>
 <script src="/main.js?v=20260920-1"></script>
-<script src="/account.js?v=20260923-2"></script>
+<script src="/js/email-check.js?v=20261017-1"></script>
+<script src="/account.js?v=20261017-1"></script>
 <script>
 function togglePastBookings() {
   var el   = document.getElementById('past-bookings');

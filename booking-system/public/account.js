@@ -19,10 +19,10 @@
 
   var token = localStorage.getItem('soki_token');
 
-  function api(path) {
-    return fetch('/api' + path, {
-      headers: { 'Authorization': 'Bearer ' + token },
-    }).then(function (r) { return r.json(); });
+  function api(path, opts) {
+    return fetch('/api' + path, Object.assign({
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    }, opts || {})).then(function (r) { return r.json(); });
   }
 
   function eur(cents) {
@@ -100,10 +100,68 @@
     }).then(function (r) { return r.json(); });
   }
 
+  // E-mailadres wijzigen (bijv. tikfout zoals .clom herstellen). Wachtwoord-
+  // accounts bevestigen met hun wachtwoord; het nieuwe adres krijgt direct
+  // een verificatiecode.
+  function initChangeEmail(user) {
+    var link = document.getElementById('change-email-link');
+    var form = document.getElementById('change-email-form');
+    if (!link || !form) return;
+    var isNl = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'nl') === 'nl';
+
+    link.textContent = isNl ? '✎ E-mailadres wijzigen' : '✎ Change email address';
+    link.style.display = '';
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+
+    form.innerHTML =
+      '<label style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.35rem;">' + (isNl ? 'Nieuw e-mailadres' : 'New email address') + '</label>' +
+      '<input type="email" id="new-email-input" autocomplete="email" placeholder="' + (isNl ? 'jij@voorbeeld.nl' : 'you@example.com') + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(74,28,12,0.2);border-radius:8px;font:inherit;font-size:14px;">' +
+      (user.has_password
+        ? '<label style="display:block;font-size:0.8rem;font-weight:600;margin:0.75rem 0 0.35rem;">' + (isNl ? 'Huidig wachtwoord (ter bevestiging)' : 'Current password (to confirm)') + '</label>' +
+          '<input type="password" id="new-email-password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(74,28,12,0.2);border-radius:8px;font:inherit;font-size:14px;">'
+        : '') +
+      '<button class="btn btn--primary" id="new-email-save" style="margin-top:0.85rem;font-size:14px;padding:10px 24px;">' + (isNl ? 'Opslaan' : 'Save') + '</button>' +
+      '<p id="new-email-msg" style="font-size:0.8rem;margin:0.6rem 0 0;min-height:18px;"></p>';
+
+    if (typeof attachEmailCheck === 'function') attachEmailCheck(document.getElementById('new-email-input'));
+
+    document.getElementById('new-email-save').addEventListener('click', function () {
+      var btn = this;
+      var msg = document.getElementById('new-email-msg');
+      var body = { email: document.getElementById('new-email-input').value.trim() };
+      var pw = document.getElementById('new-email-password');
+      if (pw) body.password = pw.value;
+      btn.disabled = true;
+      msg.style.color = '';
+      msg.textContent = isNl ? 'Opslaan…' : 'Saving…';
+      api('/auth/me/email', { method: 'PATCH', body: JSON.stringify(body) }).then(function (res) {
+        btn.disabled = false;
+        if (res.error) { msg.style.color = '#C62828'; msg.textContent = res.error; return; }
+        document.getElementById('account-email').textContent = res.email;
+        msg.style.color = '#2E7D32';
+        msg.textContent = isNl
+          ? 'Gelukt! We hebben een verificatiecode naar je nieuwe adres gestuurd.'
+          : 'Done! We sent a verification code to your new address.';
+        initVerifyBanner();
+      }).catch(function () {
+        btn.disabled = false;
+        msg.style.color = '#C62828';
+        msg.textContent = isNl ? 'Er ging iets mis — probeer het opnieuw.' : 'Something went wrong — please try again.';
+      });
+    });
+  }
+
   function initVerifyBanner() {
     var banner = document.getElementById('verify-banner');
     var msg    = document.getElementById('verify-msg');
     banner.style.display = 'block';
+    // Guard: kan tweemaal aangeroepen worden (bijv. na e-mailwijziging) —
+    // listeners maar één keer binden
+    if (banner.dataset.inited) return;
+    banner.dataset.inited = '1';
 
     document.getElementById('verify-btn').addEventListener('click', function () {
       var code = document.getElementById('verify-code').value.trim();
@@ -143,6 +201,7 @@
       document.getElementById('account-email').textContent = user.email;
 
       if (!user.email_verified_at) initVerifyBanner();
+      initChangeEmail(user);
 
       // Update nav with first name
       var navEl = document.getElementById('navAccount');

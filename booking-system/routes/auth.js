@@ -260,6 +260,57 @@ router.get('/me/export', requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// PATCH /api/auth/me/email — e-mailadres wijzigen (bijv. tikfout herstellen)
+// Wachtwoord-accounts bevestigen met hun huidige wachtwoord (een open sessie
+// op andermans telefoon mag het adres niet stilletjes kunnen overnemen);
+// Google-accounts zonder wachtwoord loggen via hun google_id, dus daar kan het
+// direct. Het nieuwe adres moet opnieuw geverifieerd worden.
+router.patch('/me/email', requireAuth, async (req, res) => {
+  const newEmail = normalizeEmail(req.body.email);
+  if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail))
+    return res.status(400).json({ error: 'Vul een geldig e-mailadres in. / Please enter a valid email address.' });
+
+  const user = await queries.getUserCredentials(req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const oldEmail = user.email;
+  if (newEmail === String(oldEmail).toLowerCase())
+    return res.json({ ok: true, email: oldEmail });
+
+  if (user.password_hash) {
+    const valid = req.body.password ? await bcrypt.compare(String(req.body.password), user.password_hash) : false;
+    if (!valid) return res.status(401).json({ error: 'Wachtwoord onjuist. / Incorrect password.' });
+  }
+
+  const existing = await queries.getUserByEmail(newEmail);
+  if (existing && existing.id !== user.id)
+    return res.status(409).json({ error: 'Er bestaat al een account met dit e-mailadres. / An account with this email already exists.' });
+
+  const updated = await queries.updateUserEmail(user.id, newEmail);
+  if (!updated)
+    return res.status(409).json({ error: 'Er bestaat al een account met dit e-mailadres. / An account with this email already exists.' });
+
+  // Brevo-mailinglijst meeverhuizen bij actieve marketingtoestemming (non-fataal)
+  if (user.marketing_opt_in_at) {
+    try {
+      const { subscribeToMarketingList, unsubscribeFromMarketingList } = require('../utils/email');
+      await subscribeToMarketingList(newEmail, user.name);
+      await unsubscribeFromMarketingList(oldEmail);
+    } catch (err) {
+      console.error('Brevo e-mailwissel (non-fatal):', err.message);
+    }
+  }
+
+  // Verificatiecode naar het nieuwe adres (non-fataal; kan ook later opnieuw)
+  try {
+    await startEmailVerification(user.id, user.name, newEmail);
+  } catch (err) {
+    console.error('Verification email failed (non-fatal):', err.message);
+  }
+
+  queries.auditLog({ actor_type: 'customer', actor_id: user.id, action: 'email_changed', detail: `${oldEmail} -> ${newEmail}`, ip: req.ip });
+  res.json({ ok: true, email: newEmail });
+});
+
 // POST /api/auth/me/marketing-consent — marketingmail aan-/uitzetten
 // Zet de toestemming in de DB en synct direct met de Brevo-mailinglijst.
 router.post('/me/marketing-consent', requireAuth, async (req, res) => {

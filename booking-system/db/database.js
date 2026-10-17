@@ -739,8 +739,25 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct, marketing_opt_in_at FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct, marketing_opt_in_at, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1', [id]);
     return rows[0] || null;
+  },
+
+  // Voor gevoelige acties (e-mail wijzigen): inclusief password_hash
+  getUserCredentials: async (id) => {
+    const { rows } = await pool.query('SELECT id, name, email, password_hash, google_id, marketing_opt_in_at FROM users WHERE id = $1', [id]);
+    return rows[0] || null;
+  },
+
+  // Nieuw adres = opnieuw verifiëren; retourneert false bij een e-mailconflict
+  updateUserEmail: async (userId, email) => {
+    try {
+      await pool.query('UPDATE users SET email = $2, email_verified_at = NULL WHERE id = $1', [userId, email]);
+      return true;
+    } catch (err) {
+      if (err.code === '23505') return false; // adres al in gebruik
+      throw err;
+    }
   },
 
   // Marketingtoestemming: eerste opt-in-datum blijft bewaard (bewijs van
