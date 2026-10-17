@@ -941,6 +941,8 @@
           start_time:   r.start_time,
           end_time:     r.end_time,
           capacity:     r.capacity,
+          is_aufguss:   /aufguss|opgieting/i.test(r.session_name || ''),
+          aufguss_variant: r.aufguss_variant || '',
           bookings: [],
         });
       }
@@ -955,6 +957,7 @@
           admin_notes:   r.admin_notes || '',
           private_notes: r.admin_notes_private || '',
           past_visits:   r.past_visits || 0,
+          aufguss_history: r.aufguss_history || null,
         });
       }
     });
@@ -994,6 +997,7 @@
               <div class="checkin-row__info" ${b.user_id ? `style="cursor:pointer" title="Klik om notities te bewerken" onclick="openScheduleNotes(${b.user_id})"` : ''}>
                 <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
                 <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'} · ${b.past_visits === 0 ? '🌱 eerste bezoek' : b.past_visits + '× eerder geweest'}</div>
+                ${sl.is_aufguss ? aufgussHistoryLine(b) : ''}
                 ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}
                 ${b.private_notes ? `<div class="checkin-row__notes">🔒 ${escapeHtml(b.private_notes)}</div>` : ''}
               </div>
@@ -1022,11 +1026,50 @@
               <span>${booked}${sl.capacity ? ' / ' + sl.capacity : ''} mensen</span>
             </div>
           </div>
-          <div class="slot-card__body">${bookingRows}</div>
+          <div class="slot-card__body">${aufgussEditor(sl)}${bookingRows}</div>
         </div>
       `;
     }).join('');
   }
+
+  // Aufguss-logboek (intern): welke opgieting is er gepland/gedaan, en wat
+  // kregen terugkerende gasten de laatste keren — zodat Luke geen variant
+  // dubbel geeft.
+  function fmtShortDate(d) {
+    var str = String(d).slice(0, 10);
+    return str.slice(8, 10) + '-' + str.slice(5, 7);
+  }
+
+  function aufgussHistoryLine(b) {
+    if (!b.aufguss_history || !b.aufguss_history.length)
+      return '<div class="checkin-row__notes" style="color:var(--muted)">\uD83D\uDCA8 Nog geen eerdere opgieting gelogd</div>';
+    const items = b.aufguss_history.map(h => `<strong>${escapeHtml(h.variant)}</strong> (${fmtShortDate(h.date)})`).join(' \u00B7 ');
+    return `<div class="checkin-row__notes">\uD83D\uDCA8 Eerdere opgietingen: ${items}</div>`;
+  }
+
+  function aufgussEditor(sl) {
+    if (!sl.is_aufguss) return '';
+    return `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;">\uD83D\uDCA8 Opgieting:</span>
+        <input type="text" id="aufguss-variant-${sl.slot_id}" value="${escapeHtml(sl.aufguss_variant)}" placeholder="bijv. #3" maxlength="100" style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;">
+        <button class="btn btn--outline btn--sm" style="padding:6px 14px;font-size:12px;" onclick="saveAufgussVariant(${sl.slot_id})">Opslaan</button>
+        <span id="aufguss-variant-msg-${sl.slot_id}" style="font-size:12px;color:var(--muted);"></span>
+      </div>`;
+  }
+
+  window.saveAufgussVariant = async function (slotId) {
+    const input = document.getElementById('aufguss-variant-' + slotId);
+    const msg   = document.getElementById('aufguss-variant-msg-' + slotId);
+    msg.textContent = 'Opslaan\u2026';
+    try {
+      const res = await api('/aufguss-variant', { method: 'PUT', body: JSON.stringify({ slot_id: slotId, variant: input.value }) });
+      if (res && res.error) { msg.textContent = res.error; return; }
+      msg.textContent = input.value.trim() ? 'Opgeslagen \u2713' : 'Verwijderd \u2713';
+    } catch (e) {
+      msg.textContent = 'Opslaan mislukt';
+    }
+  };
 
   window.toggleCheckin = async function (bookingId, checkedIn) {
     await api('/bookings/' + bookingId + '/checkin', {

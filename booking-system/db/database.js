@@ -604,6 +604,15 @@ async function initializeDB() {
     expires_at               TIMESTAMPTZ NOT NULL
   )`);
 
+  // Aufguss-logboek: welke opgieting (Lukes nummering) er bij een Aufguss-slot
+  // is gedaan/gepland. Puur intern — komt nooit in publieke endpoints.
+  await pool.query(`CREATE TABLE IF NOT EXISTS aufguss_log (
+    time_slot_id INTEGER     PRIMARY KEY REFERENCES time_slots(id) ON DELETE CASCADE,
+    variant      TEXT        NOT NULL,
+    updated_by   TEXT,
+    updated_at   TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   // Dagnotities op het rooster: één notitie per dag, leesbaar voor iedereen
   // met rooster-toegang (admin schrijft)
   await pool.query(`CREATE TABLE IF NOT EXISTS schedule_notes (
@@ -868,6 +877,7 @@ const queries = {
         ts.end_time,
         st.name       AS session_name,
         st.color,
+        al.variant    AS aufguss_variant,
         COALESCE(ts.max_capacity, st.max_capacity) AS capacity,
         b.id          AS booking_id,
         b.group_size,
@@ -886,11 +896,51 @@ const queries = {
         ) AS past_visits
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
+      LEFT JOIN aufguss_log al ON al.time_slot_id = ts.id
       LEFT JOIN bookings b  ON b.time_slot_id = ts.id AND b.status = 'confirmed'
       LEFT JOIN users u     ON u.id = b.user_id
       WHERE ts.date = $1 AND ts.is_cancelled = FALSE
       ORDER BY ts.start_time, b.id
     `, [date]);
+    return rows;
+  },
+
+  // Opgieting (variant) van een Aufguss-slot vastleggen; leeg = verwijderen
+  setAufgussVariant: async (slotId, variant, updatedBy) => {
+    if (!variant || !variant.trim()) {
+      await pool.query('DELETE FROM aufguss_log WHERE time_slot_id = $1', [slotId]);
+      return null;
+    }
+    const { rows } = await pool.query(`
+      INSERT INTO aufguss_log (time_slot_id, variant, updated_by, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (time_slot_id) DO UPDATE SET variant = $2, updated_by = $3, updated_at = NOW()
+      RETURNING time_slot_id, variant
+    `, [slotId, variant.trim(), updatedBy || null]);
+    return rows[0];
+  },
+
+  // Laatste (max 3) Aufguss-varianten die deze gebruikers vóór de gegeven
+  // datum hebben meegemaakt — voor de roosterweergave bij een aankomende
+  // Aufguss, zodat gasten niet twee keer dezelfde opgieting krijgen.
+  getAufgussHistoryForUsers: async (userIds, beforeDate) => {
+    if (!userIds.length) return [];
+    const { rows } = await pool.query(`
+      SELECT user_id, date, variant FROM (
+        SELECT b.user_id, ts.date, al.variant,
+               ROW_NUMBER() OVER (PARTITION BY b.user_id ORDER BY ts.date DESC, ts.start_time DESC) AS rn
+        FROM bookings b
+        JOIN time_slots ts ON ts.id = b.time_slot_id
+        JOIN session_types st ON st.id = ts.session_type_id
+        JOIN aufguss_log al ON al.time_slot_id = ts.id
+        WHERE b.user_id = ANY($1)
+          AND b.status = 'confirmed'
+          AND st.name ILIKE '%aufguss%'
+          AND ts.date < $2
+      ) x
+      WHERE rn <= 3
+      ORDER BY user_id, date DESC
+    `, [userIds, beforeDate]);
     return rows;
   },
 

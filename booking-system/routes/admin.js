@@ -457,7 +457,37 @@ router.get('/schedule', requireStaff('schedule'), async (req, res) => {
   const rows = await queries.getScheduleByDate(date);
   // Privé-notities zijn alleen voor de admin zelf
   if (!req.admin) rows.forEach(r => { delete r.admin_notes_private; });
+
+  // Aufguss-historie per gast: welke opgietingen had iedereen de laatste
+  // (max 3) keren — alleen opvragen voor gasten in Aufguss-slots vandaag
+  const aufgussUserIds = [...new Set(rows
+    .filter(r => /aufguss|opgieting/i.test(r.session_name || '') && r.user_id)
+    .map(r => r.user_id))];
+  if (aufgussUserIds.length) {
+    const history = await queries.getAufgussHistoryForUsers(aufgussUserIds, date);
+    const byUser = {};
+    for (const h of history) (byUser[h.user_id] = byUser[h.user_id] || []).push({ date: h.date, variant: h.variant });
+    rows.forEach(r => {
+      if (r.user_id && byUser[r.user_id] && /aufguss|opgieting/i.test(r.session_name || ''))
+        r.aufguss_history = byUser[r.user_id];
+    });
+  }
   res.json(rows);
+});
+
+// PUT /api/admin/aufguss-variant — opgieting van een Aufguss-slot vastleggen
+// (vooraf plannen of achteraf corrigeren). Intern logboek, nooit publiek.
+router.put('/aufguss-variant', requireStaff('schedule'), async (req, res) => {
+  const slotId  = parseInt(req.body.slot_id);
+  const variant = String(req.body.variant || '');
+  if (!slotId) return res.status(400).json({ error: 'slot_id is required' });
+  if (variant.length > 100) return res.status(400).json({ error: 'Variant is te lang (max 100 tekens).' });
+  const slot = await queries.getSlotById(slotId);
+  if (!slot) return res.status(404).json({ error: 'Slot not found' });
+
+  const saved = await queries.setAufgussVariant(slotId, variant, req.admin ? 'admin' : (req.staff && req.staff.name) || 'staff');
+  queries.auditLog({ ...actorOf(req), action: saved ? 'aufguss_variant_saved' : 'aufguss_variant_deleted', target: `slot:${slotId}`, detail: variant.trim() || null, ip: req.ip });
+  res.json(saved || { time_slot_id: slotId, variant: '' });
 });
 
 router.patch('/bookings/:id/checkin', requireStaff('schedule'), async (req, res) => {
