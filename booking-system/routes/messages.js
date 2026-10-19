@@ -26,7 +26,7 @@ function authenticatedUserId(req) {
   }
 }
 
-// POST /api/messages — customer sends a message
+// POST /api/messages - customer sends a message
 router.post('/', requireAuth, async (req, res) => {
   const { subject, body } = req.body;
   if (!subject || !body)
@@ -55,7 +55,7 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json(msg);
 });
 
-// POST /api/messages/feedback — publiek feedbackformulier (geen login vereist)
+// POST /api/messages/feedback - publiek feedbackformulier (geen login vereist)
 router.post('/feedback', async (req, res) => {
   const { rating, name, email, message, website } = req.body;
   if (website) return res.status(201).json({ ok: true }); // honeypot: stil negeren
@@ -81,7 +81,7 @@ router.post('/feedback', async (req, res) => {
   res.status(201).json({ ok: true, id: msg.id });
 });
 
-// POST /api/messages/contact — publiek contact-/samenwerkingsformulier (About-pagina)
+// POST /api/messages/contact - publiek contact-/samenwerkingsformulier (About-pagina)
 router.post('/contact', async (req, res) => {
   const { name, email, message, website } = req.body;
   if (website) return res.status(201).json({ ok: true }); // honeypot: stil negeren
@@ -112,7 +112,7 @@ router.post('/contact', async (req, res) => {
   res.status(201).json({ ok: true, id: msg.id });
 });
 
-// GET /api/messages — customer gets their own messages + replies
+// GET /api/messages - customer gets their own messages + replies
 router.get('/', requireAuth, async (req, res) => {
   const msgs = await queries.getMessagesByUser(req.user.userId);
   res.json(msgs);

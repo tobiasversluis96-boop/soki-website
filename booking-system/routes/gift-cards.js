@@ -18,7 +18,7 @@ function generateCode() {
   return `SOKI-${seg()}-${seg()}`;
 }
 
-// GET /api/gift-cards/check/:code  — public balance check
+// GET /api/gift-cards/check/:code  - public balance check
 router.get('/check/:code', async (req, res) => {
   const card = await queries.getGiftCardByCode(req.params.code);
   if (!card) return res.status(404).json({ error: 'Cadeaubon niet gevonden.' });
@@ -34,7 +34,7 @@ router.get('/check/:code', async (req, res) => {
   });
 });
 
-// POST /api/gift-cards/purchase  — create PaymentIntent for gift card
+// POST /api/gift-cards/purchase  - create PaymentIntent for gift card
 router.post('/purchase', async (req, res) => {
   const { amount_cents, purchaser_name, purchaser_email, recipient_name, recipient_email, message } = req.body;
 
@@ -100,7 +100,7 @@ async function activateGiftCardFromIntent(intent) {
   return activated;
 }
 
-// POST /api/gift-cards/confirm  — called after Stripe payment succeeds on frontend
+// POST /api/gift-cards/confirm  - called after Stripe payment succeeds on frontend
 router.post('/confirm', async (req, res) => {
   const { payment_intent_id } = req.body;
   if (!payment_intent_id) return res.status(400).json({ error: 'payment_intent_id required' });
@@ -113,7 +113,7 @@ router.post('/confirm', async (req, res) => {
     return res.status(400).json({ error: 'Betaling niet gevonden.' });
   }
   // Async betaalmethodes (SEPA, trage iDEAL): nog niet geslaagd maar ook niet
-  // mislukt — de webhook activeert de bon zodra de betaling definitief is.
+  // mislukt - de webhook activeert de bon zodra de betaling definitief is.
   if (intent.status === 'processing')
     return res.json({ ok: false, processing: true });
   if (intent.status !== 'succeeded')

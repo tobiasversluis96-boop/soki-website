@@ -25,15 +25,15 @@ async function requireAdmin(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Invalid or expired admin token' });
   }
-  // Geldig staff-token maar geen admin: 403, géén 401 — de frontend logt bij
+  // Geldig staff-token maar geen admin: 403, géén 401 - de frontend logt bij
   // elke 401 automatisch uit, wat medewerkers uit hun sessie gooide
   if (payload.type !== 'admin')
     return res.status(403).json({ error: 'Alleen voor beheerders' });
   try {
-    // Revocation check against the DB — bumped token_version kills old tokens
+    // Revocation check against the DB - bumped token_version kills old tokens
     const currentVersion = await queries.getAdminTokenVersion(payload.adminId);
     if (currentVersion === null || (payload.tv || 0) !== currentVersion)
-      return res.status(401).json({ error: 'Session expired — please log in again' });
+      return res.status(401).json({ error: 'Session expired - please log in again' });
     req.admin = payload;
     next();
   } catch (err) {
@@ -61,7 +61,7 @@ function requireStaff(perm) {
       if (payload.type === 'admin') {
         const currentVersion = await queries.getAdminTokenVersion(payload.adminId);
         if (currentVersion === null || (payload.tv || 0) !== currentVersion)
-          return res.status(401).json({ error: 'Session expired — please log in again' });
+          return res.status(401).json({ error: 'Session expired - please log in again' });
         req.admin = payload;
         return next();
       }
@@ -69,7 +69,7 @@ function requireStaff(perm) {
       // token for these) so deactivation and permission changes apply instantly
       const staff = await queries.getStaffById(payload.staffId);
       if (!staff || (payload.tv || 0) !== (staff.token_version || 0))
-        return res.status(401).json({ error: 'Session expired — please log in again' });
+        return res.status(401).json({ error: 'Session expired - please log in again' });
       if (!staff.is_active) return res.status(403).json({ error: 'Account deactivated' });
       const permissions = STAFF_PERM_KEYS.filter(k => staff['perm_' + k]);
       const needed = perm ? [].concat(perm) : [];
@@ -246,7 +246,7 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
     if (paidWaiter) {
       // Boeking aanmaken en daarna de wachtlijst-entry atomair claimen; bij een
       // verloren claim-race (gelijktijdige annulering elders) wordt de nieuwe
-      // boeking weer geannuleerd — nooit twee boekingen op één betaling.
+      // boeking weer geannuleerd - nooit twee boekingen op één betaling.
       const newBooking = await queries.createBooking(
         paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
       );
@@ -416,7 +416,7 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
   const waiters = await queries.getUnclaimedPaidWaitlistForSlot(slotId);
   for (const w of waiters) {
     try {
-      // Gratis wachtlijstplekken hebben geen payment intent — alleen mailen
+      // Gratis wachtlijstplekken hebben geen payment intent - alleen mailen
       if (w.stripe_payment_intent_id) {
         await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
         refunds++;
@@ -459,7 +459,7 @@ router.get('/schedule', requireStaff('schedule'), async (req, res) => {
   if (!req.admin) rows.forEach(r => { delete r.admin_notes_private; });
 
   // Aufguss-historie per gast: welke opgietingen had iedereen de laatste
-  // (max 3) keren — alleen opvragen voor gasten in Aufguss-slots vandaag
+  // (max 3) keren - alleen opvragen voor gasten in Aufguss-slots vandaag
   const aufgussUserIds = [...new Set(rows
     .filter(r => /aufguss|opgieting/i.test(r.session_name || '') && r.user_id)
     .map(r => r.user_id))];
@@ -475,7 +475,7 @@ router.get('/schedule', requireStaff('schedule'), async (req, res) => {
   res.json(rows);
 });
 
-// PUT /api/admin/aufguss-variant — opgieting van een Aufguss-slot vastleggen
+// PUT /api/admin/aufguss-variant - opgieting van een Aufguss-slot vastleggen
 // (vooraf plannen of achteraf corrigeren). Intern logboek, nooit publiek.
 router.put('/aufguss-variant', requireStaff('schedule'), async (req, res) => {
   const slotId  = parseInt(req.body.slot_id);
@@ -561,7 +561,7 @@ router.patch('/customers/:id/notes', requireStaff(['customers', 'schedule']), as
   res.json({ ok: true });
 });
 
-// GET /api/admin/kantine-link — permanente deelbare link voor de koks van Kantine
+// GET /api/admin/kantine-link - permanente deelbare link voor de koks van Kantine
 // (zelfde sleutelafleiding als in server.js: HMAC van JWT_SECRET, dus altijd geldig)
 router.get('/kantine-link', requireAdmin, async (_req, res) => {
   const crypto = require('crypto');
@@ -570,7 +570,7 @@ router.get('/kantine-link', requireAdmin, async (_req, res) => {
   res.json({ url: `${process.env.BASE_URL || 'http://localhost:3001'}/kantine?key=${key}` });
 });
 
-// PATCH /api/admin/customers/:id/discount — vaste korting op losse sessies (bv. medehuurders)
+// PATCH /api/admin/customers/:id/discount - vaste korting op losse sessies (bv. medehuurders)
 router.patch('/customers/:id/discount', requireAdmin, async (req, res) => {
   const pct = Number(req.body.pct);
   if (!Number.isInteger(pct) || pct < 0 || pct > 100)
@@ -583,7 +583,7 @@ router.patch('/customers/:id/discount', requireAdmin, async (req, res) => {
   res.json({ ok: true, discount_pct: pct });
 });
 
-// POST /api/admin/customers/:id/credits — gratis credits geven als €0-punchpass
+// POST /api/admin/customers/:id/credits - gratis credits geven als €0-punchpass
 router.post('/customers/:id/credits', requireAdmin, async (req, res) => {
   const credits = Number(req.body.credits);
   if (!Number.isFinite(credits) || credits <= 0 || credits > 100)
@@ -720,7 +720,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       ORDER BY st.price_cents
     `),
 
-    // 3. Peak days heatmap — bookings by day-of-week and hour
+    // 3. Peak days heatmap - bookings by day-of-week and hour
     pool.query(`
       SELECT
         EXTRACT(DOW FROM ts.date::date)::int AS dow,
@@ -761,7 +761,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
       ORDER BY month
     `),
 
-    // 5. Forward view — next 14 days slots with fill rate
+    // 5. Forward view - next 14 days slots with fill rate
     pool.query(`
       SELECT
         ts.date,
@@ -857,7 +857,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
   // + cadeaubon-/strippenkaartverkoop deze maand + hun 28-daags gemiddelde × resterende dagen.
   // De MAX zorgt dat al vastgelegde vooruitboekingen de bodem vormen en het
   // historische gemiddelde alleen aanvult waar de rest van de maand nog
-  // ondergeboekt is — nooit dubbel geteld.
+  // ondergeboekt is - nooit dubbel geteld.
   const { rows: [proj] } = await pool.query(`
     WITH nl AS (SELECT (NOW() AT TIME ZONE 'Europe/Amsterdam')::date AS today),
     booking_rev AS (
@@ -920,7 +920,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
 
 // ─── GDPR ─────────────────────────────────────────────────────────────────────
 
-// DELETE /api/admin/customers/:id — anonymise user PII (GDPR erasure)
+// DELETE /api/admin/customers/:id - anonymise user PII (GDPR erasure)
 router.delete('/customers/:id', requireAdmin, async (req, res) => {
   await queries.deleteUser(req.params.id);
   queries.auditLog({ ...actorOf(req), action: 'customer_deleted', target: `user:${req.params.id}`, detail: 'GDPR erasure', ip: req.ip });
@@ -1009,13 +1009,13 @@ router.post('/staff/change-own-password', requireStaff(null), async (req, res) =
 
 // ─── Subscriptions: list, pause, resume (single + bulk) ────────────────────────
 
-// GET /api/admin/subscriptions — list all subscriptions with user + plan info
+// GET /api/admin/subscriptions - list all subscriptions with user + plan info
 router.get('/subscriptions', requireAdmin, async (req, res) => {
   const rows = await queries.getAllSubscriptions();
   res.json(rows);
 });
 
-// GET /api/admin/punch-passes — alle verkochte strippenkaarten met klantinfo
+// GET /api/admin/punch-passes - alle verkochte strippenkaarten met klantinfo
 router.get('/punch-passes', requireAdmin, async (req, res) => {
   const rows = await queries.getAllPunchPasses();
   res.json(rows);
@@ -1026,7 +1026,7 @@ router.get('/gift-cards', requireAdmin, async (req, res) => {
   res.json(cards);
 });
 
-// GET /api/admin/punch-bundles — punch pass bundles (incl. inactive) for the editor
+// GET /api/admin/punch-bundles - punch pass bundles (incl. inactive) for the editor
 router.get('/punch-bundles', requireAdmin, async (req, res) => {
   const bundles = await queries.getAllPunchPassBundles();
   res.json(bundles);
@@ -1239,7 +1239,7 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
 
   queries.auditLog({ ...actorOf(req), action: 'walkin_booking_created', target: `booking:${booking.id}`, detail: `${payment_mode}, ${group_size}p, ${totalCents} cents`, ip: req.ip });
 
-  // Free: booking is already confirmed — done
+  // Free: booking is already confirmed - done
   if (payment_mode === 'free') {
     try {
       const fullBooking = await queries.getBookingById(booking.id);
@@ -1290,7 +1290,7 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/admin/walkin/booking/:id/status — polling for QR flow
+// GET /api/admin/walkin/booking/:id/status - polling for QR flow
 router.get('/walkin/booking/:id/status', requireAdmin, async (req, res) => {
   const booking = await queries.getBookingBasic(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });

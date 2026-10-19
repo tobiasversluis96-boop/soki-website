@@ -239,7 +239,7 @@
       return;
     }
     var warnDay = day !== today ? '<br><strong>Let op: dit ticket is voor ' + esc(dateStr) + ', niet vandaag.</strong>' : '';
-    show('ok', '✓ Geldige combi-deal — ' + info.diners + ' diner' + (info.diners === 1 ? '' : 's'), detail + warnDay,
+    show('ok', '✓ Geldige combi-deal - ' + info.diners + ' diner' + (info.diners === 1 ? '' : 's'), detail + warnDay,
       { bid: bid, sig: sig, diners: info.diners });
   }
 

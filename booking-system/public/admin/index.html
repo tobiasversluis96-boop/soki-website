@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="SOKI Admin">
   <link rel="stylesheet" href="/styles.css">
   <style>
-    /* Admin-specific overrides — layout, sidebar, tables */
+    /* Admin-specific overrides - layout, sidebar, tables */
     body { overflow-x: hidden; }
     :root {
       --terra:   #D94D1A;
@@ -929,13 +929,13 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Artiest (optioneel — zichtbaar op de site als "with: …")</label>
+                <label class="form-label">Artiest (optioneel - zichtbaar op de site als "with: …")</label>
                 <input class="form-input" type="text" id="gen-artist" maxlength="100" placeholder="bijv. August">
               </div>
 
               <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" id="gen-free" style="width:auto;" />
-                <label for="gen-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessies (bv. try-out weekend — klanten hoeven niet te betalen)</label>
+                <label for="gen-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessies (bv. try-out weekend - klanten hoeven niet te betalen)</label>
               </div>
 
               <button class="btn btn--outline" id="gen-preview-btn">Voorvertoning genereren</button>
@@ -1000,7 +1000,7 @@
               <!-- Step 2 · Sessie -->
               <div id="walkin-step-slot" style="display:none;">
                 <div style="margin-bottom:14px;padding:10px 14px;background:#f7f2ec;border-radius:6px;font-size:13px;color:var(--brown);">
-                  <strong id="walkin-user-label"></strong> — <a href="#" id="walkin-user-change" style="color:var(--terra);font-size:12px;">wijzigen</a>
+                  <strong id="walkin-user-label"></strong> - <a href="#" id="walkin-user-change" style="color:var(--terra);font-size:12px;">wijzigen</a>
                 </div>
                 <h4 style="margin:0 0 12px;color:var(--brown);font-size:15px;">2. Sessie</h4>
                 <div id="walkin-slots-list" style="max-height:320px;overflow-y:auto;border:1px solid rgba(0,0,0,.08);border-radius:6px;"></div>
@@ -1260,14 +1260,14 @@
       </div>
       <div id="slot-duration-warning" style="display:none;background:#FFF4E0;border:1px solid #E8B04B;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
         <div style="font-size:13px;color:#8A5A00;line-height:1.5;" id="slot-duration-warning-text"></div>
-        <button type="button" id="slot-duration-dismiss" class="btn btn--outline btn--sm" style="margin-top:10px;font-size:12px;">Klopt zo — dit is een uitzondering</button>
+        <button type="button" id="slot-duration-dismiss" class="btn btn--outline btn--sm" style="margin-top:10px;font-size:12px;">Klopt zo - dit is een uitzondering</button>
       </div>
       <div class="form-group" id="slot-capacity-group">
         <label class="form-label">Max. capaciteit (leeg = type standaard)</label>
         <input class="form-input" type="number" id="slot-capacity" min="1" max="100" placeholder="Standaard">
       </div>
       <div class="form-group">
-        <label class="form-label">Artiest (optioneel — zichtbaar op de site als "with: …")</label>
+        <label class="form-label">Artiest (optioneel - zichtbaar op de site als "with: …")</label>
         <input class="form-input" type="text" id="slot-artist" maxlength="100" placeholder="bijv. August">
       </div>
       <div class="form-group">
@@ -1276,7 +1276,7 @@
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="slot-free" style="width:auto;" />
-        <label for="slot-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessie (klant hoeft niet te betalen — bv. try-out)</label>
+        <label for="slot-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessie (klant hoeft niet te betalen - bv. try-out)</label>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="slot-private" style="width:auto;" onchange="document.getElementById('slot-private-fields').style.display = this.checked ? 'block' : 'none'; document.getElementById('slot-capacity-group').style.display = this.checked ? 'none' : 'block'; document.getElementById('slot-private-persons').required = this.checked; document.getElementById('slot-private-price').required = this.checked;" />
@@ -1293,7 +1293,7 @@
             <input class="form-input" type="number" id="slot-private-price" min="1" step="0.01" placeholder="bijv. 250">
           </div>
         </div>
-        <div style="font-size:12px;color:#4527A0;margin-top:8px;">Eén totaalbedrag voor de hele groep — de klant kan het aantal personen niet aanpassen.</div>
+        <div style="font-size:12px;color:#4527A0;margin-top:8px;">Eén totaalbedrag voor de hele groep - de klant kan het aantal personen niet aanpassen.</div>
       </div>
       <div class="form-error" id="slot-error"></div>
       <div class="modal-footer">
@@ -1347,11 +1347,11 @@
     <h3 id="notes-modal-title">Notities</h3>
     <input type="hidden" id="notes-user-id">
     <div class="form-group" style="margin-bottom:0">
-      <label class="form-label">Notitie — zichtbaar voor alle medewerkers (nooit voor de klant)</label>
+      <label class="form-label">Notitie - zichtbaar voor alle medewerkers (nooit voor de klant)</label>
       <textarea class="form-input" id="notes-textarea" rows="4" placeholder="Bijv. VIP klant, allergie, voorkeur…" style="resize:vertical;height:100px"></textarea>
     </div>
     <div class="form-group" id="notes-private-block" style="margin-bottom:0;margin-top:14px">
-      <label class="form-label">🔒 Privé-notitie — alleen zichtbaar voor jou (admin)</label>
+      <label class="form-label">🔒 Privé-notitie - alleen zichtbaar voor jou (admin)</label>
       <textarea class="form-input" id="notes-textarea-private" rows="4" placeholder="Alleen jij ziet dit…" style="resize:vertical;height:100px"></textarea>
     </div>
     <div class="form-error" id="notes-error"></div>
@@ -1370,7 +1370,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20260928-2"></script>
+<script src="/admin/admin.js?v=20261019-2"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

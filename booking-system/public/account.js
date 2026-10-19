@@ -149,7 +149,7 @@
       }).catch(function () {
         btn.disabled = false;
         msg.style.color = '#C62828';
-        msg.textContent = isNl ? 'Er ging iets mis — probeer het opnieuw.' : 'Something went wrong — please try again.';
+        msg.textContent = isNl ? 'Er ging iets mis - probeer het opnieuw.' : 'Something went wrong - please try again.';
       });
     });
   }
@@ -158,7 +158,7 @@
     var banner = document.getElementById('verify-banner');
     var msg    = document.getElementById('verify-msg');
     banner.style.display = 'block';
-    // Guard: kan tweemaal aangeroepen worden (bijv. na e-mailwijziging) —
+    // Guard: kan tweemaal aangeroepen worden (bijv. na e-mailwijziging) -
     // listeners maar één keer binden
     if (banner.dataset.inited) return;
     banner.dataset.inited = '1';
@@ -268,7 +268,7 @@
       loadBuddies();
       initBuddySearch();
       loadWaitlist();
-      // loadMilestones();  // Milestones tijdelijk uit — sectie staat verborgen in account.html
+      // loadMilestones();  // Milestones tijdelijk uit - sectie staat verborgen in account.html
       renderMessages();
     });
   }

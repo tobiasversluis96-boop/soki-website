@@ -26,14 +26,14 @@ async function supersedePendingBookings(userId, newBookingId = null) {
         try {
           const intent = await stripe.paymentIntents.retrieve(old.stripe_payment_intent_id);
           if (intent && (intent.status === 'succeeded' || intent.status === 'processing')) continue;
-        } catch (e2) { /* intent onbekend bij Stripe — boeking kan gewoon weg */ }
+        } catch (e2) { /* intent onbekend bij Stripe - boeking kan gewoon weg */ }
       }
     }
     await queries.cancelBooking(old.id);
   }
 }
 
-// POST /api/bookings — create a pending booking
+// POST /api/bookings - create a pending booking
 router.post('/', requireAuth, async (req, res) => {
   const { slot_id, promo_code, kantine_addon } = req.body;
   let { group_size } = req.body;
@@ -74,7 +74,7 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'group_size must be between 1 and 15' });
   } else if (group_size > 8) {
     // Max 8 p.p. boeking; grotere groepen alleen via privéverhuur (rust voor
-    // andere bezoekers) — daarvoor moet je contact opnemen.
+    // andere bezoekers) - daarvoor moet je contact opnemen.
     return res.status(400).json({
       error: 'Maximaal 8 personen per boeking. Grotere groep? Mail hello@sokisocialsauna.nl voor privéverhuur.',
       code: 'GROUP_TOO_LARGE',
@@ -85,7 +85,7 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
   // Free-slot rule: each account may book only ONE free (price_cents=0) session
-  // (geldt niet voor privéverhuur — daar bepaalt SOKI zelf de prijs/groep)
+  // (geldt niet voor privéverhuur - daar bepaalt SOKI zelf de prijs/groep)
   if (slot.price_cents === 0 && !slot.is_private) {
     const used = await queries.countUserFreeSlotBookings(req.user.userId);
     if (used > 0) {
@@ -125,7 +125,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (pct > 0) cotenantCents = Math.round(slot.price_cents * pct / 100);
   }
 
-  // Combi ticket Kantine: 2-gangendiner, €12 p.p. — huurders (accounts met
+  // Combi ticket Kantine: 2-gangendiner, €12 p.p. - huurders (accounts met
   // huurderskorting) betalen hun vaste Kantine-prijs van €10 p.p. Alleen bij
   // betaalde losse sessies (niet gratis, niet privéverhuur); creditsboekingen
   // worden in confirm-member geweigerd zolang er een addon op de boeking staat.
@@ -147,7 +147,7 @@ router.post('/', requireAuth, async (req, res) => {
       if (giftCard.status === 'expired' || new Date(giftCard.expires_at) < new Date())
         return res.status(400).json({ error: 'Deze cadeaubon is verlopen.' });
       // Saldo dat al gereserveerd is op andere lopende (pending) boekingen telt niet
-      // mee als beschikbaar — voorkomt dubbel besteden van dezelfde bon. Eigen
+      // mee als beschikbaar - voorkomt dubbel besteden van dezelfde bon. Eigen
       // pendings tellen niet mee: die worden zo direct gesuperseded.
       const { rows: reservedRows } = await getPool().query(
         `SELECT COALESCE(SUM(pending_discount_cents), 0)::int AS reserved
@@ -164,7 +164,7 @@ router.post('/', requireAuth, async (req, res) => {
       // Try milestone code
       milestoneEntry = await queries.getMilestoneByCode(promo_code.trim());
       if (milestoneEntry) {
-        // Milestone-codes zijn persoonlijk — alleen de eigenaar mag ze gebruiken
+        // Milestone-codes zijn persoonlijk - alleen de eigenaar mag ze gebruiken
         if (milestoneEntry.user_id !== req.user.userId)
           return res.status(400).json({ error: 'Ongeldige promotiecode.' });
         if (slot.is_private)
@@ -184,9 +184,9 @@ router.post('/', requireAuth, async (req, res) => {
           discountCents = grossTotal;
         } else {
           // Mijlpaal 10 (sauna hat) en 50 (VIP) zijn geen boekingskorting: niet
-          // als €0-korting aan de boeking hangen — de code zou bij betaling
+          // als €0-korting aan de boeking hangen - de code zou bij betaling
           // verbrand worden zonder dat de klant er iets voor terugkrijgt.
-          return res.status(400).json({ error: 'Deze beloning wissel je niet in bij een boeking — neem hem mee naar de balie of mail ons.' });
+          return res.status(400).json({ error: 'Deze beloning wissel je niet in bij een boeking - neem hem mee naar de balie of mail ons.' });
         }
       } else {
         // Try admin-managed discount code
@@ -261,7 +261,7 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(201).json({ booking_id: booking.id, total_cents: 0, free: true, slot, group_size });
   }
 
-  // Partial discount: store the promo on the booking — it is only actually
+  // Partial discount: store the promo on the booking - it is only actually
   // redeemed once payment succeeds (payments /confirm or the Stripe webhook),
   // so an abandoned checkout never costs the customer their code/balance.
   if (giftCard) {
@@ -294,13 +294,13 @@ router.post('/', requireAuth, async (req, res) => {
   });
 });
 
-// GET /api/bookings — list bookings for logged-in user
+// GET /api/bookings - list bookings for logged-in user
 router.get('/', requireAuth, async (req, res) => {
   const bookings = await queries.getBookingsByUser(req.user.userId);
   res.json(bookings);
 });
 
-// GET /api/bookings/:id — single booking detail
+// GET /api/bookings/:id - single booking detail
 router.get('/:id', requireAuth, async (req, res) => {
   const booking = await queries.getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
@@ -309,7 +309,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json(booking);
 });
 
-// GET /api/bookings/:id/qr — get QR check-in URL for confirmed booking
+// GET /api/bookings/:id/qr - get QR check-in URL for confirmed booking
 router.get('/:id/qr', requireAuth, async (req, res) => {
   const booking = await queries.getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
@@ -322,7 +322,7 @@ router.get('/:id/qr', requireAuth, async (req, res) => {
   res.json({ url, booking_id: booking.id });
 });
 
-// PATCH /api/bookings/:id/cancel — user cancels their own booking
+// PATCH /api/bookings/:id/cancel - user cancels their own booking
 router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const booking = await queries.getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
@@ -335,7 +335,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   //   > 48h before → 100% refund
   //   24-48h before → 50% refund (credits: always fully restored)
   //   < 24h before → no refund; credits forfeited
-  // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' —
+  // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' -
   // normalise both before combining, otherwise this yields Invalid Date/NaN.
   const dateStr = booking.date instanceof Date
     ? `${booking.date.getFullYear()}-${String(booking.date.getMonth() + 1).padStart(2, '0')}-${String(booking.date.getDate()).padStart(2, '0')}`
@@ -349,7 +349,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   const nowNL = new Date(new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace(' ', 'T'));
   const hoursUntil = (sessionDatetime - nowNL) / 36e5;
   if (Number.isNaN(hoursUntil))
-    return res.status(500).json({ error: 'Could not determine session time — please contact us to cancel' });
+    return res.status(500).json({ error: 'Could not determine session time - please contact us to cancel' });
   const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
 
   // Annulering atomair claimen vóór de refund: twee parallelle cancel-verzoeken
@@ -367,7 +367,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     try {
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
       // Bij (deels) met credits betaalde boekingen is via Stripe minder dan total_cents
-      // betaald (alleen diner, of extra personen + diner) — refund berekenen over wat
+      // betaald (alleen diner, of extra personen + diner) - refund berekenen over wat
       // er écht is afgerekend, dus het bedrag van de payment intent zelf.
       const chargedCents = booking.credits_used > 0
         ? (await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id)).amount_received
@@ -383,11 +383,11 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
       console.error('Stripe refund failed:', stripeErr.message);
       // Claim terugdraaien zodat de klant het opnieuw kan proberen
       await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [req.params.id, booking.status]);
-      return res.status(502).json({ error: 'Refund failed — please contact us to cancel' });
+      return res.status(502).json({ error: 'Refund failed - please contact us to cancel' });
     }
   }
 
-  // Membercredits terug (naar strippenkaart óf abonnement) — maar binnen 24u vóór de sessie ben je ze kwijt
+  // Membercredits terug (naar strippenkaart óf abonnement) - maar binnen 24u vóór de sessie ben je ze kwijt
   let creditsRestored = 0;
   if (booking.credits_used > 0 && hoursUntil >= 24) {
     const restored = await queries.restoreCreditsForBooking(booking);
@@ -427,7 +427,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
     if (paidWaiter) {
       // Create a booking for them (payment already collected), then claim the
       // waitlist entry atomically. Verliezen we de claim-race (twee annuleringen
-      // tegelijk), dan wordt de zojuist aangemaakte boeking weer geannuleerd —
+      // tegelijk), dan wordt de zojuist aangemaakte boeking weer geannuleerd -
       // anders ontstaan er twee boekingen op dezelfde betaling.
       const newBooking = await queries.createBooking(
         paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
@@ -446,7 +446,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
         console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
       }
     } else {
-      // No paid waiters — notify first unpaid waitlist user
+      // No paid waiters - notify first unpaid waitlist user
       const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
       if (waitUser) {
         await sendWaitlistNotification({
@@ -474,7 +474,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   });
 });
 
-// POST /api/bookings/:id/confirm-member — confirm booking using subscription credits
+// POST /api/bookings/:id/confirm-member - confirm booking using subscription credits
 router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   const bookingId = parseInt(req.params.id);
 
@@ -494,14 +494,14 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!sub && activePasses.length === 0)
     return res.status(403).json({ error: 'No active subscription or punch pass' });
 
-  // Server determines the credit cost — never trust the client for this
+  // Server determines the credit cost - never trust the client for this
   const { CREDIT_COST } = require('./subscriptions');
   const slot = await queries.getSlotById(booking.time_slot_id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
     return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
   if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
-    return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek — extra personen boeken via de gewone betaling.' });
+    return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek - extra personen boeken via de gewone betaling.' });
   // Unlimited membership = 0 credits
   const creditsToUse = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
 

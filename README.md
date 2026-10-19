@@ -1,4 +1,4 @@
-# Soki Social Sauna — Website & Booking System
+# Soki Social Sauna - Website & Booking System
 
 Static website + Node.js booking backend for [Soki Social Sauna](https://sokisocialsauna.nl), Utrecht.
 
@@ -35,7 +35,7 @@ soki-website/
 
 ---
 
-## Part 1 — Set up Sanity CMS
+## Part 1 - Set up Sanity CMS
 
 Sanity is where you edit texts, images and gallery photos without touching code.
 
@@ -74,7 +74,7 @@ cd sanity
 npm run dev
 ```
 
-The studio opens at `http://localhost:3333`. Start adding content — all fields are optional, the website falls back to its static HTML if a field is empty.
+The studio opens at `http://localhost:3333`. Start adding content - all fields are optional, the website falls back to its static HTML if a field is empty.
 
 ### 1.5 Deploy the Sanity studio (optional)
 
@@ -89,7 +89,7 @@ This deploys the studio to `https://your-project-name.sanity.studio`.
 
 ---
 
-## Part 2 — Set up the booking system locally
+## Part 2 - Set up the booking system locally
 
 ### 2.1 Install dependencies
 
@@ -159,7 +159,7 @@ Visit `http://localhost:3001`. The database tables and seed data are created aut
 
 ---
 
-## Part 3 — Deploy to Railway
+## Part 3 - Deploy to Railway
 
 ### 3.1 Push the project to GitHub
 
@@ -187,7 +187,7 @@ git push -u origin main
 ### 3.3 Add a PostgreSQL database
 
 1. In your Railway project, click **+ New** → **Database** → **PostgreSQL**
-2. Railway creates a PostgreSQL instance and automatically injects `DATABASE_URL` into your service — no manual configuration needed
+2. Railway creates a PostgreSQL instance and automatically injects `DATABASE_URL` into your service - no manual configuration needed
 
 ### 3.4 Add environment variables
 
@@ -209,7 +209,7 @@ In Railway: select your service → **Variables** → **Add variable**. Add each
 | `SANITY_PROJECT_ID` | Your Sanity project ID (from [sanity.io/manage](https://sanity.io/manage)) |
 | `SANITY_DATASET` | `production` |
 
-> `DATABASE_URL` is injected automatically by Railway — do NOT add it manually.
+> `DATABASE_URL` is injected automatically by Railway - do NOT add it manually.
 
 ### 3.5 CI/CD with GitHub Actions
 
@@ -268,4 +268,4 @@ Also update `ADMIN_PASSWORD` in your Railway environment variables.
 Once deployed:
 1. Open the Sanity studio (`sanity deploy` or `sanity dev` locally)
 2. Edit any text, image or gallery item
-3. Changes appear on the website within seconds — no redeploy needed
+3. Changes appear on the website within seconds - no redeploy needed

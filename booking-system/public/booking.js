@@ -119,7 +119,7 @@
   function summaryHTML(includeTotal) {
     if (!state.slot || !state.sessionType) return '';
     var rows = [
-      [t('booking.summary.session'), state.sessionType.name + (state.slot.artist ? ' — ' + t('booking.slot.with') + ': ' + state.slot.artist : '')],
+      [t('booking.summary.session'), state.sessionType.name + (state.slot.artist ? ' - ' + t('booking.slot.with') + ': ' + state.slot.artist : '')],
       [t('booking.summary.date'),    fmtDate(state.slot.date)],
       [t('booking.summary.time'),    state.slot.start_time + ' – ' + state.slot.end_time],
       [t('booking.summary.group'),   personStr(state.groupSize)],
@@ -475,7 +475,7 @@
     if (existing) existing.remove();
 
     var pricePerPerson = slot ? slot.price_cents : 0;
-    // Gratis sessies: geen betaling — andere teksten en direct aanmelden
+    // Gratis sessies: geen betaling - andere teksten en direct aanmelden
     var isFreeSlot = !pricePerPerson;
     var continueLabel = t(isFreeSlot ? 'booking.waitlist.joinFree' : 'booking.waitlist.continue');
     var modal = document.createElement('div');
@@ -533,7 +533,7 @@
       var errEl  = document.getElementById('wl-error');
       errEl.style.display = 'none';
 
-      // Fase 1: intent pas aanmaken bij doorgaan \u2014 met de d\u00e1n gekozen groepsgrootte
+      // Fase 1: intent pas aanmaken bij doorgaan - met de d\u00e1n gekozen groepsgrootte
       if (!wlClientSecret) {
         payBtn.disabled = true;
         payBtn.textContent = '\u2026';
@@ -844,7 +844,7 @@
       }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.can_book && kantineCents() > 0) {
           // Hybride: sessie met credits, alleen het diner (€10 p.p.) afrekenen.
-          // Promocodes gelden hier niet — de sessie wordt al door credits gedekt.
+          // Promocodes gelden hier niet - de sessie wordt al door credits gedekt.
           state.memberCombi = { credits_cost: data.credits_cost, is_unlimited: data.is_unlimited };
           document.getElementById('promo-toggle').style.display = 'none';
           document.getElementById('promo-field').style.display = 'none';
@@ -1142,7 +1142,7 @@
       });
     }
 
-    // Save group size preference — behalve bij privéverhuur (vast, vaak groot aantal)
+    // Save group size preference - behalve bij privéverhuur (vast, vaak groot aantal)
     if (!(state.slot && state.slot.is_private)) {
       localStorage.setItem('soki_last_group_size', String(state.groupSize));
     }
@@ -1178,7 +1178,7 @@
   function bind() {
     // Step 2 back
 
-    // Step 3 nav — back goes to slot list (step 2)
+    // Step 3 nav - back goes to slot list (step 2)
     document.getElementById('back-2').addEventListener('click', function () { showStep(2); });
     document.getElementById('kantine-addon-check').addEventListener('change', function () {
       state.kantineAddon = this.checked;

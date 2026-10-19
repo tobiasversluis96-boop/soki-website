@@ -18,7 +18,7 @@ router.get('/search', requireAuth, async (req, res) => {
   res.json(results.map(r => ({ id: r.id, name: r.name, buddy_status: r.buddy_status })));
 });
 
-// GET /api/buddies — eigen buddy's + openstaande verzoeken
+// GET /api/buddies - eigen buddy's + openstaande verzoeken
 router.get('/', requireAuth, async (req, res) => {
   const rows = await queries.getBuddyRelations(req.user.userId);
   res.json({
@@ -63,14 +63,14 @@ router.post('/:id/accept', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// DELETE /api/buddies/:id — weigeren, intrekken of ontkoppelen
+// DELETE /api/buddies/:id - weigeren, intrekken of ontkoppelen
 router.delete('/:id', requireAuth, async (req, res) => {
   const ok = await queries.deleteBuddy(parseInt(req.params.id), req.user.userId);
   if (!ok) return res.status(404).json({ error: 'Niet gevonden' });
   res.json({ ok: true });
 });
 
-// GET /api/buddies/sessions — { slot_id: [namen] } voor aankomende sessies
+// GET /api/buddies/sessions - { slot_id: [namen] } voor aankomende sessies
 router.get('/sessions', requireAuth, async (req, res) => {
   const rows = await queries.getBuddyUpcomingSessions(req.user.userId);
   const map = {};

@@ -1,12 +1,12 @@
 /* ============================================
-   SOKI — Sauna van de Stad
+   SOKI - Sauna van de Stad
    Shared Stylesheet
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Urbanist:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap');
 
 /* ============================================
-   CSS VARIABLES — Brand colors
+   CSS VARIABLES - Brand colors
    ============================================ */
 
 :root {
@@ -645,7 +645,7 @@ p {
 }
 
 /* ============================================
-   HOME — HERO
+   HOME - HERO
    ============================================ */
 
 .hero {
@@ -746,7 +746,7 @@ p {
 }
 
 /* ============================================
-   HOME — INTRO
+   HOME - INTRO
    ============================================ */
 
 .intro-grid {
@@ -791,7 +791,7 @@ p {
 .intro-grid__text p  { margin-bottom: var(--space-md); }
 
 /* ============================================
-   HOME — SESSION TYPES
+   HOME - SESSION TYPES
    ============================================ */
 
 .session-types-grid {
@@ -866,7 +866,7 @@ p {
 }
 
 /* ============================================
-   HOME — VALUES
+   HOME - VALUES
    ============================================ */
 
 .values-grid {
@@ -1412,7 +1412,7 @@ p {
 }
 
 /* ============================================
-   BOOKING INTEGRATION — nav & shared
+   BOOKING INTEGRATION - nav & shared
    ============================================ */
 
 /* Account link in nav (hidden until JS detects logged-in state) */
@@ -1464,7 +1464,7 @@ p {
 }
 
 /* ============================================
-   BOOKING PAGES — shared overlay on styles.css
+   BOOKING PAGES - shared overlay on styles.css
    Applied when booking.css is also loaded.
    ============================================ */
 
@@ -1765,7 +1765,7 @@ p {
 .booking-status--cancelled { background-color: rgba(198,40,40,0.1); color: #C62828; }
 
 /* ============================================
-   MOBILE OVERHAUL — primary traffic is mobile
+   MOBILE OVERHAUL - primary traffic is mobile
    ============================================ */
 
 /* --- Reduce excessive spacing on mobile --- */
@@ -1780,7 +1780,7 @@ p {
 
   .section-header { margin-bottom: var(--space-lg); }
 
-  /* Page hero — tighter on mobile; extra bottom padding so the white
+  /* Page hero - tighter on mobile; extra bottom padding so the white
      curve (::after, 64px hoog) de tekst niet overlapt */
   .page-hero {
     padding-top: calc(var(--nav-height) + 1.5rem);
@@ -1805,7 +1805,7 @@ p {
     letter-spacing: 0.1em;
   }
 
-  /* Hero — full width CTA buttons */
+  /* Hero - full width CTA buttons */
   .hero__actions {
     flex-direction: column;
     align-items: stretch;
@@ -1818,13 +1818,13 @@ p {
   }
   .hero .lead { max-width: 100%; font-size: 1rem; }
 
-  /* Intro grid — compact image */
+  /* Intro grid - compact image */
   .intro-grid__image {
     aspect-ratio: 16/9;
     max-height: 260px;
   }
 
-  /* Session type cards on homepage — 1 column horizontal */
+  /* Session type cards on homepage - 1 column horizontal */
   .session-types-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -1863,7 +1863,7 @@ p {
     margin-top: 0.75rem;
   }
 
-  /* Session cards (programme list) — single column stacked */
+  /* Session cards (programme list) - single column stacked */
   .session-card {
     grid-template-columns: 56px 1px 1fr;
     grid-template-rows: auto auto;
@@ -1873,7 +1873,7 @@ p {
   .session-card__date .day { font-size: 1.8rem; }
   .session-card__action { grid-column: 1 / -1; }
 
-  /* Values grid — 1 col with icon + title on row 1, body on row 2 */
+  /* Values grid - 1 col with icon + title on row 1, body on row 2 */
   .values-grid {
     grid-template-columns: 1fr;
     gap: var(--space-md);
@@ -1904,7 +1904,7 @@ p {
     grid-row: 2;
   }
 
-  /* Gallery — 2 col uniform */
+  /* Gallery - 2 col uniform */
   .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
@@ -1916,7 +1916,7 @@ p {
     aspect-ratio: 1;
   }
 
-  /* Footer — single column, compact */
+  /* Footer - single column, compact */
   .footer__grid {
     grid-template-columns: 1fr;
     gap: var(--space-lg);
@@ -1928,7 +1928,7 @@ p {
     gap: 0.5rem;
   }
 
-  /* History item — stack on mobile */
+  /* History item - stack on mobile */
   .history-item {
     flex-direction: column;
     align-items: flex-start;
@@ -1937,13 +1937,13 @@ p {
   }
   .history-item__right { text-align: left; }
 
-  /* Booking wrap — less padding */
+  /* Booking wrap - less padding */
   .booking-wrap { padding: var(--space-md) var(--space-sm) var(--space-xl); }
 
-  /* Summary box — tighter */
+  /* Summary box - tighter */
   .booking-summary-box { padding: var(--space-sm) var(--space-md); }
 
-  /* Step nav — stack buttons */
+  /* Step nav - stack buttons */
   .step-nav { flex-direction: column; }
   .step-nav .btn { width: 100%; justify-content: center; }
 
@@ -1963,7 +1963,7 @@ p {
   .nav__cta .btn { padding: 0.55rem 1rem; font-size: 0.7rem; }
 }
 
-/* Sessions.html — session-type-card overrides for mobile */
+/* Sessions.html - session-type-card overrides for mobile */
 @media (max-width: 768px) {
   .session-type-grid {
     grid-template-columns: 1fr !important;

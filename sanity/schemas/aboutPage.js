@@ -5,41 +5,41 @@ export default {
   fields: [
     {
       name:  'heroHeading',
-      title: 'Hero — Heading',
+      title: 'Hero - Heading',
       type:  'string',
     },
     {
       name:  'heroLead',
-      title: 'Hero — Lead text',
+      title: 'Hero - Lead text',
       type:  'text',
       rows:  2,
     },
     {
       name:  'storyHeading',
-      title: 'Story — Heading',
+      title: 'Story - Heading',
       type:  'string',
     },
     {
       name:  'storyParagraphs',
-      title: 'Story — Paragraphs',
+      title: 'Story - Paragraphs',
       type:  'array',
       of:    [{ type: 'text' }],
       description: 'Each item is one paragraph of the origin story.',
     },
     {
       name:    'storyImage',
-      title:   'Story — Image',
+      title:   'Story - Image',
       type:    'image',
       options: { hotspot: true },
     },
     {
       name:  'teamHeading',
-      title: 'Team — Heading',
+      title: 'Team - Heading',
       type:  'string',
     },
     {
       name:  'team',
-      title: 'Team — Members',
+      title: 'Team - Members',
       type:  'array',
       of: [{
         type:   'object',

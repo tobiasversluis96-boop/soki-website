@@ -1,6 +1,6 @@
 /**
  * routes/waitlist.js
- * Customer waitlist endpoints — with upfront payment.
+ * Customer waitlist endpoints - with upfront payment.
  */
 const express = require('express');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -9,19 +9,19 @@ const { requireAuth } = require('./auth');
 
 const router = express.Router();
 
-// GET /api/waitlist — user's current waitlist entries
+// GET /api/waitlist - user's current waitlist entries
 router.get('/', requireAuth, async (req, res) => {
   const entries = await queries.getUserWaitlist(req.user.userId);
   res.json(entries);
 });
 
-// GET /api/waitlist/:slotId — position for this user on this slot
+// GET /api/waitlist/:slotId - position for this user on this slot
 router.get('/:slotId', requireAuth, async (req, res) => {
   const pos = await queries.getWaitlistPosition(req.user.userId, parseInt(req.params.slotId));
   res.json(pos);
 });
 
-// POST /api/waitlist/:slotId — join waitlist and create a PaymentIntent
+// POST /api/waitlist/:slotId - join waitlist and create a PaymentIntent
 router.post('/:slotId', requireAuth, async (req, res) => {
   const slotId    = parseInt(req.params.slotId);
   const groupSize = parseInt(req.body.group_size) || 1;
@@ -36,7 +36,7 @@ router.post('/:slotId', requireAuth, async (req, res) => {
 
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
-  if (spotsLeft > 0) return res.status(400).json({ error: 'Slot still has availability — book directly' });
+  if (spotsLeft > 0) return res.status(400).json({ error: 'Slot still has availability - book directly' });
 
   // Check if already on waitlist
   const existing = await queries.getWaitlistEntry(req.user.userId, slotId);
@@ -45,7 +45,7 @@ router.post('/:slotId', requireAuth, async (req, res) => {
 
   const totalCents = slot.price_cents * groupSize;
 
-  // Gratis sessies: geen betaling nodig — meteen definitief op de wachtlijst
+  // Gratis sessies: geen betaling nodig - meteen definitief op de wachtlijst
   // (status 'paid' zodat de auto-boek-flow ze gewoon meeneemt zodra er plek is)
   if (totalCents === 0) {
     const entry = await queries.joinWaitlist(req.user.userId, slotId, groupSize, 0, null);
@@ -83,7 +83,7 @@ router.post('/:slotId', requireAuth, async (req, res) => {
   });
 });
 
-// DELETE /api/waitlist/:slotId — leave waitlist; refund if already paid
+// DELETE /api/waitlist/:slotId - leave waitlist; refund if already paid
 router.delete('/:slotId', requireAuth, async (req, res) => {
   const slotId = parseInt(req.params.slotId);
   // Eerst lezen en pas verwijderen NA een geslaagde refund: delete-first
@@ -108,16 +108,16 @@ router.delete('/:slotId', requireAuth, async (req, res) => {
         refunded = true;
       } else {
         console.error('Waitlist refund failed:', err.message);
-        return res.status(502).json({ error: 'Refund failed — please contact us' });
+        return res.status(502).json({ error: 'Refund failed - please contact us' });
       }
     }
   } else if (entry.stripe_payment_intent_id && entry.stripe_payment_status === 'pending') {
-    // Payment not completed yet — cancel the intent
+    // Payment not completed yet - cancel the intent
     try {
       await stripe.paymentIntents.cancel(entry.stripe_payment_intent_id);
     } catch (err) {
       // Annuleren kan mislukken doordat de betaling tóch al (bijna) binnen is
-      // (webhook nog onderweg): dan terugbetalen of de klant laten wachten —
+      // (webhook nog onderweg): dan terugbetalen of de klant laten wachten -
       // nooit stilletjes het geld houden.
       try {
         const intent = await stripe.paymentIntents.retrieve(entry.stripe_payment_intent_id);
@@ -125,7 +125,7 @@ router.delete('/:slotId', requireAuth, async (req, res) => {
           await stripe.refunds.create({ payment_intent: intent.id });
           refunded = true;
         } else if (intent.status === 'processing') {
-          return res.status(409).json({ error: 'Je betaling wordt nog verwerkt — probeer het over een paar minuten opnieuw. / Your payment is still processing — please try again in a few minutes.' });
+          return res.status(409).json({ error: 'Je betaling wordt nog verwerkt - probeer het over een paar minuten opnieuw. / Your payment is still processing - please try again in a few minutes.' });
         }
       } catch (e2) {
         console.error('PaymentIntent cancel error:', err.message, '/ follow-up:', e2.message);

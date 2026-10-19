@@ -45,7 +45,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
             if (!confirmed) {
               // Boeking was al verlopen/geannuleerd toen de betaling binnenkwam:
               // niet heractiveren (plek kan opnieuw verkocht zijn) maar terugbetalen.
-              console.error(`Walk-in booking #${bookingId}: late betaling op niet-pending boeking — refund gestart`);
+              console.error(`Walk-in booking #${bookingId}: late betaling op niet-pending boeking - refund gestart`);
               if (session.payment_intent) {
                 try { await stripe.refunds.create({ payment_intent: session.payment_intent }); }
                 catch (e) { console.error('Walk-in late-payment refund failed:', e.message); }
@@ -135,9 +135,9 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (!createdSub) {
           // Gebruiker had al een lopend abonnement (twee Checkout-tabs): het
           // dubbele Stripe-abonnement direct opzeggen en de eerste incasso
-          // terugbetalen — anders blijft een onzichtbaar abonnement eeuwig
+          // terugbetalen - anders blijft een onzichtbaar abonnement eeuwig
           // maandelijks afschrijven zonder dat de klant het kan opzeggen.
-          console.error(`User ${userId} had al een actief abonnement — duplicaat ${stripeSubId} wordt opgezegd en terugbetaald`);
+          console.error(`User ${userId} had al een actief abonnement - duplicaat ${stripeSubId} wordt opgezegd en terugbetaald`);
           try {
             await stripe.subscriptions.cancel(stripeSubId);
             const invoiceId = typeof stripeSub.latest_invoice === 'string'
@@ -151,7 +151,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
               if (piId) await stripe.refunds.create({ payment_intent: piId });
             }
           } catch (e) {
-            console.error('Opzeggen/terugbetalen van dubbel abonnement mislukt — handmatig oplossen:', e.message);
+            console.error('Opzeggen/terugbetalen van dubbel abonnement mislukt - handmatig oplossen:', e.message);
           }
           break;
         }
@@ -261,7 +261,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
         // Cadeaubon: activeren + mails versturen. De browser-/confirm kan
         // uitblijven (iDEAL-redirect nooit afgemaakt, SEPA nog 'processing' bij
-        // terugkomst) — de webhook is de betrouwbare route, anders blijft de
+        // terugkomst) - de webhook is de betrouwbare route, anders blijft de
         // bon na een geslaagde betaling eeuwig op 'pending' staan.
         if (intent.metadata?.gift_card_id) {
           const { activateGiftCardFromIntent } = require('./gift-cards');
@@ -281,7 +281,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           if (byMeta) {
             if (byMeta.stripe_payment_status === 'succeeded' && byMeta.stripe_payment_intent_id !== intent.id) {
               // Al via een andere intent betaald: dit is een dubbele betaling
-              console.error(`Booking #${byMeta.id}: tweede geslaagde betaling (${intent.id}) — refund gestart`);
+              console.error(`Booking #${byMeta.id}: tweede geslaagde betaling (${intent.id}) - refund gestart`);
               try { await stripe.refunds.create({ payment_intent: intent.id }); }
               catch (e) { console.error('Double-payment refund failed:', e.message); }
               break;
@@ -297,12 +297,12 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (!booking) break;
         if (booking.status === 'cancelled') {
           // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
-          console.error(`Booking #${booking.id}: late betaling op geannuleerde boeking — refund gestart`);
+          console.error(`Booking #${booking.id}: late betaling op geannuleerde boeking - refund gestart`);
           try { await stripe.refunds.create({ payment_intent: intent.id }); }
           catch (e) { console.error('Late-payment refund failed:', e.message); }
           break;
         }
-        // Redeem attached gift card/milestone (idempotent — safe if /confirm already did)
+        // Redeem attached gift card/milestone (idempotent - safe if /confirm already did)
         await queries.redeemPendingPromo(booking.id);
         if (booking.status !== 'confirmed') {
           await queries.updateBookingPayment(booking.id, intent.id, 'succeeded');
@@ -331,7 +331,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         const invoice = event.data.object;
         const stripeSubId = invoice.subscription;
         if (!stripeSubId) break;
-        // Stripe vuurt dit event bij elke incassopoging — alleen bij de eerste mailen
+        // Stripe vuurt dit event bij elke incassopoging - alleen bij de eerste mailen
         if (invoice.attempt_count > 1) break;
 
         const sub = await queries.getSubscriptionByStripeId(stripeSubId);

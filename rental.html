@@ -83,7 +83,7 @@
       color: var(--text-muted);
     }
 
-    /* Contactformulier — zelfde opzet als about.html */
+    /* Contactformulier - zelfde opzet als about.html */
     .contact-section {
       padding-block: var(--space-2xl);
       background: var(--white);
@@ -215,7 +215,7 @@
     <div class="container" style="max-width:760px;">
       <span class="eyebrow" data-i18n="rental.intro.eyebrow">Private hire</span>
       <h2 style="margin-top:0.5rem; margin-bottom:1rem;" data-i18n="rental.intro.h2">The sauna all to yourselves</h2>
-      <p data-i18n="rental.intro.p">Book SOKI privately and you get the entire space to yourselves: the sauna, the ice bath and our kantine. Perfect for team outings, birthdays, bachelor(ette) parties or any occasion that deserves warmth. We are happy to help shape the session — with or without aufguss ritual, music or drinks afterwards.</p>
+      <p data-i18n="rental.intro.p">Book SOKI privately and you get the entire space to yourselves: the sauna, the ice bath and our kantine. Perfect for team outings, birthdays, bachelor(ette) parties or any occasion that deserves warmth. We are happy to help shape the session - with or without aufguss ritual, music or drinks afterwards.</p>
     </div>
   </section>
 
@@ -231,7 +231,7 @@
         <div class="rental-card">
           <span class="rental-card__icon">🤝</span>
           <h3 data-i18n="rental.for.teams.h">Team outings &amp; companies</h3>
-          <p data-i18n="rental.for.teams.p">Slow down together. A sauna session breaks the ice faster than any workshop — great as a team outing, celebration or reset.</p>
+          <p data-i18n="rental.for.teams.p">Slow down together. A sauna session breaks the ice faster than any workshop - great as a team outing, celebration or reset.</p>
         </div>
         <div class="rental-card">
           <span class="rental-card__icon">🎂</span>
@@ -241,7 +241,7 @@
         <div class="rental-card">
           <span class="rental-card__icon">🎉</span>
           <h3 data-i18n="rental.for.party.h">Bachelor(ette) parties</h3>
-          <p data-i18n="rental.for.party.p">An original start (or finish) of the day: sweating, plunging and laughing together — no awkward games required.</p>
+          <p data-i18n="rental.for.party.p">An original start (or finish) of the day: sweating, plunging and laughing together - no awkward games required.</p>
         </div>
         <div class="rental-card">
           <span class="rental-card__icon">🎙️</span>
@@ -286,7 +286,7 @@
         </div>
         <div>
           <h4 data-i18n="rental.prac.2.h">Duration</h4>
-          <p data-i18n="rental.prac.2.p">Most rentals last 2 to 4 hours — we decide together what fits your plans.</p>
+          <p data-i18n="rental.prac.2.p">Most rentals last 2 to 4 hours - we decide together what fits your plans.</p>
         </div>
         <div>
           <h4 data-i18n="rental.prac.3.h">When</h4>
@@ -362,7 +362,7 @@
     <div class="container">
       <div class="footer__grid">
         <div class="footer__brand">
-          <img src="images/soki-logo-hero.png?v=3" alt="SOKI — sauna van de stad" class="footer__brand-logo" />
+          <img src="images/soki-logo-hero.png?v=3" alt="SOKI - sauna van de stad" class="footer__brand-logo" />
           <p data-i18n="footer.desc">Social sauna, ice bath &amp; listening space in Utrecht. Wellness, culture and community under one roof.</p>
         </div>
         <div class="footer__col">
@@ -398,10 +398,10 @@
     </div>
   </footer>
 
-  <script src="translations.js?v=20261019-1"></script>
-  <script src="main.js?v=20260920-1"></script>
+  <script src="translations.js?v=20261019-2"></script>
+  <script src="main.js?v=20261019-2"></script>
   <script>
-    /* ===== VERHUUR-AANVRAAG — gebruikt bestaand contact-endpoint ===== */
+    /* ===== VERHUUR-AANVRAAG - gebruikt bestaand contact-endpoint ===== */
     function handleRental(e) {
       e.preventDefault();
       var isNL = (localStorage.getItem('soki_lang') || 'en') === 'nl';
@@ -435,7 +435,7 @@
           '<p style="font-family:var(--font-display); font-size:1.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--terra);">' +
           (isNL ? 'Aanvraag verzonden!' : 'Request sent!') + '</p>' +
           '<p style="color:var(--text-muted); margin-top:0.5rem;">' +
-          (isNL ? 'Dankjewel — we nemen binnen twee werkdagen contact met je op.' : 'Thanks — we\'ll be in touch within two working days.') + '</p>' +
+          (isNL ? 'Dankjewel - we nemen binnen twee werkdagen contact met je op.' : 'Thanks - we\'ll be in touch within two working days.') + '</p>' +
           '</div>';
       }).catch(function (err) {
         btn.disabled = false;

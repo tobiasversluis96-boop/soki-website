@@ -30,7 +30,7 @@ async function requireAuth(req, res, next) {
     // Revocation check: a password reset bumps token_version and kills old tokens
     const currentVersion = await queries.getUserTokenVersion(payload.userId);
     if (currentVersion === null || (payload.tv || 0) !== currentVersion)
-      return res.status(401).json({ error: 'Session expired — please log in again' });
+      return res.status(401).json({ error: 'Session expired - please log in again' });
     req.user = payload;
     next();
   } catch (err) {
@@ -104,7 +104,7 @@ async function startEmailVerification(userId, name, email) {
   await sendVerificationEmail({ name, email, code });
 }
 
-// POST /api/auth/verify-email — bevestig e-mailadres met 6-cijferige code
+// POST /api/auth/verify-email - bevestig e-mailadres met 6-cijferige code
 router.post('/verify-email', requireAuth, async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'code is required' });
@@ -126,7 +126,7 @@ router.post('/resend-verification', requireAuth, async (req, res) => {
     await startEmailVerification(user.id, user.name, user.email);
   } catch (err) {
     console.error('Verification email failed:', err.message);
-    return res.status(502).json({ error: 'Could not send email — please try again later' });
+    return res.status(502).json({ error: 'Could not send email - please try again later' });
   }
   res.json({ ok: true });
 });
@@ -245,14 +245,14 @@ router.post('/reset-password', async (req, res) => {
   res.json({ ok: true });
 });
 
-// DELETE /api/auth/me — GDPR: delete own account (anonymises PII)
+// DELETE /api/auth/me - GDPR: delete own account (anonymises PII)
 router.delete('/me', requireAuth, async (req, res) => {
   await queries.deleteUser(req.user.userId);
   queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'account_deleted', ip: req.ip });
   res.json({ ok: true });
 });
 
-// GET /api/auth/me/export — GDPR: export own data
+// GET /api/auth/me/export - GDPR: export own data
 router.get('/me/export', requireAuth, async (req, res) => {
   const data = await queries.getUserDataExport(req.user.userId);
   queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'data_export', ip: req.ip });
@@ -260,7 +260,7 @@ router.get('/me/export', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-// PATCH /api/auth/me/email — e-mailadres wijzigen (bijv. tikfout herstellen)
+// PATCH /api/auth/me/email - e-mailadres wijzigen (bijv. tikfout herstellen)
 // Wachtwoord-accounts bevestigen met hun huidige wachtwoord (een open sessie
 // op andermans telefoon mag het adres niet stilletjes kunnen overnemen);
 // Google-accounts zonder wachtwoord loggen via hun google_id, dus daar kan het
@@ -311,7 +311,7 @@ router.patch('/me/email', requireAuth, async (req, res) => {
   res.json({ ok: true, email: newEmail });
 });
 
-// POST /api/auth/me/marketing-consent — marketingmail aan-/uitzetten
+// POST /api/auth/me/marketing-consent - marketingmail aan-/uitzetten
 // Zet de toestemming in de DB en synct direct met de Brevo-mailinglijst.
 router.post('/me/marketing-consent', requireAuth, async (req, res) => {
   const optIn = req.body.opt_in === true;
@@ -331,7 +331,7 @@ router.post('/me/marketing-consent', requireAuth, async (req, res) => {
   res.json({ ok: true, marketing_opt_in_at: optInAt });
 });
 
-// PATCH /api/auth/me/waiver — sign health waiver
+// PATCH /api/auth/me/waiver - sign health waiver
 router.patch('/me/waiver', requireAuth, async (req, res) => {
   await queries.signWaiver(req.user.userId);
   res.json({ ok: true });

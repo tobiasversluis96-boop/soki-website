@@ -7,7 +7,7 @@
 require('dotenv').config();
 
 // Losse spaties in env-vars (bijv. bij kopiëren in het Railway-dashboard) breken
-// Stripe-URLs en API-keys — hier één keer opschonen voor het hele proces.
+// Stripe-URLs en API-keys - hier één keer opschonen voor het hele proces.
 for (const key of ['BASE_URL', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PUBLISHABLE_KEY']) {
   if (process.env[key]) process.env[key] = process.env[key].trim();
 }
@@ -54,7 +54,7 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-// Webhook route must come before express.json() — Stripe needs the raw body
+// Webhook route must come before express.json() - Stripe needs the raw body
 app.use('/api/webhooks', webhookRoutes);
 
 // Oude railway.app-URL staat nog in Google: stuur bezoekers 301 door naar het
@@ -108,11 +108,11 @@ app.use('/api/bookings', rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method !== 'POST',
-  message: { error: 'Te veel pogingen — wacht 15 minuten en probeer het opnieuw. / Too many requests — please wait 15 minutes and try again.' },
+  message: { error: 'Te veel pogingen - wacht 15 minuten en probeer het opnieuw. / Too many requests - please wait 15 minutes and try again.' },
 }));
 
 // Cadeaubonnen: purchase = card-testing-doelwit, check = brute force op codes
-const giftMsg = { error: 'Te veel pogingen — wacht 15 minuten en probeer het opnieuw. / Too many requests — please wait 15 minutes and try again.' };
+const giftMsg = { error: 'Te veel pogingen - wacht 15 minuten en probeer het opnieuw. / Too many requests - please wait 15 minutes and try again.' };
 app.use('/api/gift-cards/purchase', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
 app.use('/api/gift-cards/confirm',  rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
 app.use('/api/gift-cards/check',    rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
@@ -128,7 +128,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
   // express.static decodeert het pad vóór het resolven, dus deze guard moet
-  // op het gedecodeerde pad matchen — anders omzeilt bijv. /%62ooking-system
+  // op het gedecodeerde pad matchen - anders omzeilt bijv. /%62ooking-system
   // de check en is de hele backend-broncode downloadbaar.
   let decodedPath;
   try {
@@ -162,7 +162,7 @@ app.get('/api/config', (_req, res) => {
   res.json({
     googleClientId:   process.env.GOOGLE_CLIENT_ID    || '',
     baseUrl:          process.env.BASE_URL            || 'http://localhost:3001',
-    // Tracking pixel IDs — empty by default (loader will no-op).
+    // Tracking pixel IDs - empty by default (loader will no-op).
     // Fill in .env when ready to activate GA4 / Meta / TikTok.
     ga4MeasurementId: process.env.GA4_MEASUREMENT_ID || '',
     metaPixelId:      process.env.META_PIXEL_ID      || '',
@@ -196,7 +196,7 @@ app.get('/api/slots', async (req, res) => {
 // Next N upcoming slots (homepage widget + sessions programme)
 // Query params:
 //   limit         (default 3, max 200)
-//   include_full  ('1' to include sold-out slots — used by /sessions programme)
+//   include_full  ('1' to include sold-out slots - used by /sessions programme)
 app.get('/api/upcoming-slots', async (req, res) => {
   const limit       = Math.min(parseInt(req.query.limit) || 3, 200);
   const includeFull = req.query.include_full === '1';
@@ -300,7 +300,7 @@ app.get('/api/kantine/combi', async (req, res) => {
 });
 
 // AVG-minimale ticketscan voor Kantine: alleen geldigheid, datum en aantal
-// diners — géén naam of e-mail. Vereist de kantinesleutel én de handtekening
+// diners - géén naam of e-mail. Vereist de kantinesleutel én de handtekening
 // uit de QR-code van het ticket.
 function kantineScanInfo(booking) {
   const combi = (booking.kantine_addon_cents || 0) > 0;
@@ -491,7 +491,7 @@ app.post('/api/waitlist', async (req, res) => {
       return res.json({ ok: true });
     }
     const data = await response.json().catch(() => ({}));
-    // Brevo returns 400 with code "duplicate_parameter" if already subscribed — treat as success
+    // Brevo returns 400 with code "duplicate_parameter" if already subscribed - treat as success
     if (data.code === 'duplicate_parameter') {
       return res.json({ ok: true });
     }
@@ -522,7 +522,7 @@ app.get('/admin',   (_req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 
 // ─── Global error handling ───────────────────────────────────────────────────
-// Vangt alle route-fouten (incl. async, via utils/async-errors) — server blijft draaien
+// Vangt alle route-fouten (incl. async, via utils/async-errors) - server blijft draaien
 app.use((err, _req, res, _next) => {
   console.error('Unhandled route error:', err && err.stack ? err.stack : err);
   if (res.headersSent) return;
@@ -585,7 +585,7 @@ setInterval(async () => {
     }
 
     // Eenmalige inhaalactie (gemiste groep 16-26 sept 2026 door cron-crash);
-    // query is leeg zodra iedereen gevlagd is — code kan daarna verwijderd worden.
+    // query is leeg zodra iedereen gevlagd is - code kan daarna verwijderd worden.
     const catchupUsers = await queries.getUsersNeedingFirstVisitCatchup();
     for (const user of catchupUsers) {
       try {
@@ -621,7 +621,7 @@ setInterval(async () => {
 
 // ─── Wachtlijst-refund (runs every hour) ─────────────────────────────────────
 // Vooruitbetaalde wachtlijstplekken die nooit tot een boeking zijn gepromoveerd
-// worden na afloop van de sessie automatisch terugbetaald — de belofte bij het
+// worden na afloop van de sessie automatisch terugbetaald - de belofte bij het
 // aanmelden is "charged upfront, refunded if never claimed".
 setInterval(async () => {
   try {

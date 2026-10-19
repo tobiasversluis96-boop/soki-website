@@ -40,7 +40,7 @@ async function send(templateId, to, name, params) {
 
 // Ambient-sessies krijgen een eigen bevestigings- en remindermail (sfeer,
 // DJ-set, kussens). Zolang de Ambient-template-ID's niet geconfigureerd zijn,
-// valt alles terug op de standaardtemplates — mails blijven dus nooit liggen.
+// valt alles terug op de standaardtemplates - mails blijven dus nooit liggen.
 function isAmbientBooking(booking) {
   return /ambient/i.test(booking.session_name || '');
 }
@@ -178,7 +178,7 @@ async function sendVerificationEmail({ name, email, code }) {
       email: process.env.EMAIL_FROM,
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
-    subject: `${code} — bevestig je e-mailadres / confirm your email`,
+    subject: `${code} - bevestig je e-mailadres / confirm your email`,
     htmlContent: emailLayout('Bevestig je e-mailadres', `
         <p style="margin:0 0 16px;">Hoi ${escapeHtml(name)},</p>
         <p style="margin:0 0 16px;">Bevestig je e-mailadres met deze code:<br>
@@ -186,8 +186,8 @@ async function sendVerificationEmail({ name, email, code }) {
         <div style="background-color:#f2c299;padding:20px 24px;border-radius:4px;text-align:center;margin:0 0 20px;">
           <span style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#4a1c0c;">${escapeHtml(code)}</span>
         </div>
-        <p style="margin:0 0 16px;">Vul deze code in op je accountpagina — je vindt het invulveld in de balk bovenaan.<br>
-           <span style="color:${EMAIL_MUTED};">Enter this code on your account page — you'll find the input field in the banner at the top.</span></p>
+        <p style="margin:0 0 16px;">Vul deze code in op je accountpagina - je vindt het invulveld in de balk bovenaan.<br>
+           <span style="color:${EMAIL_MUTED};">Enter this code on your account page - you'll find the input field in the banner at the top.</span></p>
         ${emailButton(`${process.env.BASE_URL || 'https://www.sokisocialsauna.nl'}/account`, 'Naar mijn account / Go to my account')}
         <p style="margin:0 0 16px;">De code is 15 minuten geldig. / This code is valid for 15 minutes.</p>
         <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Heb je geen account aangemaakt bij SOKI? Dan kun je deze mail negeren.<br>
@@ -411,7 +411,7 @@ async function sendGiftCardEmail(card) {
   const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
   const messageBlock = card.message
     ? `<p style="background-color:#ffffff;border-left:4px solid #f2c299;padding:12px 16px;border-radius:0 4px 4px 0;font-style:italic;margin:0 0 16px;">&ldquo;${escapeHtml(card.message)}&rdquo;<br>
-         <span style="color:${EMAIL_MUTED};font-style:normal;font-size:13px;">&mdash; ${escapeHtml(card.purchaser_name)}</span></p>`
+         <span style="color:${EMAIL_MUTED};font-style:normal;font-size:13px;">- ${escapeHtml(card.purchaser_name)}</span></p>`
     : '';
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: card.recipient_email, name: card.recipient_name }],
@@ -549,7 +549,7 @@ async function subscribeToMarketingList(email, name) {
   });
   if (response.status === 201 || response.status === 204) return true;
   const data = await response.json().catch(() => ({}));
-  if (data.code === 'duplicate_parameter') return true; // bestond al — prima
+  if (data.code === 'duplicate_parameter') return true; // bestond al - prima
   throw new Error(`Brevo subscribe failed (${response.status}): ${data.message || 'unknown'}`);
 }
 

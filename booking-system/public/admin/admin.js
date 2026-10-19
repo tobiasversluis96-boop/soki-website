@@ -609,7 +609,7 @@
         const r = await api('/bookings/' + id + '/cancel', { method: 'PATCH' });
         const parts = [];
         if (r.refunded) parts.push(formatEur(r.refunded_cents) + ' teruggestort via Stripe');
-        if (r.refund_failed) parts.push('⚠️ LET OP: terugbetaling via Stripe is MISLUKT — controleer het Stripe-dashboard en betaal zo nodig handmatig terug');
+        if (r.refund_failed) parts.push('⚠️ LET OP: terugbetaling via Stripe is MISLUKT - controleer het Stripe-dashboard en betaal zo nodig handmatig terug');
         if (Number(r.credits_restored) > 0) parts.push(Number(r.credits_restored) + ' credit(s) teruggezet');
         if (Number(r.gift_restored_cents) > 0) parts.push(formatEur(r.gift_restored_cents) + ' teruggezet op cadeaubon');
         alert('Boeking geannuleerd. ' + (parts.length ? parts.join(' · ') + '.' : 'Geen terugbetaling van toepassing (geen online betaling).') + ' De klant heeft een mail ontvangen.');
@@ -641,7 +641,7 @@
         ? `<span title="Op wachtlijst" style="display:inline-flex;align-items:center;gap:3px;background:#FFF3E0;color:#E65100;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">⏳ ${wCount}</span>`
         : '';
       const pBadge = s.is_private
-        ? '<span title="Privéverhuur — alleen via directe link" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#4527A0;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Privé</span>'
+        ? '<span title="Privéverhuur - alleen via directe link" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#4527A0;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Privé</span>'
         : '';
       const fBadge = !s.is_private && s.price_cents === 0
         ? '<span title="Gratis sessie" style="display:inline-flex;align-items:center;background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Gratis</span>'
@@ -882,7 +882,7 @@
       el.innerHTML = `
         <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:0 0 16px;">
           <div style="font-weight:700;color:var(--brown);margin-bottom:8px;">📌 Dagnotitie voor het team</div>
-          <textarea id="schedule-note-text" rows="2" maxlength="2000" placeholder="Zichtbaar voor al het personeel op deze roosterdag — bijv. 'IJsbad 2 is in onderhoud' of 'Groep van 8 om 16:00, graag extra handdoeken klaarleggen'" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:14px;resize:vertical;">${escapeHtml(note)}</textarea>
+          <textarea id="schedule-note-text" rows="2" maxlength="2000" placeholder="Zichtbaar voor al het personeel op deze roosterdag - bijv. 'IJsbad 2 is in onderhoud' of 'Groep van 8 om 16:00, graag extra handdoeken klaarleggen'" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:14px;resize:vertical;">${escapeHtml(note)}</textarea>
           <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
             <button class="btn btn--primary btn--sm" id="schedule-note-save">Opslaan</button>
             <span id="schedule-note-status" style="font-size:13px;color:var(--muted);"></span>
@@ -896,7 +896,7 @@
           await api('/schedule-note', { method: 'PUT', body: JSON.stringify({ date, note: text }) });
           status.textContent = text.trim() ? 'Opgeslagen ✓' : 'Notitie verwijderd ✓';
         } catch {
-          status.textContent = 'Opslaan mislukt — probeer het opnieuw';
+          status.textContent = 'Opslaan mislukt - probeer het opnieuw';
         }
       });
     } else {
@@ -927,7 +927,7 @@
       return;
     }
 
-    // Dagnotitie altijd tonen — ook op dagen zonder sessies
+    // Dagnotitie altijd tonen - ook op dagen zonder sessies
     renderScheduleNote(date, noteRow);
 
     // Group rows by slot_id
@@ -1033,7 +1033,7 @@
   }
 
   // Aufguss-logboek (intern): welke opgieting is er gepland/gedaan, en wat
-  // kregen terugkerende gasten de laatste keren — zodat Luke geen variant
+  // kregen terugkerende gasten de laatste keren - zodat Luke geen variant
   // dubbel geeft.
   function fmtShortDate(d) {
     var str = String(d).slice(0, 10);
@@ -1205,7 +1205,7 @@
       }
     };
 
-    // Wire free-credits button (giveaways etc. — creates a €0 punch pass)
+    // Wire free-credits button (giveaways etc. - creates a €0 punch pass)
     document.getElementById('customer-modal-credits-btn').onclick = async function () {
       const input = prompt('Hoeveel gratis credits wil je ' + c.name + ' geven?\n\nEveryday/Extended = 1 credit, Ambient/Aufguss = 1,5 credits per persoon. Credits zijn 1 jaar geldig.');
       if (input === null) return;
@@ -2181,7 +2181,7 @@
       if (res.error) { msg.style.color = '#C62828'; msg.textContent = res.error; return; }
       walkinUser = res.user;
       msg.textContent = '';
-      document.getElementById('walkin-user-label').textContent = `${walkinUser.name} (${walkinUser.email})` + (res.created ? ' — nieuw account' : ' — bestaand account');
+      document.getElementById('walkin-user-label').textContent = `${walkinUser.name} (${walkinUser.email})` + (res.created ? ' - nieuw account' : ' - bestaand account');
       document.getElementById('walkin-step-customer').style.display = 'none';
       document.getElementById('walkin-step-slot').style.display = '';
       loadWalkinSlots();
@@ -2244,7 +2244,7 @@
       document.getElementById('walkin-result-body').innerHTML =
         `<div style="font-size:36px;">✓</div>
          <div style="margin-top:6px;font-weight:600;color:var(--brown);">Gratis boeking bevestigd</div>
-         <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Boeking #${res.booking_id} — ${escapeHtml(walkinSlot.name)}</div>`;
+         <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Boeking #${res.booking_id} - ${escapeHtml(walkinSlot.name)}</div>`;
     } else {
       renderWalkinQR(res.booking_id, res.checkout_url, res.hold_until);
     }

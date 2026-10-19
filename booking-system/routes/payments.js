@@ -33,7 +33,7 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     if (!slot || slot.is_private)
       return res.status(400).json({ error: 'Deze sessie kan niet met credits worden geboekt.' });
     if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
-      return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek — extra personen boeken via de gewone betaling.' });
+      return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek - extra personen boeken via de gewone betaling.' });
     const sub    = await queries.getActiveSubscription(req.user.userId);
     const passes = await queries.getActivePunchPasses(req.user.userId);
     const groupSize  = booking.group_size || 1;
@@ -47,10 +47,10 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
     // Gereserveerde cadeaubon-/promokorting telt ook hier mee: zonder deze
     // aftrek rekent Stripe het volle bedrag af terwijl settleMemberCombi de
-    // bon bij het bevestigen alsnog debiteert — dubbel betalen dus.
+    // bon bij het bevestigen alsnog debiteert - dubbel betalen dus.
     const pendingDiscount = booking.pending_discount_cents || 0;
     if (pendingDiscount >= amount && amount > 0)
-      return res.status(400).json({ error: 'Je korting dekt het bij te betalen bedrag al volledig. Boek zonder credits, of mail ons — dan regelen we het handmatig.' });
+      return res.status(400).json({ error: 'Je korting dekt het bij te betalen bedrag al volledig. Boek zonder credits, of mail ons - dan regelen we het handmatig.' });
     amount -= pendingDiscount;
     if (!(amount > 0))
       return res.status(400).json({ error: 'Credits betalen kan hier alleen in combinatie met het combi ticket.' });
@@ -89,7 +89,7 @@ router.post('/create-intent', requireAuth, async (req, res) => {
           return res.status(409).json({ error: 'Er loopt al een betaling voor deze boeking. Ververs de pagina of kijk in je account.' });
       }
     } catch (e) {
-      // Intent onbekend bij Stripe — gewoon een nieuwe aanmaken
+      // Intent onbekend bij Stripe - gewoon een nieuwe aanmaken
     }
   }
 
@@ -123,7 +123,7 @@ router.post('/create-intent', requireAuth, async (req, res) => {
 });
 
 // Hybride combi-betaling afronden: credits afschrijven + boeking bevestigen.
-// Idempotent — wordt door zowel /confirm als de webhook aangeroepen.
+// Idempotent - wordt door zowel /confirm als de webhook aangeroepen.
 async function settleMemberCombi(intent) {
   const bookingId    = parseInt(intent.metadata.booking_id);
   const userId       = parseInt(intent.metadata.user_id);
@@ -133,7 +133,7 @@ async function settleMemberCombi(intent) {
   if (!booking) return { ok: false };
   if (booking.status === 'cancelled') {
     // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
-    console.error(`Booking #${bookingId}: late combi-betaling op geannuleerde boeking — refund gestart`);
+    console.error(`Booking #${bookingId}: late combi-betaling op geannuleerde boeking - refund gestart`);
     try { await stripe.refunds.create({ payment_intent: intent.id }); }
     catch (e) { console.error('Late-payment refund failed:', e.message); }
     return { ok: false };
@@ -142,7 +142,7 @@ async function settleMemberCombi(intent) {
   const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.amount_received || intent.amount);
   if (result.insufficient) {
     // Credits verdwenen tussen intent en betaling (zeldzaam): diner terugbetalen + boeking annuleren
-    console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle — refund + annulering`);
+    console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle - refund + annulering`);
     try { await stripe.refunds.create({ payment_intent: intent.id }); }
     catch (e) { console.error('Combi refund failed:', e.message); }
     await queries.cancelBooking(bookingId);
@@ -208,7 +208,7 @@ router.post('/confirm', requireAuth, async (req, res) => {
       if (intent.status === 'succeeded') {
         const settled = await settleMemberCombi(intent);
         if (settled.insufficient)
-          return res.status(400).json({ error: 'Onvoldoende credits — je betaling is teruggestort.' });
+          return res.status(400).json({ error: 'Onvoldoende credits - je betaling is teruggestort.' });
       } else {
         await queries.updateBookingPayment(booking.id, intent.id, intent.status);
       }

@@ -6,19 +6,19 @@ export default {
     // ── Hero ─────────────────────────────────────────────────────────────────
     {
       name:  'heroHeading',
-      title: 'Hero — Heading',
+      title: 'Hero - Heading',
       type:  'string',
       description: 'Large heading on the hero image. E.g. "Sweat, relax, connect"',
     },
     {
       name:  'heroLead',
-      title: 'Hero — Lead text',
+      title: 'Hero - Lead text',
       type:  'text',
       rows:  3,
     },
     {
       name:    'heroImage',
-      title:   'Hero — Background image',
+      title:   'Hero - Background image',
       type:    'image',
       options: { hotspot: true },
     },
@@ -26,35 +26,35 @@ export default {
     // ── Intro ─────────────────────────────────────────────────────────────────
     {
       name:  'introEyebrow',
-      title: 'Intro — Eyebrow text',
+      title: 'Intro - Eyebrow text',
       type:  'string',
     },
     {
       name:  'introHeading',
-      title: 'Intro — Heading',
+      title: 'Intro - Heading',
       type:  'string',
     },
     {
       name:  'introParagraph1',
-      title: 'Intro — Paragraph 1',
+      title: 'Intro - Paragraph 1',
       type:  'text',
       rows:  3,
     },
     {
       name:  'introParagraph2',
-      title: 'Intro — Paragraph 2',
+      title: 'Intro - Paragraph 2',
       type:  'text',
       rows:  3,
     },
     {
       name:  'introParagraph3',
-      title: 'Intro — Paragraph 3',
+      title: 'Intro - Paragraph 3',
       type:  'text',
       rows:  3,
     },
     {
       name:    'introImage',
-      title:   'Intro — Image',
+      title:   'Intro - Image',
       type:    'image',
       options: { hotspot: true },
     },
@@ -62,12 +62,12 @@ export default {
     // ── Values ────────────────────────────────────────────────────────────────
     {
       name:  'valuesHeading',
-      title: 'Values — Heading',
+      title: 'Values - Heading',
       type:  'string',
     },
     {
       name:  'values',
-      title: 'Values — Items',
+      title: 'Values - Items',
       type:  'array',
       of: [{
         type:   'object',

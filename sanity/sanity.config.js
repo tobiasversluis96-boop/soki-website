@@ -5,7 +5,7 @@ import { schemaTypes } from './schemas';
 
 export default defineConfig({
   name:      'soki-studio',
-  title:     'Soki — Content Studio',
+  title:     'Soki - Content Studio',
   projectId: process.env.SANITY_PROJECT_ID || 'g6ufx5h9',
   dataset:   'production',
 

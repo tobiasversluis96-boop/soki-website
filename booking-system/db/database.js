@@ -300,7 +300,7 @@ async function initializeDB() {
   }
 
   // NB: de runOnce-migratieblokken staan verderop, ná alle CREATE TABLE/ALTER
-  // statements — ze verwijzen o.a. naar de waitlist-tabel die hier nog niet
+  // statements - ze verwijzen o.a. naar de waitlist-tabel die hier nog niet
   // bestaat op een verse database.
   async function runSept2026Migrations() {
   await runOnce('session_type_fixes_sept2026', async () => {
@@ -318,7 +318,7 @@ async function initializeDB() {
   });
 
   // Eenmalige herindeling van de al geplande Ambient-avonden (19 sep t/m 3 okt 2026):
-  // 3 slots van 70 min (19:00/20:20/21:40) worden 2 groepen — 20:00-21:20 (sauna
+  // 3 slots van 70 min (19:00/20:20/21:40) worden 2 groepen - 20:00-21:20 (sauna
   // eerst) en 21:30-23:00 (sauna als afsluiting). Bestaande boekingen en wachtlijst
   // gaan naar groep 1. Datumbereik is bewust begrensd zodat nieuw gegenereerde
   // slots nooit geraakt worden.
@@ -489,7 +489,7 @@ async function initializeDB() {
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
 
-  // Append-only security audit log — never UPDATE or DELETE rows in this table
+  // Append-only security audit log - never UPDATE or DELETE rows in this table
   await pool.query(`CREATE TABLE IF NOT EXISTS audit_log (
     id          SERIAL      PRIMARY KEY,
     at          TIMESTAMPTZ DEFAULT NOW(),
@@ -605,7 +605,7 @@ async function initializeDB() {
   )`);
 
   // Aufguss-logboek: welke opgieting (Lukes nummering) er bij een Aufguss-slot
-  // is gedaan/gepland. Puur intern — komt nooit in publieke endpoints.
+  // is gedaan/gepland. Puur intern - komt nooit in publieke endpoints.
   await pool.query(`CREATE TABLE IF NOT EXISTS aufguss_log (
     time_slot_id INTEGER     PRIMARY KEY REFERENCES time_slots(id) ON DELETE CASCADE,
     variant      TEXT        NOT NULL,
@@ -654,12 +654,12 @@ async function initializeDB() {
   }
 
   // Veelgebruikte lookups (bezetting per slot, boekingen per klant) hadden
-  // geen enkele index — elke capaciteitscheck was een volledige table scan.
+  // geen enkele index - elke capaciteitscheck was een volledige table scan.
   await pool.query('CREATE INDEX IF NOT EXISTS bookings_time_slot_id_idx ON bookings (time_slot_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS bookings_user_id_idx ON bookings (user_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS bookings_payment_intent_idx ON bookings (stripe_payment_intent_id)');
 
-  // Max 1 lopend abonnement per gebruiker — afgedwongen op DB-niveau zodat twee
+  // Max 1 lopend abonnement per gebruiker - afgedwongen op DB-niveau zodat twee
   // parallel afgeronde Checkout-sessies nooit allebei een abonnement opleveren.
   try {
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_one_active_per_user_idx
@@ -794,7 +794,7 @@ const queries = {
     let { rows } = await pool.query('SELECT * FROM users WHERE google_id = $1', [googleId]);
     if (rows[0]) return rows[0];
 
-    // 2. Find by email — link existing account
+    // 2. Find by email - link existing account
     ({ rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]));
     if (rows[0]) {
       await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, rows[0].id]);
@@ -921,7 +921,7 @@ const queries = {
   },
 
   // Laatste (max 3) Aufguss-varianten die deze gebruikers vóór de gegeven
-  // datum hebben meegemaakt — voor de roosterweergave bij een aankomende
+  // datum hebben meegemaakt - voor de roosterweergave bij een aankomende
   // Aufguss, zodat gasten niet twee keer dezelfde opgieting krijgen.
   getAufgussHistoryForUsers: async (userIds, beforeDate) => {
     if (!userIds.length) return [];
@@ -1160,7 +1160,7 @@ const queries = {
   },
 
   // Gebruik registreren ná geslaagde betaling. De teller is een guard tegen max_uses,
-  // maar een al betaalde korting wordt nooit teruggedraaid — alleen luid gelogd.
+  // maar een al betaalde korting wordt nooit teruggedraaid - alleen luid gelogd.
   // `db` kan een transactie-client zijn (redeemPendingPromo) of de pool.
   redeemDiscountCode: async (codeId, userId, { bookingId = null, punchPassId = null } = {}, db = pool) => {
     const { rows } = await db.query(
@@ -1226,7 +1226,7 @@ const queries = {
           [p.gift_card_id, p.discount_cents || 0]
         );
         if (!debited[0]) {
-          // Saldo intussen elders gebruikt: rest afboeken en luid loggen — de
+          // Saldo intussen elders gebruikt: rest afboeken en luid loggen - de
           // reserveringscheck bij het aanmaken hoort dit normaal te voorkomen.
           console.error(`Gift card ${p.gift_card_id}: onvoldoende saldo bij inwisselen voor boeking ${bookingId}; rest afgeboekt`);
           await client.query(
@@ -1514,7 +1514,7 @@ const queries = {
     );
   },
 
-  // Fire-and-forget security audit logging — must never break the request flow
+  // Fire-and-forget security audit logging - must never break the request flow
   auditLog: ({ actor_type = null, actor_id = null, actor_email = null, action, target = null, detail = null, ip = null }) => {
     pool.query(
       `INSERT INTO audit_log (actor_type, actor_id, actor_email, action, target, detail, ip)
@@ -1569,7 +1569,7 @@ const queries = {
   // Bedankmail na eerste bezoek: gebruikers van wie de eerste check-in gisteren was.
   // Bewust exact één dag: de mailtekst zegt "gisteren", dus geen inhaalslag voor
   // oudere bezoeken. ts.date is VARCHAR, dus de datum als tekst vergelijken
-  // (YYYY-MM-DD sorteert correct) — een echte date ernaast laat de query crashen.
+  // (YYYY-MM-DD sorteert correct) - een echte date ernaast laat de query crashen.
   getUsersNeedingFirstVisitThanks: async () => {
     const { rows } = await pool.query(`
       SELECT u.id, u.name AS customer_name, u.email AS customer_email
@@ -2169,7 +2169,7 @@ const queries = {
     return rows[0] || null;
   },
 
-  // Waiver — COALESCE: een tweede ondertekening mag de oorspronkelijke
+  // Waiver - COALESCE: een tweede ondertekening mag de oorspronkelijke
   // (juridisch relevante) tekendatum nooit overschrijven.
   signWaiver: async (userId) => {
     await pool.query('UPDATE users SET waiver_signed_at = COALESCE(waiver_signed_at, NOW()) WHERE id = $1', [userId]);
@@ -2358,7 +2358,7 @@ const queries = {
     }
 
     // Vooruitbetaalde, nog niet geclaimde wachtlijstplekken terugbetalen vóór
-    // verwijdering — anders verdwijnt het enige record dat recht op refund geeft.
+    // verwijdering - anders verdwijnt het enige record dat recht op refund geeft.
     const { rows: paidWaits } = await pool.query(
       `SELECT id, stripe_payment_intent_id FROM waitlist
        WHERE user_id = $1 AND claimed_booking_id IS NULL
@@ -2633,7 +2633,7 @@ const queries = {
 
   redeemGiftCard: async (id, amount_cents) => {
     // Saldo dat gereserveerd is op lopende pending boekingen telt niet als
-    // beschikbaar — anders kan een directe (gratis-pad) redeem het saldo
+    // beschikbaar - anders kan een directe (gratis-pad) redeem het saldo
     // opeten dat een andere boeking al gereserveerd had.
     const { rows } = await pool.query(
       `UPDATE gift_cards g

@@ -27,7 +27,7 @@ const TARGETS = [
 
   for (const target of TARGETS) {
     const plan = plans.find(p => p.name === target.name);
-    if (!plan) { console.log(`⚠ Skipping "${target.name}" — not in DB`); continue; }
+    if (!plan) { console.log(`⚠ Skipping "${target.name}" - not in DB`); continue; }
 
     if (plan.price_cents === target.new_cents) {
       console.log(`✓ "${plan.name}" already at €${target.new_cents / 100}, skipping.\n`);

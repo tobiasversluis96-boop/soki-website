@@ -2,7 +2,7 @@
  * email-check.js
  * Typocheck voor e-mailvelden: suggereert een correctie bij veelgemaakte
  * fouten (gmail.clom, hotmail.con, gmil.com, ...). Puur een klikbare
- * suggestie — nooit blokkerend, want ongebruikelijke domeinen bestaan echt.
+ * suggestie - nooit blokkerend, want ongebruikelijke domeinen bestaan echt.
  */
 (function () {
   var DOMAINS = [

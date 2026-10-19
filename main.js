@@ -1,6 +1,6 @@
 /* ============================================
-   SOKI — Sauna van de Stad
-   main.js — Shared JavaScript
+   SOKI - Sauna van de Stad
+   main.js - Shared JavaScript
    ============================================ */
 
 /* ===== I18N: language switcher ===== */
@@ -32,7 +32,7 @@ function applyTranslations(lang) {
     if (t[key] !== undefined) el.placeholder = t[key];
   });
 
-  // Toggle button label — shows the OTHER language (what you'll switch to)
+  // Toggle button label - shows the OTHER language (what you'll switch to)
   document.querySelectorAll('.lang-toggle').forEach(function(btn) {
     btn.textContent = lang === 'en' ? 'NL' : 'EN';
     btn.setAttribute('aria-label', lang === 'en' ? 'Switch to Dutch' : 'Overschakelen naar Engels');
@@ -46,7 +46,7 @@ function toggleLang() {
   applyTranslations(SOKI_LANG === 'en' ? 'nl' : 'en');
 }
 
-// Apply on page load (after DOM is ready — translations.js must be loaded first)
+// Apply on page load (after DOM is ready - translations.js must be loaded first)
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof SOKI_I18N !== 'undefined') applyTranslations(SOKI_LANG);
 });
@@ -220,7 +220,7 @@ async function handleSignup(e) {
 
   if (!ok) {
     if (button) button.disabled = false;
-    errorEl.textContent = errorMsg || 'Something went wrong — please try again.';
+    errorEl.textContent = errorMsg || 'Something went wrong - please try again.';
     errorEl.style.display = 'block';
     return;
   }
