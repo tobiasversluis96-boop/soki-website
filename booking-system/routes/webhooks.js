@@ -216,7 +216,9 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
             await queries.markSubscriptionResumedByStripeId(stripeSub.id);
           }
           const status = mapStripeStatus(stripeSub.status);
-          await queries.updateSubscriptionFromWebhook(stripeSub.id, status, periodEnd, stripeSub.cancel_at_period_end);
+          // Een minimale-looptijd-opzegging loopt via cancel_at (vaste einddatum)
+          // i.p.v. cancel_at_period_end; allebei tellen als "opgezegd".
+          await queries.updateSubscriptionFromWebhook(stripeSub.id, status, periodEnd, stripeSub.cancel_at_period_end || !!stripeSub.cancel_at);
         }
         break;
       }

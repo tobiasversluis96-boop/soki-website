@@ -505,6 +505,9 @@ async function initializeDB() {
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS price_cents INTEGER');
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS pause_resumes_at TIMESTAMPTZ');
+  // Werkelijke einddatum na opzegging; wijkt af van current_period_end bij een
+  // opzegging binnen de minimale looptijd van 3 maanden (cancel_at in Stripe)
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ');
 
   // Strippenkaart: losse creditbundels (eenmalige aankoop, geen abonnement)
   await pool.query(`CREATE TABLE IF NOT EXISTS punch_pass_bundles (
@@ -1775,11 +1778,11 @@ const queries = {
     return rows[0] || null;
   },
 
-  cancelSubscription: async (userId) => {
+  cancelSubscription: async (userId, endsAt = null) => {
     await pool.query(`
-      UPDATE subscriptions SET cancel_at_period_end = TRUE
+      UPDATE subscriptions SET cancel_at_period_end = TRUE, ends_at = $2
       WHERE user_id = $1 AND status = 'active'
-    `, [userId]);
+    `, [userId, endsAt]);
   },
 
   getSubscriptionByStripeId: async (stripeSubId) => {

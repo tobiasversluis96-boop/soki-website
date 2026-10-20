@@ -575,7 +575,7 @@
           : '<span style="font-weight:700;font-size:18px;">' + (sub.credits_remaining || 0) + '</span> ' + (isNL ? 'credits over deze maand' : 'credits remaining this month');
 
         var cancelHtml = sub.cancel_at_period_end
-          ? '<p style="color:#C62828;font-size:13px;margin-top:8px;">' + (isNL ? 'Stopt op ' : 'Cancels on ') + new Date(sub.current_period_end).toLocaleDateString(locale()) + '</p>'
+          ? '<p style="color:#C62828;font-size:13px;margin-top:8px;">' + (isNL ? 'Stopt op ' : 'Cancels on ') + new Date(sub.ends_at || sub.current_period_end).toLocaleDateString(locale()) + '</p>'
           : '<button onclick="cancelSubscription()" class="btn btn--sm" style="background:#FFEBEE;color:#C62828;border:none;cursor:pointer;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;font-family:inherit;margin-top:8px;">' + (isNL ? 'Membership opzeggen' : 'Cancel membership') + '</button>';
 
         el.innerHTML = '<div style="background:#fff;border:1.5px solid rgba(217,77,26,0.2);border-radius:16px;padding:24px;">' +
@@ -627,13 +627,17 @@
   window.cancelSubscription = function() {
     var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
     if (!confirm(isNL
-      ? 'Weet je zeker dat je je membership wilt opzeggen? Je houdt toegang tot het einde van de betaalperiode.'
-      : 'Are you sure you want to cancel your membership? You will keep access until the end of the billing period.')) return;
+      ? 'Weet je zeker dat je je membership wilt opzeggen? Je houdt toegang tot het einde van de betaalperiode. Binnen de eerste 3 maanden geldt de minimale looptijd: je membership loopt dan door tot het einde van maand 3.'
+      : 'Are you sure you want to cancel your membership? You will keep access until the end of the billing period. Within the first 3 months the minimum term applies: your membership then runs until the end of month 3.')) return;
     fetch('/api/subscriptions/cancel', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token },
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (res.error) { alert(res.error); return; }
+      if (res.ends_at) {
+        var d = new Date(res.ends_at).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+        alert(isNL ? 'Je membership is opgezegd en loopt tot ' + d + '.' : 'Your membership has been cancelled and runs until ' + d + '.');
+      }
       loadSubscription();
     });
   };

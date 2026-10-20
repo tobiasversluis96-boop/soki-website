@@ -12,6 +12,13 @@ const router = express.Router();
 // Credit cost per session type (session_type_id -> credits)
 const CREDIT_COST = { 1: 1, 2: 1, 3: 1.5, 4: 1.5 };  // 1=Everyday, 2=Extended, 3=Ambient, 4=Aufguss
 
+// Minimale looptijd: memberships gestart vanaf deze datum zitten minimaal
+// 3 maanden vast. Opzeggen kan altijd, maar binnen de eerste 3 maanden loopt
+// het membership door tot het einde van maand 3; daarna maandelijks opzegbaar.
+// Bestaande leden (gestart vóór deze datum) houden de oude regels.
+const MIN_TERM_MONTHS       = 3;
+const MIN_TERM_APPLIES_FROM = Date.UTC(2026, 9, 20); // 20 okt 2026
+
 // GET /api/subscriptions/plans
 router.get('/plans', async (req, res) => {
   const plans = await queries.getSubscriptionPlans();
@@ -66,11 +73,34 @@ router.post('/cancel', requireAuth, async (req, res) => {
   const sub = await queries.getActiveSubscription(req.user.userId);
   if (!sub) return res.status(404).json({ error: 'No active subscription' });
 
-  // Cancel at period end in Stripe
-  await stripe.subscriptions.update(sub.stripe_subscription_id, {
-    cancel_at_period_end: true,
-  });
-  await queries.cancelSubscription(req.user.userId);
+  // Minimale looptijd: valt het einde van de lopende periode nog binnen de
+  // eerste 3 maanden, dan niet stoppen aan het einde van de periode maar pas
+  // aan het einde van maand 3 (cancel_at). Het uur marge voorkomt dat Stripe
+  // precies op de periodegrens nog een vierde maand factureert.
+  let endsAt = sub.current_period_end;
+  let minTermApplied = false;
+  const stripeSub  = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+  const startMs    = (stripeSub.start_date || 0) * 1000;
+  if (startMs >= MIN_TERM_APPLIES_FROM) {
+    const minEnd = new Date(startMs);
+    minEnd.setMonth(minEnd.getMonth() + MIN_TERM_MONTHS);
+    const cancelAtMs = minEnd.getTime() - 3600 * 1000;
+    const periodEndMs = sub.current_period_end ? new Date(sub.current_period_end).getTime() : 0;
+    if (cancelAtMs > periodEndMs + 3600 * 1000) {
+      await stripe.subscriptions.update(sub.stripe_subscription_id, {
+        cancel_at: Math.floor(cancelAtMs / 1000),
+      });
+      endsAt = new Date(cancelAtMs);
+      minTermApplied = true;
+    }
+  }
+  if (!minTermApplied) {
+    // Cancel at period end in Stripe
+    await stripe.subscriptions.update(sub.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+  }
+  await queries.cancelSubscription(req.user.userId, endsAt);
 
   try {
     const user = await queries.getUserById(req.user.userId);
@@ -80,14 +110,14 @@ router.post('/cancel', requireAuth, async (req, res) => {
         customer_name:  user.name,
         customer_email: user.email,
         plan_name:      sub.plan_name,
-        ends_at:        sub.current_period_end,
+        ends_at:        endsAt,
       });
     }
   } catch (e) {
     console.error('Member-cancelled email failed (non-fatal):', e.message);
   }
 
-  res.json({ ok: true, ends_at: sub.current_period_end });
+  res.json({ ok: true, ends_at: endsAt, min_term_applied: minTermApplied || undefined });
 });
 
 // POST /api/subscriptions/credit-cost  -- returns cost for a slot
