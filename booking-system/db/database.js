@@ -383,6 +383,7 @@ async function initializeDB() {
   // AVG: expliciete toestemming voor marketingmail; NULL = geen toestemming
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_opt_in_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_restored BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_community_rate BOOLEAN NOT NULL DEFAULT FALSE');
 
   // Voorkom dubbele accounts die alleen in hoofdletters verschillen. Bestaande
   // duplicaten mogen de boot niet blokkeren: dan alleen waarschuwen.
@@ -710,7 +711,8 @@ const queries = {
              st.color        AS type_color,
              COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
              st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked,
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) AND b.is_community_rate THEN 1 ELSE 0 END), 0)::int AS community_booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
@@ -730,7 +732,8 @@ const queries = {
              st.name         AS session_name,
              COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
              st.max_capacity AS type_capacity,
-             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked,
+             COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) AND b.is_community_rate THEN 1 ELSE 0 END), 0)::int AS community_booked
       FROM time_slots ts
       JOIN session_types st ON st.id = ts.session_type_id
       LEFT JOIN bookings b ON b.time_slot_id = ts.id
@@ -883,6 +886,7 @@ const queries = {
         b.group_size,
         b.status,
         b.checked_in,
+        b.is_community_rate,
         u.id          AS user_id,
         u.name        AS customer_name,
         u.email       AS customer_email,
@@ -996,7 +1000,7 @@ const queries = {
   },
 
   // Bookings
-  createBooking: async (userId, slotId, groupSize, totalCents, kantineAddonCents = 0) => {
+  createBooking: async (userId, slotId, groupSize, totalCents, kantineAddonCents = 0, isCommunityRate = false) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1017,9 +1021,25 @@ const queries = {
       );
       const booked = countRows[0].booked;
       if (booked + groupSize > capacity) throw Object.assign(new Error(`Only ${capacity - booked} spot(s) remaining`), { code: 'NO_CAPACITY', spots_left: capacity - booked });
+      if (isCommunityRate) {
+        // Cap onder de slotlock hertellen: twee parallelle requests kunnen niet
+        // allebei de laatste Community Rate-plek claimen. Eigen oude pendings
+        // tellen niet mee - die worden direct hierna gesuperseded.
+        const { MAX_PER_SLOT } = require('../utils/community-rate');
+        const { rows: commRows } = await client.query(
+          `SELECT COUNT(*)::int AS n FROM bookings
+           WHERE time_slot_id = $1 AND is_community_rate = TRUE AND status != 'cancelled'
+             AND (hold_until IS NULL OR hold_until > NOW())
+             AND NOT (user_id = $2 AND status = 'pending'
+                      AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing'))`,
+          [slotId, userId]
+        );
+        if (commRows[0].n >= MAX_PER_SLOT)
+          throw Object.assign(new Error('De Community Rate-plekken voor deze sessie zijn al vergeven.'), { code: 'NO_COMMUNITY' });
+      }
       const { rows } = await client.query(
-        'INSERT INTO bookings (user_id, time_slot_id, group_size, total_cents, kantine_addon_cents) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [userId, slotId, groupSize, totalCents, kantineAddonCents]
+        'INSERT INTO bookings (user_id, time_slot_id, group_size, total_cents, kantine_addon_cents, is_community_rate) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [userId, slotId, groupSize, totalCents, kantineAddonCents, !!isCommunityRate]
       );
       await client.query('COMMIT');
       return rows[0];

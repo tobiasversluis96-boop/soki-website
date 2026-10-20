@@ -30,6 +30,7 @@
     totalCents:    null,
     cotenantCents: 0,
     kantineAddon:  false,
+    communityRate: false,
     stripe:         null,
     stripeElements: null,
     clientSecret:   null,
@@ -73,6 +74,12 @@
     state.promoCode       = null;
     state.memberCombi     = null;
     state.creditPartial   = null;
+  }
+
+  // Community Rate is gekozen én (nog steeds) geldig voor dit slot/deze groep
+  function communityActive() {
+    return !!(state.communityRate && state.slot && state.slot.community_available
+      && state.slot.community_price_cents != null && state.groupSize === 1);
   }
 
   // Combi-deal Kantine geldt alleen bij betaalde losse sessies
@@ -127,6 +134,10 @@
     if (includeTotal !== false) {
       var perPerson = (state.slot && state.slot.price_cents !== undefined && state.slot.price_cents !== null) ? state.slot.price_cents : state.sessionType.price_cents;
       var computedTotal = ((state.slot && state.slot.is_private) ? state.slot.price_cents : perPerson * state.groupSize) + kantineCents();
+      if (communityActive()) {
+        computedTotal = state.slot.community_price_cents + kantineCents();
+        rows.push([t('booking.community.title'), eur(state.slot.community_price_cents)]);
+      }
       var finalTotal = (state.totalCents !== null && state.totalCents !== undefined) ? state.totalCents : computedTotal;
       if (kantineCents() > 0) {
         rows.push([t('booking.summary.kantine'), '+' + eur(kantineCents())]);
@@ -398,6 +409,9 @@
       var artistLine = s.artist
         ? '<div class="slot-item__info" style="color:#D94D1A;font-weight:600;">' + t('booking.slot.with') + ': ' + esc(s.artist) + '</div>'
         : '';
+      var communityLine = s.community_available
+        ? '<div class="slot-item__info" style="color:#2E7D32;font-weight:600;">' + t('booking.community.badge').replace('{p}', eur(s.community_price_cents)) + '</div>'
+        : '';
       return '<div class="slot-item" data-slot-id="' + s.id + '">' +
         '<div>' +
           typeLine(s) +
@@ -406,6 +420,7 @@
           ambientLine(s) +
           buddyLine(s) +
           spotsHtml +
+          communityLine +
         '</div>' +
         '<div><span class="spots-badge">' + eur(s.price_cents) + ' p.p.</span></div>' +
       '</div>';
@@ -435,6 +450,7 @@
         var slotId = +el.dataset.slotId;
         state.slot = daySlots.find(function (s) { return s.id === slotId; });
         state.sessionType = allTypes.find(function (t_) { return t_.id === state.slot.session_type_id; }) || state.sessionType;
+        state.communityRate = false; // keuze geldt per slot
         selectSlot();
       });
     });
@@ -803,7 +819,7 @@
       if (state.bookingId) { showConfirmation(); return; }
       api('/bookings', {
         method: 'POST',
-        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
+        body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon, community_rate: communityActive() }),
       }).then(function (bRes) {
         if (bRes.error) {
           // Still show payment step so error is visible
@@ -824,6 +840,34 @@
     document.getElementById('stripe-errors').textContent = '';
     document.getElementById('promo-toggle').style.display = '';
 
+    // Community Rate-optie: alleen tonen als het slot hem aanbiedt en er voor
+    // 1 persoon wordt geboekt. Aan/uit wisselen maakt een nieuwe boeking aan
+    // (ander bedrag), net als bij een promocode.
+    var commBox   = document.getElementById('community-box');
+    var commCheck = document.getElementById('community-check');
+    var commOffer = state.slot && state.slot.community_available
+      && state.slot.community_price_cents != null && state.groupSize === 1 && !state.memberCombi && !state.creditPartial;
+    if (commOffer) {
+      document.getElementById('community-label').textContent =
+        t('booking.community.label').replace('{p}', eur(state.slot.community_price_cents)).replace('{o}', eur(state.slot.price_cents));
+      commCheck.checked = !!state.communityRate;
+      commBox.style.display = 'block';
+      commCheck.onchange = function () {
+        state.communityRate = commCheck.checked;
+        resetBookingState();
+        initPayment();
+      };
+    } else {
+      commBox.style.display = 'none';
+      state.communityRate = false;
+    }
+    if (communityActive()) {
+      // Niet combineerbaar met promocodes - veld verbergen
+      document.getElementById('promo-toggle').style.display = 'none';
+      document.getElementById('promo-field').style.display = 'none';
+      document.getElementById('promo-msg').textContent = '';
+    }
+
     if (window.sokiTrack) sokiTrack('InitiateCheckout', {
       currency: 'EUR',
       contents: [{
@@ -835,8 +879,9 @@
     });
 
     // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken
-    // totaalprijs)
-    if (state.token && !(state.slot && state.slot.is_private)) {
+    // totaalprijs; niet bij Community Rate: dat is al het laagste tarief en
+    // niet combineerbaar met credits)
+    if (state.token && !communityActive() && !(state.slot && state.slot.is_private)) {
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
@@ -879,7 +924,7 @@
     if (state.bookingId) { callback(); return; }
     api('/bookings', {
       method: 'POST',
-      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
+      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon, community_rate: communityActive() }),
     }).then(function (bRes) {
       if (bRes.error) { document.getElementById('stripe-errors').textContent = bRes.error; return; }
       state.bookingId  = bRes.booking_id;
@@ -1063,7 +1108,7 @@
 
     api('/bookings', {
       method: 'POST',
-      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon }),
+      body: JSON.stringify({ slot_id: state.slot.id, group_size: state.groupSize, kantine_addon: state.kantineAddon, community_rate: communityActive() }),
     }).then(function (bRes) {
       if (bRes.error) { showPaymentError(bRes.error); return; }
       state.bookingId  = bRes.booking_id;
@@ -1306,6 +1351,10 @@
 
     // Promo code apply
     document.getElementById('promo-apply').addEventListener('click', function () {
+      // Promocodes zijn niet combineerbaar met Community Rate (veld is dan
+      // verborgen, maar voor de zekerheid): de promoboeking zou de community-
+      // boeking stil vervangen door een regulier tarief.
+      if (communityActive()) return;
       var code = document.getElementById('promo-input').value.trim();
       var msgEl = document.getElementById('promo-msg');
       if (!code) { msgEl.textContent = t('promo.empty'); msgEl.style.color = '#C62828'; return; }

@@ -958,6 +958,7 @@
           private_notes: r.admin_notes_private || '',
           past_visits:   r.past_visits || 0,
           aufguss_history: r.aufguss_history || null,
+          is_community:  !!r.is_community_rate,
         });
       }
     });
@@ -995,7 +996,7 @@
         ? sl.bookings.map(b => `
             <div class="checkin-row ${b.checked_in ? 'checkin-row--in' : ''}" id="checkin-row-${b.id}">
               <div class="checkin-row__info" ${b.user_id ? `style="cursor:pointer" title="Klik om notities te bewerken" onclick="openScheduleNotes(${b.user_id})"` : ''}>
-                <div class="checkin-row__name">${escapeHtml(b.customer_name)}</div>
+                <div class="checkin-row__name">${escapeHtml(b.customer_name)}${b.is_community ? ' <span style="display:inline-flex;align-items:center;background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;vertical-align:middle;">Community</span>' : ''}</div>
                 <div class="checkin-row__meta">${escapeHtml(b.customer_email)} · ${b.group_size} ${b.group_size === 1 ? 'persoon' : 'personen'} · ${b.past_visits === 0 ? '🌱 eerste bezoek' : b.past_visits + '× eerder geweest'}</div>
                 ${sl.is_aufguss ? aufgussHistoryLine(b) : ''}
                 ${b.admin_notes ? `<div class="checkin-row__notes">📝 ${escapeHtml(b.admin_notes)}</div>` : ''}

@@ -84,6 +84,35 @@ router.post('/', requireAuth, async (req, res) => {
   if (group_size > spotsLeft)
     return res.status(409).json({ error: `Only ${spotsLeft} spot(s) remaining`, spots_left: spotsLeft });
 
+  // Community Rate: goedkopere plek op rustige sessies, alleen solo, max 2 per
+  // sessie en 1 p.p., vrijgegeven vanaf 24u vooraf, niet combineerbaar met
+  // kortingen of credits. Zie utils/community-rate.js voor de spelregels.
+  const isCommunity = req.body.community_rate === true;
+  const communityRules = isCommunity ? require('../utils/community-rate') : null;
+  if (isCommunity) {
+    if (group_size !== 1)
+      return res.status(400).json({ error: 'Community Rate geldt alleen voor je eigen plek (1 persoon).', code: 'COMMUNITY_SOLO' });
+    if (promo_code)
+      return res.status(400).json({ error: 'Community Rate is niet combineerbaar met promotiecodes of cadeaubonnen.', code: 'COMMUNITY_NO_PROMO' });
+    if (!communityRules.communityOpen(slot))
+      return res.status(400).json({ error: 'Community Rate is voor deze sessie (nog) niet beschikbaar.', code: 'COMMUNITY_CLOSED' });
+    if (spotsLeft < communityRules.MIN_FREE_SEATS)
+      return res.status(409).json({ error: 'Deze sessie zit al goed vol - er zijn alleen nog reguliere tickets.', code: 'COMMUNITY_FULL' });
+    const { rows: commRows } = await getPool().query(
+      `SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE user_id = $2)::int AS mine
+       FROM bookings
+       WHERE time_slot_id = $1 AND is_community_rate = TRUE AND status != 'cancelled'
+         AND (hold_until IS NULL OR hold_until > NOW())
+         AND NOT (user_id = $2 AND status = 'pending'
+                  AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing'))`,
+      [slot_id, req.user.userId]
+    );
+    if (commRows[0].mine > 0)
+      return res.status(409).json({ error: 'Je hebt al een Community Rate-ticket voor deze sessie (max 1 per persoon).', code: 'COMMUNITY_OWN' });
+    if (commRows[0].total >= communityRules.MAX_PER_SLOT)
+      return res.status(409).json({ error: 'De Community Rate-plekken voor deze sessie zijn al vergeven.', code: 'COMMUNITY_FULL' });
+  }
+
   // Free-slot rule: each account may book only ONE free (price_cents=0) session
   // (geldt niet voor privéverhuur - daar bepaalt SOKI zelf de prijs/groep)
   if (slot.price_cents === 0 && !slot.is_private) {
@@ -112,13 +141,15 @@ router.post('/', requireAuth, async (req, res) => {
   let discountCode   = null;
   let discountCents  = 0;
   // Privéverhuur: price_cents is de totaalprijs voor de hele groep, niet per persoon
-  const grossTotal = slot.is_private ? slot.price_cents : slot.price_cents * group_size;
+  const grossTotal = slot.is_private ? slot.price_cents
+    : isCommunity ? communityRules.communityPriceCents(slot)
+    : slot.price_cents * group_size;
 
   // Medehuurderskorting: percentage over ÉÉN plek (alleen de eigen plek van de
   // accounthouder), niet bij privéverhuur of gratis sessies.
   let cotenantCents = 0;
   let isHuurder = false;
-  if (!isFree && !slot.is_private && slot.price_cents > 0) {
+  if (!isFree && !slot.is_private && !isCommunity && slot.price_cents > 0) {
     const bookingUser = await queries.getUserById(req.user.userId);
     const pct = bookingUser ? Number(bookingUser.discount_pct) || 0 : 0;
     isHuurder = pct > 0;
@@ -214,10 +245,12 @@ router.post('/', requireAuth, async (req, res) => {
 
   let booking;
   try {
-    booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents, isFree ? 0 : kantineCents);
+    booking = await queries.createBooking(req.user.userId, slot_id, group_size, totalCents, isFree ? 0 : kantineCents, isCommunity);
   } catch (err) {
     if (err.code === 'NO_CAPACITY')
       return res.status(409).json({ error: err.message, spots_left: err.spots_left });
+    if (err.code === 'NO_COMMUNITY')
+      return res.status(409).json({ error: err.message, code: 'COMMUNITY_FULL' });
     throw err;
   }
 
@@ -285,6 +318,7 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json({
     booking_id:     booking.id,
     total_cents:    totalCents,
+    community_rate: isCommunity || undefined,
     discount_cents: discountCents,
     cotenant_discount_cents: cotenantCents,
     kantine_addon_cents: kantineCents,
@@ -484,6 +518,8 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (booking.status !== 'pending') return res.status(400).json({ error: 'Booking already processed' });
   if (booking.kantine_addon_cents > 0)
     return res.status(400).json({ error: 'Het combi ticket met Kantine kan niet met credits worden geboekt.' });
+  if (booking.is_community_rate)
+    return res.status(400).json({ error: 'Een Community Rate-ticket kan niet met credits worden geboekt.' });
   // Credits zijn persoonlijk: groepsboekingen lopen via de deelbetaling (create-intent)
   if ((booking.group_size || 1) > 1)
     return res.status(400).json({ error: 'Credits gelden alleen voor je eigen plek. Boek een groep via de gewone betaling.' });

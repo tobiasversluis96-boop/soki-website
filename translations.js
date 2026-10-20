@@ -636,6 +636,10 @@ var SOKI_I18N = {
     'booking.gdpr.label':   'I agree to the <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">Privacy Policy</a> and consent to my data being stored to process my booking.',
     'booking.optin.label':  'Email me about new sessions and events (optional - unsubscribe anytime).',
     'booking.optin.saved':  'Great - you\u2019re on the list!',
+    'booking.community.title': 'Community Rate',
+    'booking.community.badge': 'Community Rate available \u00b7 {p}',
+    'booking.community.label': 'Book with the Community Rate: {p} instead of {o}',
+    'booking.community.note':  'We want SOKI to be accessible to people with different incomes. These reduced-price spots are intended for guests for whom our regular ticket price is currently difficult to afford. We don\u2019t ask for proof - we simply ask you to choose this rate only when you genuinely need it. Max 2 spots per session, 1 per person, released 24 hours before quieter sessions.',
 
     /* --- Account extras --- */
     'account.datarights':   'Your data rights',
@@ -1291,6 +1295,10 @@ var SOKI_I18N = {
     'booking.gdpr.label':   'Ik ga akkoord met het <a href="/privacy" target="_blank" style="color:var(--terra);text-decoration:underline;">privacybeleid</a> en geef toestemming om mijn gegevens op te slaan voor het verwerken van mijn boeking.',
     'booking.optin.label':  'Houd me per e-mail op de hoogte van nieuwe sessies en events (optioneel - altijd uit te schrijven).',
     'booking.optin.saved':  'Top - je staat op de lijst!',
+    'booking.community.title': 'Community Rate',
+    'booking.community.badge': 'Community Rate beschikbaar · {p}',
+    'booking.community.label': 'Boek met Community Rate: {p} in plaats van {o}',
+    'booking.community.note':  'We willen dat SOKI toegankelijk is voor mensen met verschillende inkomens. Deze plekken met korting zijn bedoeld voor gasten voor wie onze normale ticketprijs nu lastig op te brengen is. We vragen geen bewijs - we vragen je alleen dit tarief te kiezen als je het echt nodig hebt. Max 2 plekken per sessie, 1 per persoon, beschikbaar vanaf 24 uur voor rustigere sessies.',
 
     /* --- Account extras --- */
     'account.datarights':   'Jouw gegevensrechten',

@@ -184,12 +184,23 @@ app.get('/api/slots', async (req, res) => {
     return res.status(400).json({ error: 'session_type_id, year and month must be valid numbers' });
 
   const slots = await queries.getSlotsForMonth(typeId, year, month);
-  const result = slots.map(s => ({
-    ...s,
-    capacity:   s.max_capacity || s.type_capacity,
-    spots_left: (s.max_capacity || s.type_capacity) - s.booked,
-    is_full:    (s.max_capacity || s.type_capacity) - s.booked <= 0,
-  }));
+  const cr = require('./utils/community-rate');
+  const nowNL = cr.nowNL();
+  const result = slots.map(s => {
+    const spotsLeft = (s.max_capacity || s.type_capacity) - s.booked;
+    const communityAvailable = cr.communityOpen(s, nowNL)
+      && s.community_booked < cr.MAX_PER_SLOT
+      && spotsLeft >= cr.MIN_FREE_SEATS;
+    const { community_booked, ...pub } = s;
+    return {
+      ...pub,
+      capacity:   s.max_capacity || s.type_capacity,
+      spots_left: spotsLeft,
+      is_full:    spotsLeft <= 0,
+      community_available:   communityAvailable,
+      community_price_cents: communityAvailable ? cr.communityPriceCents(s) : undefined,
+    };
+  });
   res.json(result);
 });
 
@@ -242,6 +253,10 @@ app.get('/api/slots/:id', async (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   const capacity  = slot.max_capacity || slot.type_capacity;
   const spotsLeft = capacity - slot.booked;
+  const cr = require('./utils/community-rate');
+  const communityAvailable = cr.communityOpen(slot)
+    && slot.community_booked < cr.MAX_PER_SLOT
+    && spotsLeft >= cr.MIN_FREE_SEATS;
   res.json({
     id:              slot.id,
     session_type_id: slot.session_type_id,
@@ -259,6 +274,8 @@ app.get('/api/slots/:id', async (req, res) => {
     capacity,
     spots_left: spotsLeft,
     is_full:    spotsLeft <= 0,
+    community_available:   communityAvailable,
+    community_price_cents: communityAvailable ? cr.communityPriceCents(slot) : undefined,
   });
 });
 
