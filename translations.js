@@ -99,7 +99,7 @@ var SOKI_I18N = {
 
     /* --- Homepage hero --- */
     'home.hero.h1':   'Sweat, relax, connect',
-    'home.hero.lead': 'SOKI is a new kind of sauna space in Utrecht, fusing wellness with culture, music and community. A warm, inspiring place where wellbeing, creativity and genuine human connection come first. We are now open.',
+    'home.hero.lead': 'SOKI is a new kind of sauna space in Utrecht, fusing wellness with culture, music and community. A warm, inspiring place where wellbeing, creativity and genuine human connection come first.',
     'home.hero.book': 'Book a session',
     'home.hero.story':'Our story',
 
@@ -758,7 +758,7 @@ var SOKI_I18N = {
 
     /* --- Homepage hero --- */
     'home.hero.h1':   'Zweet, ontspan, verbind',
-    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte in Utrecht: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan. We zijn nu open.',
+    'home.hero.lead': 'SOKI is een nieuw soort saunaruimte in Utrecht: een plek die welzijn verbindt met cultuur, muziek en gemeenschap. Een warme, inspirerende plek waar welzijn, creativiteit en echte menselijke verbinding voorop staan.',
     'home.hero.book': 'Boek een sessie',
     'home.hero.story':'Ons verhaal',
 
