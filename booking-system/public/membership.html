@@ -255,6 +255,10 @@
       <li data-i18n="membership.feat.cancel">Cancel anytime</li>
     </ul>
     <button class="btn btn--primary" id="btn-unlimited" onclick="subscribe(null)" data-i18n="membership.subscribe">Subscribe</button>
+    <p style="font-size:0.78rem;line-height:1.55;color:var(--text-muted,#8C7B6B);margin:0.9rem 0 0;text-align:left;">
+      <strong data-i18n="membership.unlimited.cap.title">Unlimited memberships are limited.</strong><br>
+      <span data-i18n="membership.unlimited.cap.body">We keep the number of Unlimited members intentionally small, so members can actually keep booking the sessions they want. Once all memberships are taken, new members can join the waitlist.</span>
+    </p>
   </div>
 
   <div class="plan-card" id="plan-punchpass" style="display:none">
@@ -344,7 +348,7 @@
   </div>
 </footer>
 
-<script src="/translations.js?v=20261020-2"></script>
+<script src="/translations.js?v=20261020-3"></script>
 <script src="/main.js?v=20261019-2"></script>
 <script>
 (function() {
