@@ -1316,6 +1316,19 @@
   </div>
 </div>
 
+<!-- ── Refund choice modal (boeking annuleren) ───────────────────────────── -->
+<div class="modal-overlay" id="refund-modal">
+  <div class="modal">
+    <h3 id="refund-modal-title">Terugbetalen?</h3>
+    <p id="refund-modal-body" style="color:var(--muted);margin-bottom:8px"></p>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
+      <button class="btn btn--outline" id="refund-modal-abort">Terug (niet annuleren)</button>
+      <button class="btn btn--outline" id="refund-modal-no">Annuleren zonder terugbetaling</button>
+      <button class="btn btn--danger" id="refund-modal-yes">Annuleren met terugbetaling</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Customer detail modal ──────────────────────────────────────────────── -->
 <div class="modal-overlay" id="customer-modal">
   <div class="modal" style="max-width:620px;max-height:85vh;display:flex;flex-direction:column">

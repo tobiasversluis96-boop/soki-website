@@ -520,6 +520,10 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_deducted_at TIMESTAMPTZ');
   // Ingewisselde mijlpaalcode, zodat die bij volledige annulering weer vrijkomt
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS applied_milestone_id INTEGER');
+  // Refundpercentage dat bij de annulering gold (klant-tier, of admin-keuze):
+  // een betaling die daarna alsnog binnenkomt (SEPA/iDEAL 'processing') wordt
+  // volgens datzelfde percentage terugbetaald, niet automatisch 100%
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancel_refund_pct INTEGER');
   // Backfill: membership-boekingen van vóór de subscription_id-kolom koppelen
   // aan het lopende membership van de gebruiker (credits van het abonnement,
   // of Unlimited: bevestigd zonder Stripe-betaling en zonder credits).
@@ -1299,7 +1303,9 @@ const queries = {
           [p.milestone_id]
         );
         if (!ms[0]) console.error(`Milestone ${p.milestone_id}: al ingewisseld bij bevestigen van boeking ${bookingId}`);
-        await client.query('UPDATE bookings SET applied_milestone_id = $2 WHERE id = $1', [bookingId, p.milestone_id]);
+        // Alleen vastleggen als déze boeking de code echt heeft ingewisseld,
+        // anders zou een annulering hier de code van een andere boeking vrijgeven
+        else await client.query('UPDATE bookings SET applied_milestone_id = $2 WHERE id = $1', [bookingId, p.milestone_id]);
       }
       if (p.discount_code_id) {
         await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId }, client);
@@ -1588,13 +1594,15 @@ const queries = {
   // Annulering atomair claimen: alleen de eerste aanroep krijgt de rij terug
   // (met de actuele betaalstatus, niet een eerder gelezen momentopname), zodat
   // klant, admin en webhook nooit allebei refunden.
-  claimBookingCancel: async (id) => {
+  // refundPct: welk deel van een (eventueel pas later binnenkomende) betaling
+  // bij deze annulering wordt terugbetaald.
+  claimBookingCancel: async (id, refundPct = 100) => {
     const { rows } = await pool.query(
-      `UPDATE bookings b SET status = 'cancelled'
+      `UPDATE bookings b SET status = 'cancelled', cancel_refund_pct = $2
        FROM (SELECT id, status AS prev_status FROM bookings WHERE id = $1 FOR UPDATE) old
        WHERE b.id = old.id AND old.prev_status != 'cancelled'
        RETURNING b.*, old.prev_status`,
-      [id]
+      [id, refundPct]
     );
     return rows[0] || null;
   },
@@ -1894,19 +1902,34 @@ const queries = {
     await pool.query(`
       UPDATE subscriptions
       SET status = CASE WHEN $2 = 'active' AND awaiting_first_payment THEN status ELSE $2 END,
+          awaiting_first_payment = CASE WHEN $2 = 'expired' THEN FALSE ELSE awaiting_first_payment END,
           current_period_end = $3, cancel_at_period_end = $4
       WHERE stripe_subscription_id = $1
     `, [stripeSubId, status, periodEnd, cancelAtPeriodEnd]);
   },
 
   // Eerste incasso (SEPA) alsnog binnen: membership vrijgeven
+  // Alleen een membership dat écht nog op zijn eerste betaling wacht: een
+  // intussen beëindigd of gepauzeerd membership blijft wat het is.
   markSubscriptionActive: async (stripeSubId) => {
-    const { rows } = await pool.query(
-      `UPDATE subscriptions SET status = 'active', awaiting_first_payment = FALSE
-       WHERE stripe_subscription_id = $1 AND (status = 'past_due' OR awaiting_first_payment) RETURNING id`,
-      [stripeSubId]
-    );
-    return rows[0] || null;
+    try {
+      const { rows } = await pool.query(
+        `UPDATE subscriptions SET status = 'active', awaiting_first_payment = FALSE
+         WHERE stripe_subscription_id = $1 AND awaiting_first_payment AND status = 'past_due' RETURNING id`,
+        [stripeSubId]
+      );
+      return rows[0] || null;
+    } catch (err) {
+      if (err.code !== '23505') throw err;
+      // Gebruiker heeft intussen al een ander lopend membership: dit oude
+      // niet activeren (anders twee actieve), maar afsluiten
+      await pool.query(
+        "UPDATE subscriptions SET status = 'expired', awaiting_first_payment = FALSE WHERE stripe_subscription_id = $1",
+        [stripeSubId]
+      );
+      console.error(`Subscription ${stripeSubId}: eerste betaling binnen maar gebruiker heeft al een ander membership - als expired gemarkeerd`);
+      return null;
+    }
   },
 
   resetSubscriptionCredits: async (stripeSubId, creditsPerMonth, periodEnd) => {
@@ -2178,7 +2201,10 @@ const queries = {
     return rows[0] || null;
   },
 
-  restoreCreditsForBooking: async (booking) => {
+  // enforcePeriod: alleen bij annulering door de klant zelf geldt de regel
+  // "credits uit een vorige maand komen niet terug" (anti-opsparen). Annuleert
+  // SOKI (slot weg, admin, einde membership, refund), dan altijd terugzetten.
+  restoreCreditsForBooking: async (booking, { enforcePeriod = false } = {}) => {
     if (!booking || !(booking.credits_used > 0)) return null;
     // Atomaire claim: dubbel aanroepen (parallelle cancel, of klant + admin
     // tegelijk) stort nooit dubbel terug.
@@ -2191,7 +2217,8 @@ const queries = {
     if (booking.punch_pass_id) {
       return queries.restorePunchPassCredits(booking.punch_pass_id, booking.credits_used);
     }
-    return queries.restoreCredits(booking.user_id, booking.credits_used, booking.credits_deducted_at || booking.created_at || null);
+    const deductedAt = enforcePeriod ? (booking.credits_deducted_at || booking.created_at || null) : null;
+    return queries.restoreCredits(booking.user_id, booking.credits_used, deductedAt);
   },
 
   getAllSubscriptions: async () => {

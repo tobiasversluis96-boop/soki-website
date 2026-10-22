@@ -601,18 +601,36 @@
 
   document.getElementById('filter-apply').addEventListener('click', loadBookings);
 
-  window.cancelBooking = function (id) {
-    showConfirm(
-      'Boeking annuleren',
-      'Weet je zeker dat je boeking #' + id + ' wilt annuleren? Je kiest hierna of de klant terugbetaald wordt.',
-      async () => {
-        // Standaard mét terugbetaling (SOKI annuleert); zonder = no-show of
-        // annulering binnen 24 uur volgens de voorwaarden
-        const withRefund = confirm(
-          'Terugbetalen?\n\n' +
-          'OK = MET terugbetaling: geld, credits en cadeaubonsaldo gaan terug naar de klant.\n' +
-          'Annuleren = ZONDER terugbetaling (no-show of annulering binnen 24 uur): de klant krijgt niets terug.'
-        );
+  // Driekeuze: met terugbetaling / zonder / toch niet annuleren. Resolvet met
+  // true, false of null (afgebroken), zodat "weg klikken" nooit stilletjes een
+  // annulering zonder refund wordt.
+  function showRefundChoice(id) {
+    return new Promise(resolve => {
+      const modal = document.getElementById('refund-modal');
+      document.getElementById('refund-modal-body').textContent =
+        'Boeking #' + id + ' annuleren. Met terugbetaling: geld, credits en cadeaubonsaldo gaan terug naar de klant (SOKI annuleert). ' +
+        'Zonder terugbetaling: voor een no-show of een annulering binnen 24 uur volgens de voorwaarden.';
+      const done = val => { modal.classList.remove('open'); cleanup(); resolve(val); };
+      const onYes = () => done(true), onNo = () => done(false), onAbort = () => done(null);
+      const onKey = e => { if (e.key === 'Escape') done(null); };
+      const cleanup = () => {
+        document.getElementById('refund-modal-yes').removeEventListener('click', onYes);
+        document.getElementById('refund-modal-no').removeEventListener('click', onNo);
+        document.getElementById('refund-modal-abort').removeEventListener('click', onAbort);
+        document.removeEventListener('keydown', onKey);
+      };
+      document.getElementById('refund-modal-yes').addEventListener('click', onYes);
+      document.getElementById('refund-modal-no').addEventListener('click', onNo);
+      document.getElementById('refund-modal-abort').addEventListener('click', onAbort);
+      document.addEventListener('keydown', onKey);
+      modal.classList.add('open');
+    });
+  }
+
+  window.cancelBooking = async function (id) {
+    const withRefund = await showRefundChoice(id);
+    if (withRefund === null) return;
+    (async () => {
         const r = await api('/bookings/' + id + '/cancel', { method: 'PATCH', body: JSON.stringify({ refund: withRefund }) });
         const parts = [];
         if (r.refunded) parts.push(formatEur(r.refunded_cents) + ' teruggestort via Stripe');
@@ -624,8 +642,7 @@
         if (Number(r.gift_restored_cents) > 0) parts.push(formatEur(r.gift_restored_cents) + ' teruggezet op cadeaubon');
         alert('Boeking geannuleerd. ' + (parts.length ? parts.join(' · ') + '.' : 'Geen terugbetaling van toepassing (geen online betaling).') + ' De klant heeft een mail ontvangen.');
         loadBookings();
-      }
-    );
+    })();
   };
 
   // ─── Slots ────────────────────────────────────────────────────────────────

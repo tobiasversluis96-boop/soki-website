@@ -413,7 +413,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   // Annulering atomair claimen vóór de refund: twee parallelle cancel-verzoeken
   // zouden anders allebei een (deel)refund aanmaken. De claim geeft de actuele
   // betaalstatus terug (de webhook kan de betaling intussen bevestigd hebben).
-  const claimed = await queries.claimBookingCancel(booking.id);
+  const claimed = await queries.claimBookingCancel(booking.id, refundPct);
   if (!claimed)
     return res.status(400).json({ error: 'Booking is already cancelled' });
   const payStatus = claimed.stripe_payment_status;
@@ -435,7 +435,7 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   let creditsRestored = 0;
   let creditsLost = false;
   if (creditsUsed > 0 && hoursUntil >= 24) {
-    const restored = await queries.restoreCreditsForBooking(claimed);
+    const restored = await queries.restoreCreditsForBooking(claimed, { enforcePeriod: true });
     if (restored) {
       creditsRestored = creditsUsed;
       console.log(`✓ ${creditsUsed} credits teruggestort voor user ${booking.user_id}`);

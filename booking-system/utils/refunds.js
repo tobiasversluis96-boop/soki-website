@@ -49,4 +49,29 @@ async function cancelOpenIntent(claimed) {
   try { await stripe.paymentIntents.cancel(intentId); } catch (e) { /* zie boven */ }
 }
 
-module.exports = { refundBookingCharge, cancelOpenIntent };
+// Betaling die binnenkomt op een al geannuleerde boeking (SEPA/iDEAL die nog
+// 'processing' was): terugbetalen volgens het percentage dat bij de annulering
+// gold. Binnen 24u geannuleerd (0%) of door de admin zonder refund geannuleerd:
+// geld blijft bij SOKI, precies zoals bij een normale betaling het geval was.
+async function refundLatePayment(booking, intent) {
+  const pct = booking.cancel_refund_pct === null || booking.cancel_refund_pct === undefined ? 100 : Number(booking.cancel_refund_pct);
+  const received = intent.amount_received || intent.amount || 0;
+  if (!(pct > 0) || !(received > 0)) {
+    console.log(`Booking #${booking.id}: late betaling op geannuleerde boeking, refundpercentage ${pct}% - geen refund`);
+    return { refunded: false, refundedCents: 0 };
+  }
+  const refundedCents = pct >= 100 ? received : Math.floor(received * pct / 100);
+  const args = { payment_intent: intent.id };
+  if (pct < 100) args.amount = refundedCents;
+  try {
+    await stripe.refunds.create(args);
+    console.log(`✓ Booking #${booking.id}: late betaling terugbetaald (${pct}%, ${refundedCents} cents)`);
+    return { refunded: true, refundedCents };
+  } catch (err) {
+    if (err.code === 'charge_already_refunded') return { refunded: false, refundedCents: 0 };
+    console.error(`Late-payment refund failed for booking #${booking.id}:`, err.message);
+    return { refunded: false, refundedCents: 0, failed: true };
+  }
+}
+
+module.exports = { refundBookingCharge, cancelOpenIntent, refundLatePayment };

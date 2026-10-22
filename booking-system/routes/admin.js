@@ -212,7 +212,7 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   // zelf op hetzelfde moment, dan zouden beide paden refunden en komt de klant
   // boven de 100% uit (deelrefund klant + volledige rest-refund admin). De
   // claim geeft de actuele betaalstatus terug (webhook kan net bevestigd hebben).
-  const claimed = await queries.claimBookingCancel(booking.id);
+  const claimed = await queries.claimBookingCancel(booking.id, wantRefund ? 100 : 0);
   if (!claimed) return res.status(400).json({ error: 'Booking is already cancelled' });
   const payStatus = claimed.stripe_payment_status;
 

@@ -308,10 +308,11 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         }
         if (!booking) break;
         if (booking.status === 'cancelled') {
-          // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
-          console.error(`Booking #${booking.id}: late betaling op geannuleerde boeking - refund gestart`);
-          try { await stripe.refunds.create({ payment_intent: intent.id }); }
-          catch (e) { console.error('Late-payment refund failed:', e.message); }
+          // Late betaling op een al geannuleerde boeking: niet heractiveren,
+          // terugbetalen volgens het refundpercentage van die annulering
+          console.error(`Booking #${booking.id}: late betaling op geannuleerde boeking`);
+          const { refundLatePayment } = require('../utils/refunds');
+          await refundLatePayment(booking, intent);
           break;
         }
         // Redeem attached gift card/milestone (idempotent - safe if /confirm already did)

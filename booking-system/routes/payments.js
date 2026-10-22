@@ -140,10 +140,11 @@ async function settleMemberCombi(intent) {
   const booking = await queries.getBookingById(bookingId);
   if (!booking) return { ok: false };
   if (booking.status === 'cancelled') {
-    // Late betaling op een al geannuleerde boeking: terugbetalen, niet heractiveren
-    console.error(`Booking #${bookingId}: late combi-betaling op geannuleerde boeking - refund gestart`);
-    try { await stripe.refunds.create({ payment_intent: intent.id }); }
-    catch (e) { console.error('Late-payment refund failed:', e.message); }
+    // Late betaling op een al geannuleerde boeking: niet heractiveren,
+    // terugbetalen volgens het refundpercentage van die annulering
+    console.error(`Booking #${bookingId}: late combi-betaling op geannuleerde boeking`);
+    const { refundLatePayment } = require('../utils/refunds');
+    await refundLatePayment(booking, intent);
     return { ok: false };
   }
 

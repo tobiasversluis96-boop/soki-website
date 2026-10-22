@@ -636,13 +636,37 @@ setInterval(async () => {
   try {
     // Niet opruimen zolang de betaling geslaagd of nog onderweg is: SEPA-intents
     // staan dagen op 'processing' en worden pas via de webhook bevestigd.
-    const { rowCount } = await getPool().query(`
-      UPDATE bookings SET status = 'cancelled'
+    const { rows: stale } = await getPool().query(`
+      SELECT id, stripe_payment_intent_id FROM bookings
       WHERE status = 'pending'
-        AND created_at < NOW() - INTERVAL '30 minutes'
+        AND created_at < NOW() - INTERVAL '45 minutes'
         AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')
     `);
-    if (rowCount > 0) console.log(`✓ Cleaned up ${rowCount} expired pending booking(s)`);
+    let cleaned = 0;
+    const stripeClient = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    for (const b of stale) {
+      // Open betaalintentie sluiten zodat een trage betaler niet alsnog betaalt
+      // op een verdwenen boeking (en dan op een refund moet wachten). Is de
+      // betaling bij Stripe intussen toch gelukt of onderweg, dan blijft de
+      // boeking staan: de webhook/confirm bevestigt hem.
+      if (b.stripe_payment_intent_id && b.stripe_payment_intent_id.startsWith('pi_')) {
+        try {
+          await stripeClient.paymentIntents.cancel(b.stripe_payment_intent_id);
+        } catch (e) {
+          try {
+            const intent = await stripeClient.paymentIntents.retrieve(b.stripe_payment_intent_id);
+            if (intent && (intent.status === 'succeeded' || intent.status === 'processing')) {
+              await getPool().query('UPDATE bookings SET stripe_payment_status = $2 WHERE id = $1', [b.id, intent.status]);
+              continue;
+            }
+          } catch (e2) { /* intent onbekend: boeking kan gewoon weg */ }
+        }
+      }
+      const { rowCount } = await getPool().query(
+        "UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status = 'pending'", [b.id]);
+      cleaned += rowCount;
+    }
+    if (cleaned > 0) console.log(`✓ Cleaned up ${cleaned} expired pending booking(s)`);
   } catch (err) {
     console.error('Pending cleanup error:', err.message);
   }
