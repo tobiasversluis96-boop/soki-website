@@ -13,7 +13,7 @@ const router = express.Router();
 // GET /api/buddies/search?q=naam
 router.get('/search', requireAuth, async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (q.length < 2) return res.json([]);
+  if (q.length < 3) return res.json([]);
   const results = await queries.searchBuddyUsers(req.user.userId, q);
   res.json(results.map(r => ({ id: r.id, name: r.name, buddy_status: r.buddy_status })));
 });

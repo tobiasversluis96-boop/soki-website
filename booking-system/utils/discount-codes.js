@@ -17,9 +17,13 @@ async function validateDiscountCode(code, userId, context) {
       : 'Deze kortingscode geldt niet voor de strippenkaart.' };
   if (row.valid_until && new Date(row.valid_until).setHours(23, 59, 59, 999) < Date.now())
     return { error: 'Deze kortingscode is verlopen.' };
-  if (row.max_uses !== null && row.use_count >= row.max_uses)
+  // Lopende boekingen die de code al vasthouden tellen mee: de code wordt pas
+  // bij betaling afgeboekt, en zonder dit kon je hem met parallelle
+  // boekingen vaker gebruiken dan max_uses / once_per_customer toestaan.
+  const holds = await queries.countPendingDiscountHolds(row.id, userId);
+  if (row.max_uses !== null && row.use_count + holds.total >= row.max_uses)
     return { error: 'Deze kortingscode is al volledig gebruikt.' };
-  if (row.once_per_customer && await queries.hasUserUsedDiscountCode(row.id, userId))
+  if (row.once_per_customer && (holds.mine > 0 || await queries.hasUserUsedDiscountCode(row.id, userId)))
     return { error: 'Je hebt deze kortingscode al gebruikt.' };
   return { code: row };
 }

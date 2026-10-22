@@ -508,6 +508,18 @@ async function initializeDB() {
   // Werkelijke einddatum na opzegging; wijkt af van current_period_end bij een
   // opzegging binnen de minimale looptijd van 3 maanden (cancel_at in Stripe)
   await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ');
+  // Start van de lopende creditperiode: credits van een vorige maand worden bij
+  // annuleren niet teruggezet (geen rollover, dus ook niet via de achterdeur)
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS period_started_at TIMESTAMPTZ');
+  // Eerste incasso (SEPA) nog onderweg: tot die binnen is geen boekrecht, ook
+  // niet als Stripe het abonnement intussen al als 'active' doorgeeft
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS awaiting_first_payment BOOLEAN NOT NULL DEFAULT FALSE');
+  // Met welk membership een boeking is betaald (ook Unlimited, 0 credits):
+  // nodig om boekingen ná de einddatum van een opgezegd membership te vinden
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS subscription_id INTEGER');
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_deducted_at TIMESTAMPTZ');
+  // Ingewisselde mijlpaalcode, zodat die bij volledige annulering weer vrijkomt
+  await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS applied_milestone_id INTEGER');
 
   // Strippenkaart: losse creditbundels (eenmalige aankoop, geen abonnement)
   await pool.query(`CREATE TABLE IF NOT EXISTS punch_pass_bundles (
@@ -803,8 +815,22 @@ const queries = {
     // 2. Find by email - link existing account
     ({ rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]));
     if (rows[0]) {
-      await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, rows[0].id]);
-      return rows[0];
+      const existing = rows[0];
+      if (existing.password_hash && !existing.email_verified_at) {
+        // Wachtwoordaccount dat dit adres nooit heeft bevestigd: mogelijk door
+        // iemand anders aangemaakt. Google heeft nu bewezen wie de eigenaar is,
+        // dus het oude wachtwoord en alle lopende sessies vervallen.
+        await pool.query(
+          `UPDATE users SET google_id = $1, password_hash = NULL,
+                            token_version = COALESCE(token_version, 0) + 1
+           WHERE id = $2`,
+          [googleId, existing.id]
+        );
+        const { rows: fresh } = await pool.query('SELECT * FROM users WHERE id = $1', [existing.id]);
+        return fresh[0];
+      }
+      await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, existing.id]);
+      return existing;
     }
 
     // 3. Create new user (no password)
@@ -1182,6 +1208,20 @@ const queries = {
     return !!rows[0];
   },
 
+  // Lopende (pending) boekingen die deze code al vasthouden - tellen mee voor
+  // max_uses / once_per_customer, anders kun je met parallelle boekingen een
+  // eenmalige code meerdere keren laten valideren vóór hij wordt afgeboekt.
+  countPendingDiscountHolds: async (codeId, userId) => {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE user_id = $2)::int AS mine
+       FROM bookings
+       WHERE pending_discount_code_id = $1 AND status = 'pending'
+         AND (hold_until IS NULL OR hold_until > NOW())`,
+      [codeId, userId]
+    );
+    return rows[0];
+  },
+
   // Gebruik registreren ná geslaagde betaling. De teller is een guard tegen max_uses,
   // maar een al betaalde korting wordt nooit teruggedraaid - alleen luid gelogd.
   // `db` kan een transactie-client zijn (redeemPendingPromo) of de pool.
@@ -1235,6 +1275,7 @@ const queries = {
           [p.milestone_id]
         );
         if (!ms[0]) console.error(`Milestone ${p.milestone_id}: al ingewisseld bij bevestigen van boeking ${bookingId}`);
+        await client.query('UPDATE bookings SET applied_milestone_id = $2 WHERE id = $1', [bookingId, p.milestone_id]);
       }
       if (p.discount_code_id) {
         await queries.redeemDiscountCode(p.discount_code_id, p.user_id, { bookingId }, client);
@@ -1272,6 +1313,18 @@ const queries = {
     }
   },
 
+  // Gereserveerde bon/code loslaten zonder in te wisselen (boeking wordt
+  // volledig met credits betaald, dus de korting is nergens voor nodig)
+  clearPendingPromo: async (bookingId) => {
+    await pool.query(
+      `UPDATE bookings
+       SET pending_gift_card_id = NULL, pending_milestone_id = NULL,
+           pending_discount_cents = NULL, pending_discount_code_id = NULL
+       WHERE id = $1`,
+      [bookingId]
+    );
+  },
+
   // Stort de ingewisselde cadeaubon-portie van een boeking terug (pct = deel in %).
   // Atomic clear-and-return: dubbel aanroepen stort nooit dubbel terug.
   restoreGiftCardForBooking: async (bookingId, pct = 100) => {
@@ -1298,6 +1351,44 @@ const queries = {
     return { gift_card_id: r.gid, restored_cents: restoreCents };
   },
 
+  // Geeft de korting-/mijlpaalcode van een boeking weer vrij (bij volledige
+  // annulering). Atomic clear-and-return, dus dubbel aanroepen geeft niets
+  // dubbel vrij. Retourneert { discount_code_id, milestone_id } of null.
+  releasePromoForBooking: async (bookingId) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: uses } = await client.query(
+        'DELETE FROM discount_code_uses WHERE booking_id = $1 RETURNING code_id',
+        [bookingId]
+      );
+      for (const u of uses) {
+        await client.query(
+          'UPDATE discount_codes SET use_count = GREATEST(use_count - 1, 0) WHERE id = $1',
+          [u.code_id]
+        );
+      }
+      const { rows: ms } = await client.query(
+        `UPDATE bookings b SET applied_milestone_id = NULL
+         FROM (SELECT id, applied_milestone_id AS mid FROM bookings WHERE id = $1 FOR UPDATE) old
+         WHERE b.id = old.id AND old.mid IS NOT NULL
+         RETURNING old.mid`,
+        [bookingId]
+      );
+      if (ms[0]) {
+        await client.query('UPDATE user_milestones SET redeemed_at = NULL WHERE id = $1', [ms[0].mid]);
+      }
+      await client.query('COMMIT');
+      if (!uses.length && !ms[0]) return null;
+      return { discount_code_id: uses[0] ? uses[0].code_id : null, milestone_id: ms[0] ? ms[0].mid : null };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   updateBookingPayment: async (bookingId, paymentIntentId, status) => {
     // Alleen pending → confirmed: een geannuleerde boeking mag door een late
     // betaling nooit heractiveerd worden (de plek kan al opnieuw verkocht zijn).
@@ -1313,7 +1404,9 @@ const queries = {
 
   // Hybride combi-boeking: eigen plek met credits, de rest al via Stripe betaald.
   // Idempotent: alleen een pending boeking wordt bevestigd.
-  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId, paidCents) => {
+  // unlimitedSubId: het Unlimited-membership waarmee geboekt wordt (0 credits),
+  // zodat ook die boeking aan het membership gekoppeld wordt.
+  confirmBookingWithCredits: async (bookingId, userId, creditsToUse, paymentIntentId, paidCents, unlimitedSubId = null) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1323,12 +1416,16 @@ const queries = {
         return { ok: bk.rows[0] ? bk.rows[0].status === 'confirmed' : false, already: true };
       }
       let punchPassId = null;
+      let subscriptionId = creditsToUse > 0 ? null : unlimitedSubId;
       if (creditsToUse > 0) {
-        // Eerst het abonnement proberen, anders één strippenkaart (vroegst-verlopend) met genoeg saldo
+        // Eerst het abonnement proberen (alleen 'active': bij een mislukte
+        // incasso geen credits meer), anders één strippenkaart (vroegst-
+        // verlopend) met genoeg saldo
         const { rows } = await client.query(
-          "UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status IN ('active', 'past_due') AND credits_remaining >= $1 RETURNING id",
+          "UPDATE subscriptions SET credits_remaining = credits_remaining - $1 WHERE user_id = $2 AND status = 'active' AND credits_remaining >= $1 RETURNING id",
           [creditsToUse, userId]
         );
+        if (rows[0]) subscriptionId = rows[0].id;
         if (!rows[0]) {
           const pp = await client.query(`
             UPDATE punch_passes SET credits_remaining = credits_remaining - $1
@@ -1346,8 +1443,11 @@ const queries = {
         }
       }
       await client.query(
-        "UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3, stripe_payment_status = 'succeeded', stripe_payment_intent_id = COALESCE($4, stripe_payment_intent_id), paid_cents = $5 WHERE id = $1",
-        [bookingId, creditsToUse, punchPassId, paymentIntentId, paidCents ?? null]
+        `UPDATE bookings SET status = 'confirmed', credits_used = $2, punch_pass_id = $3, stripe_payment_status = 'succeeded',
+                             stripe_payment_intent_id = COALESCE($4, stripe_payment_intent_id), paid_cents = $5,
+                             subscription_id = $6, credits_deducted_at = NOW()
+         WHERE id = $1`,
+        [bookingId, creditsToUse, punchPassId, paymentIntentId, paidCents ?? null, subscriptionId]
       );
       await client.query('COMMIT');
       return { ok: true };
@@ -1459,6 +1559,20 @@ const queries = {
 
   cancelBooking: async (id) => {
     await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [id]);
+  },
+
+  // Annulering atomair claimen: alleen de eerste aanroep krijgt de rij terug
+  // (met de actuele betaalstatus, niet een eerder gelezen momentopname), zodat
+  // klant, admin en webhook nooit allebei refunden.
+  claimBookingCancel: async (id) => {
+    const { rows } = await pool.query(
+      `UPDATE bookings b SET status = 'cancelled'
+       FROM (SELECT id, status AS prev_status FROM bookings WHERE id = $1 FOR UPDATE) old
+       WHERE b.id = old.id AND old.prev_status != 'cancelled'
+       RETURNING b.*, old.prev_status`,
+      [id]
+    );
+    return rows[0] || null;
   },
 
   getPendingBookingsByUser: async (userId) => {
@@ -1716,17 +1830,27 @@ const queries = {
     return rows[0] || null;
   },
 
+  // Membership waarmee geboekt mag worden: alleen 'active'. Een past_due
+  // membership (mislukte incasso) blijft zichtbaar in het account maar geeft
+  // geen credits of Unlimited-toegang tot de betaling binnen is.
+  getEntitledSubscription: async (userId) => {
+    const sub = await queries.getActiveSubscription(userId);
+    return sub && sub.status === 'active' ? sub : null;
+  },
+
   // Retourneert null als de gebruiker al een lopend abonnement heeft (de
   // partial unique index vangt de race van twee parallel afgeronde Checkouts);
   // de webhook moet het dubbele Stripe-abonnement dan direct opzeggen.
-  createSubscription: async (userId, planId, stripeSubId, stripeCustomerId, creditsPerMonth, periodEnd) => {
+  // status: 'active' zodra de eerste betaling binnen is, anders 'past_due'
+  // (SEPA-incasso onderweg): dan nog geen credits/Unlimited-toegang.
+  createSubscription: async (userId, planId, stripeSubId, stripeCustomerId, creditsPerMonth, periodEnd, status = 'active') => {
     const creditsRemaining = creditsPerMonth; // null for unlimited
     const resetAt = periodEnd;
     try {
       const { rows } = await pool.query(`
-        INSERT INTO subscriptions (user_id, plan_id, stripe_subscription_id, stripe_customer_id, credits_remaining, credits_reset_at, current_period_end, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING *
-      `, [userId, planId, stripeSubId, stripeCustomerId, creditsRemaining, resetAt, periodEnd]);
+        INSERT INTO subscriptions (user_id, plan_id, stripe_subscription_id, stripe_customer_id, credits_remaining, credits_reset_at, current_period_end, status, period_started_at, awaiting_first_payment)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9) RETURNING *
+      `, [userId, planId, stripeSubId, stripeCustomerId, creditsRemaining, resetAt, periodEnd, status, status !== 'active']);
       return rows[0];
     } catch (err) {
       if (err.code === '23505') {
@@ -1741,11 +1865,24 @@ const queries = {
   },
 
   updateSubscriptionFromWebhook: async (stripeSubId, status, periodEnd, cancelAtPeriodEnd) => {
+    // Zolang de eerste betaling nog onderweg is, mag een tussentijdse
+    // 'active' van Stripe het membership niet alvast vrijgeven
     await pool.query(`
       UPDATE subscriptions
-      SET status = $2, current_period_end = $3, cancel_at_period_end = $4
+      SET status = CASE WHEN $2 = 'active' AND awaiting_first_payment THEN status ELSE $2 END,
+          current_period_end = $3, cancel_at_period_end = $4
       WHERE stripe_subscription_id = $1
     `, [stripeSubId, status, periodEnd, cancelAtPeriodEnd]);
+  },
+
+  // Eerste incasso (SEPA) alsnog binnen: membership vrijgeven
+  markSubscriptionActive: async (stripeSubId) => {
+    const { rows } = await pool.query(
+      `UPDATE subscriptions SET status = 'active', awaiting_first_payment = FALSE
+       WHERE stripe_subscription_id = $1 AND (status = 'past_due' OR awaiting_first_payment) RETURNING id`,
+      [stripeSubId]
+    );
+    return rows[0] || null;
   },
 
   resetSubscriptionCredits: async (stripeSubId, creditsPerMonth, periodEnd) => {
@@ -1753,7 +1890,7 @@ const queries = {
     await pool.query(`
       UPDATE subscriptions
       SET credits_remaining = $2 + (COALESCE(credits_remaining, 0) - floor(COALESCE(credits_remaining, 0))),
-          credits_reset_at = $3, current_period_end = $3, status = 'active'
+          credits_reset_at = $3, current_period_end = $3, status = 'active', period_started_at = NOW()
       WHERE stripe_subscription_id = $1
     `, [stripeSubId, creditsPerMonth, periodEnd]);
   },
@@ -1762,27 +1899,49 @@ const queries = {
     const { rows } = await pool.query(`
       UPDATE subscriptions
       SET credits_remaining = credits_remaining - $2
-      WHERE user_id = $1 AND status IN ('active', 'past_due') AND credits_remaining >= $2
+      WHERE user_id = $1 AND status = 'active' AND credits_remaining >= $2
       RETURNING *
     `, [userId, creditsToUse]);
     return rows[0] || null;
   },
 
-  restoreCredits: async (userId, credits) => {
+  // Credits terugzetten, maar alleen als ze in de lópende periode zijn
+  // afgeschreven: credits van een vorige maand zijn bij de reset vervallen en
+  // komen via annuleren niet alsnog terug (anders zou je ze kunnen opsparen
+  // door vlak voor de reset ver vooruit te boeken en daarna te annuleren).
+  restoreCredits: async (userId, credits, deductedAt = null) => {
     const { rows } = await pool.query(`
       UPDATE subscriptions
       SET credits_remaining = credits_remaining + $2
       WHERE user_id = $1 AND status IN ('active', 'past_due', 'paused')
+        AND COALESCE($3::timestamptz, NOW()) >= COALESCE(period_started_at, credits_reset_at - INTERVAL '1 month', '-infinity'::timestamptz)
       RETURNING *
-    `, [userId, credits]);
+    `, [userId, credits, deductedAt]);
     return rows[0] || null;
   },
 
   cancelSubscription: async (userId, endsAt = null) => {
     await pool.query(`
       UPDATE subscriptions SET cancel_at_period_end = TRUE, ends_at = $2
-      WHERE user_id = $1 AND status = 'active'
+      WHERE user_id = $1 AND status IN ('active', 'past_due')
     `, [userId, endsAt]);
+  },
+
+  // Bevestigde toekomstige boekingen die met dit membership zijn betaald
+  // (credits of Unlimited), vanaf vandaag (NL-datum)
+  getConfirmedBookingsForSubscription: async (subscriptionId) => {
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+    const { rows } = await pool.query(`
+      SELECT b.*, u.name AS customer_name, u.email AS customer_email,
+             ts.date, ts.start_time, ts.end_time, st.name AS session_name
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      JOIN time_slots ts ON ts.id = b.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
+      WHERE b.subscription_id = $1 AND b.status = 'confirmed' AND ts.date >= $2
+      ORDER BY ts.date, ts.start_time
+    `, [subscriptionId, today]);
+    return rows;
   },
 
   getSubscriptionByStripeId: async (stripeSubId) => {
@@ -1851,8 +2010,11 @@ const queries = {
   },
 
   // ─── Buddy's ──────────────────────────────────────────────────────────────
+  // Alleen matchen op het begin van een naam of een los woord erin: zo kun je
+  // iemand opzoeken die je kent, maar niet met "a", "e", "n" het hele
+  // ledenbestand afscrapen.
   searchBuddyUsers: async (userId, q) => {
-    const like = '%' + q.replace(/[\\%_]/g, '\\$&') + '%';
+    const esc = q.replace(/[\\%_]/g, '\\$&');
     const { rows } = await pool.query(`
       SELECT u.id, u.name,
         (SELECT bd.status FROM buddies bd
@@ -1860,10 +2022,10 @@ const queries = {
              OR (bd.requester_id = u.id AND bd.addressee_id = $1)
           LIMIT 1) AS buddy_status
       FROM users u
-      WHERE u.id <> $1 AND u.name ILIKE $2
+      WHERE u.id <> $1 AND (u.name ILIKE $2 OR u.name ILIKE $3)
       ORDER BY u.name
       LIMIT 10
-    `, [userId, like]);
+    `, [userId, esc + '%', '% ' + esc + '%']);
     return rows;
   },
 
@@ -1968,7 +2130,7 @@ const queries = {
     const { rows } = await pool.query(`
       UPDATE punch_passes
       SET credits_remaining = LEAST(credits_remaining + $2, credits)
-      WHERE id = $1 AND refunded_at IS NULL RETURNING *
+      WHERE id = $1 AND refunded_at IS NULL AND expires_at > NOW() RETURNING *
     `, [punchPassId, credits]);
     return rows[0] || null;
   },
@@ -1978,6 +2140,16 @@ const queries = {
       UPDATE punch_passes
       SET credits_remaining = 0, refunded_at = COALESCE(refunded_at, NOW())
       WHERE stripe_payment_intent_id = $1 RETURNING *
+    `, [paymentIntentId]);
+    return rows[0] || null;
+  },
+
+  // Cadeaubon waarvan de aankoop (volledig) is terugbetaald: saldo intrekken
+  revokeGiftCardByPaymentIntent: async (paymentIntentId) => {
+    const { rows } = await pool.query(`
+      UPDATE gift_cards
+      SET remaining_amount_cents = 0, status = 'expired'
+      WHERE stripe_payment_intent_id = $1 AND status IN ('active', 'depleted') RETURNING *
     `, [paymentIntentId]);
     return rows[0] || null;
   },
@@ -1995,7 +2167,7 @@ const queries = {
     if (booking.punch_pass_id) {
       return queries.restorePunchPassCredits(booking.punch_pass_id, booking.credits_used);
     }
-    return queries.restoreCredits(booking.user_id, booking.credits_used);
+    return queries.restoreCredits(booking.user_id, booking.credits_used, booking.credits_deducted_at || booking.created_at || null);
   },
 
   getAllSubscriptions: async () => {
@@ -2146,9 +2318,10 @@ const queries = {
       SELECT COUNT(*)::int AS n
       FROM bookings b
       JOIN time_slots ts ON ts.id = b.time_slot_id
+      JOIN session_types st ON st.id = ts.session_type_id
       WHERE b.user_id = $1
-        AND b.status != 'cancelled'
-        AND ts.price_cents = 0
+        AND (b.status != 'cancelled' OR b.checked_in = TRUE)
+        AND COALESCE(ts.price_cents, st.price_cents) = 0
     `, [userId]);
     return rows[0].n;
   },

@@ -46,8 +46,14 @@ router.post('/:slotId', requireAuth, async (req, res) => {
   const totalCents = slot.price_cents * groupSize;
 
   // Gratis sessies: geen betaling nodig - meteen definitief op de wachtlijst
-  // (status 'paid' zodat de auto-boek-flow ze gewoon meeneemt zodra er plek is)
+  // (status 'paid' zodat de auto-boek-flow ze gewoon meeneemt zodra er plek is).
+  // Dezelfde regels als bij direct boeken: één gratis sessie per account, alleen
+  // voor jezelf - de wachtlijst is geen omweg om die regel te omzeilen.
   if (totalCents === 0) {
+    if (groupSize > 1)
+      return res.status(400).json({ error: 'Voor een gratis sessie kun je alleen voor jezelf op de wachtlijst (1 persoon).', code: 'FREE_GROUP_TOO_LARGE' });
+    if (await queries.countUserFreeSlotBookings(req.user.userId) > 0)
+      return res.status(409).json({ error: 'Je hebt al een gratis sessie geboekt. Elk account mag één gratis sessie ervaren.', code: 'FREE_ALREADY_USED' });
     const entry = await queries.joinWaitlist(req.user.userId, slotId, groupSize, 0, null);
     if (entry) await queries.markWaitlistPaidById(entry.id);
     const pos = await queries.getWaitlistPosition(req.user.userId, slotId);

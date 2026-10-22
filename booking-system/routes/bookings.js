@@ -7,9 +7,29 @@ const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries, getPool } = require('../db/database');
 const { requireAuth } = require('./auth');
-const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/email');
+const { sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/email');
+const { promoteWaitlist } = require('../utils/waitlist-promote');
+const nlTime = require('../utils/nl-time');
 
 const router = express.Router();
+
+// Wat de klant van een slot te zien krijgt (geen interne notities e.d.)
+function publicSlot(slot) {
+  const capacity = slot.max_capacity || slot.type_capacity;
+  return {
+    id:              slot.id,
+    session_type_id: slot.session_type_id,
+    session_name:    slot.session_name,
+    date:            slot.date,
+    start_time:      slot.start_time,
+    end_time:        slot.end_time,
+    price_cents:     slot.price_cents,
+    artist:          slot.artist,
+    is_private:      slot.is_private,
+    capacity,
+    spots_left:      capacity - slot.booked,
+  };
+}
 
 // Annuleer openstaande (pending) boekingen van een gebruiker. Met newBookingId
 // worden alleen óudere pendings geannuleerd, zodat bij parallelle requests
@@ -131,8 +151,9 @@ router.post('/', requireAuth, async (req, res) => {
     }
   }
 
-  // Validate promo / test code
-  const testCode = process.env.TEST_BOOKING_CODE;
+  // Validate promo / test code (testcode werkt bewust nooit in productie:
+  // het is een sleutel die élke boeking gratis maakt)
+  const testCode = process.env.NODE_ENV === 'production' ? null : process.env.TEST_BOOKING_CODE;
   const isFree   = testCode && promo_code && promo_code.trim().toUpperCase() === testCode.toUpperCase();
 
   // Validate milestone reward code or gift card
@@ -212,7 +233,8 @@ router.post('/', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Deze code is geldig voor een groep van minimaal 2 personen.' });
           discountCents = slot.price_cents;
         } else if (milestoneEntry.milestone === 25) {
-          discountCents = grossTotal;
+          // Eén gratis sessie: de eigen plek, niet de hele groep
+          discountCents = Math.min(slot.price_cents, grossTotal);
         } else {
           // Mijlpaal 10 (sauna hat) en 50 (VIP) zijn geen boekingskorting: niet
           // als €0-korting aan de boeking hangen - de code zou bij betaling
@@ -274,6 +296,12 @@ router.post('/', requireAuth, async (req, res) => {
         await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
         return res.status(409).json({ error: 'Het saldo van deze cadeaubon is net gebruikt voor een andere boeking. Probeer opnieuw.' });
       }
+      // Vastleggen wat er van de bon af is: zonder dit krijgt een volledig
+      // met cadeaubon betaalde boeking bij annuleren nooit het saldo terug
+      await pool.query(
+        'UPDATE bookings SET applied_gift_card_id = $2, applied_gift_discount_cents = $3 WHERE id = $1',
+        [booking.id, giftCard.id, discountCents]
+      );
     }
     if (milestoneEntry) {
       const redeemed = await queries.redeemMilestoneCode(milestoneEntry.id);
@@ -281,6 +309,7 @@ router.post('/', requireAuth, async (req, res) => {
         await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [booking.id]);
         return res.status(409).json({ error: 'Deze code is net al gebruikt. Probeer opnieuw.' });
       }
+      await pool.query('UPDATE bookings SET applied_milestone_id = $2 WHERE id = $1', [booking.id, milestoneEntry.id]);
     }
     if (discountCode) await queries.redeemDiscountCode(discountCode.id, req.user.userId, { bookingId: booking.id });
     await pool.query(
@@ -291,7 +320,7 @@ router.post('/', requireAuth, async (req, res) => {
       const fullBooking = await queries.getBookingById(booking.id);
       await sendBookingConfirmation(fullBooking);
     } catch (e) { console.error('Promo email error:', e.message); }
-    return res.status(201).json({ booking_id: booking.id, total_cents: 0, free: true, slot, group_size });
+    return res.status(201).json({ booking_id: booking.id, total_cents: 0, free: true, slot: publicSlot(slot), group_size });
   }
 
   // Partial discount: store the promo on the booking - it is only actually
@@ -323,7 +352,7 @@ router.post('/', requireAuth, async (req, res) => {
     cotenant_discount_cents: cotenantCents,
     kantine_addon_cents: kantineCents,
     gift_card_remaining: giftCard ? Math.max(0, giftCard.remaining_amount_cents - discountCents) : undefined,
-    slot,
+    slot: publicSlot(slot),
     group_size,
   });
 });
@@ -365,74 +394,90 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   if (booking.status === 'cancelled')
     return res.status(400).json({ error: 'Booking is already cancelled' });
 
-  // Tiered cancellation policy (cancelling is always allowed before the session):
+  // Tiered cancellation policy:
   //   > 48h before → 100% refund
   //   24-48h before → 50% refund (credits: always fully restored)
   //   < 24h before → no refund; credits forfeited
-  // pg returns DATE columns as JS Date objects and TIME as 'HH:MM:SS' -
-  // normalise both before combining, otherwise this yields Invalid Date/NaN.
-  const dateStr = booking.date instanceof Date
-    ? `${booking.date.getFullYear()}-${String(booking.date.getMonth() + 1).padStart(2, '0')}-${String(booking.date.getDate()).padStart(2, '0')}`
-    : String(booking.date).slice(0, 10);
-  const timeStr = String(booking.start_time).length === 5 ? booking.start_time + ':00' : String(booking.start_time);
-  const sessionDatetime = new Date(`${dateStr}T${timeStr}`);
-  // date/start_time zijn NL-wandkloktijd, maar de server draait in UTC: Date.now()
-  // vergelijken zou hoursUntil 1-2 uur opblazen (verkeerde refund-tier, en
-  // annuleren tot 2 uur ná de start). Vergelijk daarom met "nu" in dezelfde
-  // NL-wandklok, net als de boekingscheck bovenaan dit bestand.
-  const nowNL = new Date(new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace(' ', 'T'));
-  const hoursUntil = (sessionDatetime - nowNL) / 36e5;
+  //   na de start → annuleren kan niet meer (anders telt een bezochte sessie
+  //   niet meer mee, bijv. voor de regel "één gratis sessie per account")
+  // Uren tot de sessie via echte tijdstippen (DST-proof), zie utils/nl-time.
+  const dateStr    = nlTime.normalizeDate(booking.date);
+  const hoursUntil = nlTime.hoursUntil(booking.date, booking.start_time);
   if (Number.isNaN(hoursUntil))
     return res.status(500).json({ error: 'Could not determine session time - please contact us to cancel' });
+  if (hoursUntil <= 0)
+    return res.status(400).json({ error: 'Deze sessie is al begonnen of geweest en kan niet meer worden geannuleerd. / This session has already started and can no longer be cancelled.' });
   const refundPct = hoursUntil >= 48 ? 100 : (hoursUntil >= 24 ? 50 : 0);
 
   // Annulering atomair claimen vóór de refund: twee parallelle cancel-verzoeken
-  // zouden anders allebei een (deel)refund aanmaken.
-  const { rows: claimed } = await getPool().query(
-    "UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status != 'cancelled' RETURNING id",
-    [req.params.id]
-  );
-  if (!claimed[0])
+  // zouden anders allebei een (deel)refund aanmaken. De claim geeft de actuele
+  // betaalstatus terug (de webhook kan de betaling intussen bevestigd hebben).
+  const claimed = await queries.claimBookingCancel(booking.id);
+  if (!claimed)
     return res.status(400).json({ error: 'Booking is already cancelled' });
+  const payStatus = claimed.stripe_payment_status;
+  const intentId  = claimed.stripe_payment_intent_id;
+  const creditsUsed = Number(claimed.credits_used) || 0;
 
   // Refund via Stripe if payment was confirmed
   let refundAmountCents = 0;
-  if (refundPct > 0 && booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
+  if (refundPct > 0 && intentId && payStatus === 'succeeded') {
     try {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      // Bij (deels) met credits betaalde boekingen is via Stripe minder dan total_cents
-      // betaald (alleen diner, of extra personen + diner) - refund berekenen over wat
-      // er écht is afgerekend, dus het bedrag van de payment intent zelf.
-      const chargedCents = booking.credits_used > 0
-        ? (await stripe.paymentIntents.retrieve(booking.stripe_payment_intent_id)).amount_received
-        : booking.total_cents;
-      refundAmountCents = refundPct === 100
-        ? chargedCents
-        : Math.floor(chargedCents * refundPct / 100);
-      const refundArgs = { payment_intent: booking.stripe_payment_intent_id };
-      // Only pass amount for partial refund; omit for full so Stripe refunds the whole intent
-      if (refundPct !== 100) refundArgs.amount = refundAmountCents;
-      await stripe.refunds.create(refundArgs);
+      // Bij (deels) met credits betaalde boekingen is via Stripe minder dan
+      // total_cents betaald (alleen diner, of extra personen + diner), of zelfs
+      // niets (oude intent van een afgebroken betaalpoging) - refund berekenen
+      // over wat er écht is afgerekend.
+      let chargedCents = claimed.total_cents;
+      if (creditsUsed > 0) {
+        const intent = await stripe.paymentIntents.retrieve(intentId);
+        chargedCents = intent.amount_received || 0;
+      }
+      if (chargedCents > 0) {
+        refundAmountCents = refundPct === 100 ? chargedCents : Math.floor(chargedCents * refundPct / 100);
+        const refundArgs = { payment_intent: intentId };
+        // Only pass amount for partial refund; omit for full so Stripe refunds the whole intent
+        if (refundPct !== 100) refundArgs.amount = refundAmountCents;
+        await stripe.refunds.create(refundArgs);
+      }
     } catch (stripeErr) {
-      console.error('Stripe refund failed:', stripeErr.message);
-      // Claim terugdraaien zodat de klant het opnieuw kan proberen
-      await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [req.params.id, booking.status]);
-      return res.status(502).json({ error: 'Refund failed - please contact us to cancel' });
+      if (stripeErr.code === 'charge_already_refunded') {
+        // Al (handmatig via het Stripe-dashboard) terugbetaald: niets meer te doen
+        refundAmountCents = 0;
+      } else {
+        console.error('Stripe refund failed:', stripeErr.message);
+        // Claim terugdraaien zodat de klant het opnieuw kan proberen
+        await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [booking.id, claimed.prev_status]);
+        return res.status(502).json({ error: 'Refund failed - please contact us to cancel' });
+      }
     }
+  } else if (intentId && payStatus !== 'succeeded' && payStatus !== 'processing') {
+    // Onbetaalde boeking: de open betaalintentie sluiten, zodat er niet alsnog
+    // betaald wordt op een geannuleerde boeking
+    try { await stripe.paymentIntents.cancel(intentId); } catch (e) { /* al betaald of verlopen: late betaling wordt door de webhook terugbetaald */ }
   }
 
-  // Membercredits terug (naar strippenkaart óf abonnement) - maar binnen 24u vóór de sessie ben je ze kwijt
+  // Membercredits terug (naar strippenkaart óf abonnement) - maar binnen 24u
+  // vóór de sessie ben je ze kwijt. Credits uit een vorige maand of van een
+  // inmiddels beëindigd membership komen niet terug (credits_lost).
   let creditsRestored = 0;
-  if (booking.credits_used > 0 && hoursUntil >= 24) {
-    const restored = await queries.restoreCreditsForBooking(booking);
+  let creditsLost = false;
+  if (creditsUsed > 0 && hoursUntil >= 24) {
+    const restored = await queries.restoreCreditsForBooking(claimed);
     if (restored) {
-      creditsRestored = booking.credits_used;
-      console.log(`✓ ${booking.credits_used} credits teruggestort voor user ${booking.user_id}`);
+      creditsRestored = creditsUsed;
+      console.log(`✓ ${creditsUsed} credits teruggestort voor user ${booking.user_id}`);
+    } else {
+      creditsLost = true;
     }
   }
   // Ingewisselde cadeaubon-portie terug (naar rato van het refundpercentage)
   const giftRestored = await queries.restoreGiftCardForBooking(booking.id, refundPct);
   if (giftRestored) console.log(`✓ Cadeaubon ${giftRestored.gift_card_id}: €${(giftRestored.restored_cents / 100).toFixed(2)} teruggestort`);
+  // Bij volledige annulering komt een gebruikte korting-/mijlpaalcode weer vrij
+  if (refundPct === 100) {
+    const released = await queries.releasePromoForBooking(booking.id);
+    if (released) console.log(`✓ Promo vrijgegeven voor boeking #${booking.id}:`, released);
+  }
 
   try {
     await sendSelfCancelledEmail({
@@ -452,59 +497,22 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
 
   queries.auditLog({
     actor_type: 'customer', actor_id: req.user.userId, action: 'booking_cancelled',
-    target: `booking:${req.params.id}`, detail: `refund ${refundPct}% (${refundAmountCents} cents)`, ip: req.ip,
+    target: `booking:${booking.id}`, detail: `refund ${refundPct}% (${refundAmountCents} cents)`, ip: req.ip,
   });
 
-  // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
-  try {
-    const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
-    if (paidWaiter) {
-      // Create a booking for them (payment already collected), then claim the
-      // waitlist entry atomically. Verliezen we de claim-race (twee annuleringen
-      // tegelijk), dan wordt de zojuist aangemaakte boeking weer geannuleerd -
-      // anders ontstaan er twee boekingen op dezelfde betaling.
-      const newBooking = await queries.createBooking(
-        paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
-      );
-      const claimed = await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
-      if (!claimed) {
-        await queries.cancelBooking(newBooking.id);
-      } else {
-        const pool = require('../db/database').getPool();
-        await pool.query(
-          "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
-          [newBooking.id, paidWaiter.stripe_payment_intent_id]
-        );
-        const fullBooking = await queries.getBookingById(newBooking.id);
-        await sendAutoBookedEmail(fullBooking);
-        console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
-      }
-    } else {
-      // No paid waiters - notify first unpaid waitlist user
-      const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
-      if (waitUser) {
-        await sendWaitlistNotification({
-          customer_name:  waitUser.customer_name,
-          customer_email: waitUser.customer_email,
-          session_name:   booking.session_name,
-          date:           booking.date,
-          start_time:     booking.start_time,
-          end_time:       booking.end_time,
-          slot_id:        booking.time_slot_id,
-        });
-        await queries.markWaitlistNotified(waitUser.id);
-      }
-    }
-  } catch (wErr) {
-    console.error('Waitlist auto-book error (non-fatal):', wErr.message);
-  }
+  // Vrijgekomen plek: eerste betaalde wachtlijster automatisch boeken, anders
+  // de eerste onbetaalde een mail sturen
+  await promoteWaitlist(booking);
 
   res.json({
     ok: true,
-    refunded: booking.stripe_payment_status === 'succeeded',
+    refunded: refundAmountCents > 0,
     refund_pct: refundPct,
     refund_amount_cents: refundAmountCents,
+    payment_processing: payStatus === 'processing',
     credits_restored: creditsRestored,
+    credits_lost: creditsLost || undefined,
+    gift_restored_cents: giftRestored ? giftRestored.restored_cents : 0,
   });
 });
 
@@ -524,14 +532,18 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if ((booking.group_size || 1) > 1)
     return res.status(400).json({ error: 'Credits gelden alleen voor je eigen plek. Boek een groep via de gewone betaling.' });
 
-  // Verify subscription or punch pass
-  const sub = await queries.getActiveSubscription(req.user.userId);
+  // Verify subscription or punch pass. Alleen een 'active' membership telt:
+  // bij een mislukte incasso (past_due) geen credits of Unlimited-toegang.
+  const sub = await queries.getEntitledSubscription(req.user.userId);
   const activePasses = await queries.getActivePunchPasses(req.user.userId);
-  if (!sub && activePasses.length === 0)
+  if (!sub && activePasses.length === 0) {
+    if (await queries.getActiveSubscription(req.user.userId))
+      return res.status(403).json({ error: 'Je membership heeft een openstaande betaling. Zodra die binnen is, kun je weer met je membership boeken. / Your membership has an outstanding payment. Once it has been received you can book with your membership again.', code: 'MEMBERSHIP_PAST_DUE' });
     return res.status(403).json({ error: 'No active subscription or punch pass' });
+  }
 
   // Server determines the credit cost - never trust the client for this
-  const { CREDIT_COST } = require('./subscriptions');
+  const { CREDIT_COST, membershipEndsAt } = require('./subscriptions');
   const slot = await queries.getSlotById(booking.time_slot_id);
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
@@ -539,21 +551,36 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
     return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek - extra personen boeken via de gewone betaling.' });
   // Unlimited membership = 0 credits
-  const creditsToUse = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+  const unlimited    = !!(sub && sub.credits_per_month === null);
+  const creditsToUse = unlimited ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
+
+  // Opgezegd membership: geen sessies ná de einddatum op het membership boeken
+  // (de credits komen bij de bevestiging eerst van het membership, pas daarna
+  // van een strippenkaart - dus de check geldt zodra het membership betaalt).
+  const paysFromSub = sub && (unlimited || (Number(sub.credits_remaining) || 0) >= creditsToUse);
+  const endsAt = paysFromSub ? membershipEndsAt(sub) : null;
+  if (endsAt && nlTime.nlToDate(slot.date, slot.start_time) > endsAt) {
+    const endStr = endsAt.toLocaleDateString('nl-NL', { timeZone: nlTime.TZ, day: 'numeric', month: 'long', year: 'numeric' });
+    return res.status(400).json({
+      error: `Je membership eindigt op ${endStr}; deze sessie valt daarna. Boek hem via de gewone betaling. / Your membership ends on ${endStr}; this session is after that date. Please book it with a regular payment.`,
+      code: 'MEMBERSHIP_ENDED',
+    });
+  }
+
+  // Een bij het boeken meegegeven bon/code is hier nergens voor nodig (credits
+  // dekken de plek volledig): loslaten in plaats van voor niets inwisselen
+  await queries.clearPendingPromo(bookingId);
 
   // Credits afschrijven + bevestigen via de kanonieke, idempotente helper: die
   // locket de boekingsrij en bevestigt alléén een pending boeking. Een dubbel-
   // klik of een race met de betaalwebhook kan zo nooit dubbel afschrijven.
-  const result = await queries.confirmBookingWithCredits(bookingId, req.user.userId, creditsToUse, null, null);
+  const result = await queries.confirmBookingWithCredits(bookingId, req.user.userId, creditsToUse, null, null, unlimited ? sub.id : null);
   if (result.insufficient)
     return res.status(400).json({ error: 'Insufficient credits' });
   if (result.already) {
     if (result.ok) return res.json({ ok: true, booking_id: bookingId, already_confirmed: true });
     return res.status(400).json({ error: 'Booking already processed' });
   }
-
-  // Redeem any promo attached at booking time (idempotent, no-op if none)
-  await queries.redeemPendingPromo(bookingId);
 
   // Send confirmation email (non-fatal, atomaire claim tegen dubbel versturen)
   if (await queries.claimConfirmationSend(bookingId)) {

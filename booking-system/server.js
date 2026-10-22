@@ -123,6 +123,11 @@ app.use('/api/waitlist', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standard
 // Buddy-zoeken: limiet tegen het afscrapen van het ledenbestand
 app.use('/api/buddies/search', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false }));
 
+// Strippenkaart-checkout: elke aanroep maakt een Stripe Checkout-sessie aan;
+// zonder limiet kun je een eenmalige kortingscode in tien parallelle sessies
+// laten valideren voordat hij wordt afgeboekt
+app.use('/api/punch-passes/checkout', rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false, message: giftMsg }));
+
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -137,6 +142,10 @@ app.use((req, res, next) => {
     return res.status(400).end(); // malformed percent-encoding
   }
   if (decodedPath.toLowerCase().startsWith('/booking-system')) return res.status(404).end();
+  // De repo-root is tegelijk de marketingsite; alleen de site zelf hoort
+  // publiek te zijn, niet de projectbestanden (README, package.json,
+  // railway.toml, sanity-studio, branding-bronbestanden).
+  if (/^\/(readme\.md|package(-lock)?\.json|railway\.toml|sanity(\/|$)|branding(\/|$))/i.test(decodedPath)) return res.status(404).end();
   next();
 });
 app.use(express.static(path.join(__dirname, '..'), {
@@ -619,7 +628,10 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000); // every hour
 
-// ─── Pending booking cleanup (runs every 15 minutes) ─────────────────────────
+// ─── Pending booking cleanup (runs every 5 minutes) ──────────────────────────
+// Een onbetaalde boeking houdt plekken bezet. Korter vasthouden beperkt hoe
+// lang iemand met wegwerpaccounts een sessie "vol" kan laten lijken (en zo de
+// Community Rate blokkeert of anderen de betaalde wachtlijst in duwt).
 setInterval(async () => {
   try {
     // Niet opruimen zolang de betaling geslaagd of nog onderweg is: SEPA-intents
@@ -627,14 +639,14 @@ setInterval(async () => {
     const { rowCount } = await getPool().query(`
       UPDATE bookings SET status = 'cancelled'
       WHERE status = 'pending'
-        AND created_at < NOW() - INTERVAL '1 hour'
+        AND created_at < NOW() - INTERVAL '30 minutes'
         AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')
     `);
     if (rowCount > 0) console.log(`✓ Cleaned up ${rowCount} expired pending booking(s)`);
   } catch (err) {
     console.error('Pending cleanup error:', err.message);
   }
-}, 15 * 60 * 1000); // every 15 minutes
+}, 5 * 60 * 1000); // every 5 minutes
 
 // ─── Wachtlijst-refund (runs every hour) ─────────────────────────────────────
 // Vooruitbetaalde wachtlijstplekken die nooit tot een boeking zijn gepromoveerd

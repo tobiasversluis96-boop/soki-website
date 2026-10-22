@@ -636,9 +636,18 @@
       if (res.error) { alert(res.error); return; }
       if (res.ends_at) {
         var d = new Date(res.ends_at).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
-        alert(isNL ? 'Je membership is opgezegd en loopt tot ' + d + '.' : 'Your membership has been cancelled and runs until ' + d + '.');
+        var msg = isNL ? 'Je membership is opgezegd en loopt tot ' + d + '.' : 'Your membership has been cancelled and runs until ' + d + '.';
+        var dropped = res.cancelled_bookings || [];
+        if (dropped.length) {
+          msg += isNL
+            ? '\n\nDeze sessie(s) vielen na de einddatum en zijn geannuleerd (eventuele credits zijn teruggezet):\n'
+            : '\n\nThese session(s) were after the end date and have been cancelled (any credits have been restored):\n';
+          msg += dropped.map(function (b) { return '- ' + b.session_name + ' ' + b.date + ' ' + b.start_time; }).join('\n');
+        }
+        alert(msg);
       }
       loadSubscription();
+      if ((res.cancelled_bookings || []).length && typeof loadBookings === 'function') loadBookings();
     });
   };
 
@@ -803,10 +812,23 @@
         msg = isNL
           ? ('Boeking geannuleerd. ' + eur(res.refund_amount_cents) + ' wordt terugbetaald (' + res.refund_pct + '%).')
           : ('Booking cancelled. ' + eur(res.refund_amount_cents) + ' will be refunded (' + res.refund_pct + '%).');
+      } else if (res.payment_processing) {
+        msg = isNL
+          ? 'Boeking geannuleerd. Je betaling is nog in verwerking; zodra die binnen is, wordt het bedrag automatisch terugbetaald.'
+          : 'Booking cancelled. Your payment is still processing; once it has been received it will be refunded automatically.';
       } else if (res.credits_restored > 0) {
         msg = isNL ? 'Boeking geannuleerd. Je credits zijn teruggestort.' : 'Booking cancelled. Your credits have been restored.';
+      } else if (res.credits_lost) {
+        msg = isNL
+          ? 'Boeking geannuleerd. De gebruikte credits konden niet worden teruggezet: ze kwamen uit een vorige maand of je membership is inmiddels beëindigd.'
+          : 'Booking cancelled. The credits used could not be restored: they were from a previous month or your membership has since ended.';
       } else {
         msg = isNL ? 'Boeking geannuleerd.' : 'Booking cancelled.';
+      }
+      if (Number(res.gift_restored_cents) > 0) {
+        msg += isNL
+          ? (' ' + eur(res.gift_restored_cents) + ' is teruggezet op je cadeaubon.')
+          : (' ' + eur(res.gift_restored_cents) + ' has been returned to your gift card.');
       }
       toast.textContent = msg;
       toast.style.background = '#2E7D32';

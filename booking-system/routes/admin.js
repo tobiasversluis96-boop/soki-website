@@ -8,7 +8,8 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
-const { sendWaitlistNotification, sendAutoBookedEmail, sendBookingConfirmation, sendBookingCancelledEmail } = require('../utils/email');
+const { sendBookingConfirmation, sendBookingCancelledEmail } = require('../utils/email');
+const { promoteWaitlist } = require('../utils/waitlist-promote');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -197,96 +198,84 @@ router.get('/bookings/:id', requireAdmin, async (req, res) => {
   res.json(booking);
 });
 
+// Body: { refund: true|false } - standaard terugbetalen. Met refund:false
+// (no-show, annulering binnen 24u) blijft het geld bij SOKI; credits en
+// cadeaubonsaldo gaan dan ook niet terug.
 router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   const booking = await queries.getBookingById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   if (booking.status === 'cancelled') return res.status(400).json({ error: 'Booking is already cancelled' });
+  const wantRefund = req.body && req.body.refund === false ? false : true;
 
   // Annulering atomair claimen vóórdat er gerefund wordt: annuleert de klant
   // zelf op hetzelfde moment, dan zouden beide paden refunden en komt de klant
-  // boven de 100% uit (deelrefund klant + volledige rest-refund admin).
-  const { rows: claimed } = await require('../db/database').getPool().query(
-    "UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND status != 'cancelled' RETURNING id",
-    [req.params.id]
-  );
-  if (!claimed[0]) return res.status(400).json({ error: 'Booking is already cancelled' });
+  // boven de 100% uit (deelrefund klant + volledige rest-refund admin). De
+  // claim geeft de actuele betaalstatus terug (webhook kan net bevestigd hebben).
+  const claimed = await queries.claimBookingCancel(booking.id);
+  if (!claimed) return res.status(400).json({ error: 'Booking is already cancelled' });
+  const payStatus = claimed.stripe_payment_status;
+  const intentId  = claimed.stripe_payment_intent_id;
 
   let refunded = false;
   let refundFailed = false;
-  if (booking.stripe_payment_intent_id && booking.stripe_payment_status === 'succeeded') {
+  let alreadyRefunded = false;
+  let refundedCents = 0;
+  if (wantRefund && intentId && payStatus === 'succeeded') {
     try {
-      await stripe.refunds.create({ payment_intent: booking.stripe_payment_intent_id });
-      refunded = true;
+      // Bij credits + bijbetaling is via Stripe minder dan total_cents betaald
+      let chargedCents = claimed.total_cents;
+      if (Number(claimed.credits_used) > 0) {
+        const intent = await stripe.paymentIntents.retrieve(intentId);
+        chargedCents = intent.amount_received || 0;
+      }
+      if (chargedCents > 0) {
+        await stripe.refunds.create({ payment_intent: intentId });
+        refunded = true;
+        refundedCents = chargedCents;
+      }
     } catch (stripeErr) {
-      refundFailed = true;
-      console.error('Stripe refund failed (non-fatal):', stripeErr.message);
+      if (stripeErr.code === 'charge_already_refunded') {
+        alreadyRefunded = true;
+      } else {
+        refundFailed = true;
+        console.error('Stripe refund failed (non-fatal):', stripeErr.message);
+      }
     }
+  } else if (intentId && payStatus !== 'succeeded' && payStatus !== 'processing') {
+    // Onbetaalde boeking: open betaalintentie sluiten
+    try { await stripe.paymentIntents.cancel(intentId); } catch (e) { /* al betaald/verlopen */ }
   }
 
   let creditsRestored = 0;
-  if (Number(booking.credits_used) > 0) {
-    const restored = await queries.restoreCreditsForBooking(booking);
-    if (restored) creditsRestored = Number(booking.credits_used);
+  let giftRestored = null;
+  if (wantRefund) {
+    if (Number(claimed.credits_used) > 0) {
+      const restored = await queries.restoreCreditsForBooking(claimed);
+      if (restored) creditsRestored = Number(claimed.credits_used);
+    }
+    giftRestored = await queries.restoreGiftCardForBooking(booking.id, 100);
+    if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (admin cancel booking #${booking.id})`);
+    await queries.releasePromoForBooking(booking.id);
   }
 
-  const giftRestored = await queries.restoreGiftCardForBooking(booking.id, 100);
-  if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (admin cancel booking #${booking.id})`);
-
-  queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${booking.total_cents} cents` : (creditsRestored ? `${creditsRestored} credits restored` : 'no refund'), ip: req.ip });
+  queries.auditLog({ ...actorOf(req), action: 'booking_cancelled', target: `booking:${req.params.id}`, detail: refunded ? `refunded ${refundedCents} cents` : (creditsRestored ? `${creditsRestored} credits restored` : (wantRefund ? 'no refund' : 'no refund (admin choice)')), ip: req.ip });
 
   try {
-    await sendBookingCancelledEmail(booking, { refunded, creditsRestored });
+    await sendBookingCancelledEmail(booking, { refunded, refundedCents, creditsRestored, sessionCancelled: false });
   } catch (e) {
     console.error('Cancellation email failed (non-fatal):', e.message);
   }
 
-  // Auto-book first paid waitlist user, then fall back to notifying unpaid ones
-  try {
-    const paidWaiter = await queries.getFirstPaidWaitlistUser(booking.time_slot_id);
-    if (paidWaiter) {
-      // Boeking aanmaken en daarna de wachtlijst-entry atomair claimen; bij een
-      // verloren claim-race (gelijktijdige annulering elders) wordt de nieuwe
-      // boeking weer geannuleerd - nooit twee boekingen op één betaling.
-      const newBooking = await queries.createBooking(
-        paidWaiter.user_id, booking.time_slot_id, paidWaiter.group_size, paidWaiter.total_cents
-      );
-      const claimedEntry = await queries.claimWaitlistEntry(paidWaiter.id, newBooking.id);
-      if (!claimedEntry) {
-        await queries.cancelBooking(newBooking.id);
-      } else {
-        const pool = require('../db/database').getPool();
-        await pool.query(
-          "UPDATE bookings SET status = 'confirmed', stripe_payment_intent_id = $2, stripe_payment_status = 'succeeded', confirmation_sent = TRUE WHERE id = $1",
-          [newBooking.id, paidWaiter.stripe_payment_intent_id]
-        );
-        const fullBooking = await queries.getBookingById(newBooking.id);
-        await sendAutoBookedEmail(fullBooking);
-        console.log(`✓ Auto-booked waitlist user ${paidWaiter.user_id} into booking #${newBooking.id}`);
-      }
-    } else {
-      const waitUser = await queries.getFirstUnnotifiedWaitlistUser(booking.time_slot_id);
-      if (waitUser) {
-        await sendWaitlistNotification({
-          customer_name:  waitUser.customer_name,
-          customer_email: waitUser.customer_email,
-          session_name:   booking.session_name,
-          date:           booking.date,
-          start_time:     booking.start_time,
-          end_time:       booking.end_time,
-          slot_id:        booking.time_slot_id,
-        });
-        await queries.markWaitlistNotified(waitUser.id);
-      }
-    }
-  } catch (wErr) {
-    console.error('Waitlist auto-book error (non-fatal):', wErr.message);
-  }
+  await promoteWaitlist(booking);
 
   res.json({
     ok: true,
     refunded,
     refund_failed: refundFailed,
-    refunded_cents: refunded ? booking.total_cents : 0,
+    already_refunded: alreadyRefunded,
+    payment_processing: payStatus === 'processing',
+    refund_skipped: !wantRefund,
+    refunded_cents: refundedCents,
     credits_restored: creditsRestored,
     gift_restored_cents: giftRestored ? giftRestored.restored_cents : 0,
   });
@@ -379,34 +368,51 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
   const slotId = req.params.id;
   await queries.cancelSlot(slotId);
 
-  // Alle actieve boekingen annuleren: betaalde terugstorten + iedereen mailen
+  // Alle actieve boekingen annuleren: betaalde terugstorten + iedereen mailen.
+  // Per boeking atomair claimen (klant kan op hetzelfde moment zelf annuleren)
+  // en bijhouden wélke refunds mislukken, zodat de admin die kan nalopen.
   const bookings = await queries.getActiveBookingsForSlot(slotId);
   let refunds = 0;
-  const mailedTo = new Set();
+  let cancelled = 0;
+  const failedRefunds = [];
   for (const b of bookings) {
+    const claimed = await queries.claimBookingCancel(b.id);
+    if (!claimed) continue;
+    cancelled++;
     let refunded = false;
-    if (b.stripe_payment_intent_id && b.stripe_payment_status === 'succeeded') {
+    let refundedCents = 0;
+    if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status === 'succeeded') {
       try {
-        await stripe.refunds.create({ payment_intent: b.stripe_payment_intent_id });
-        refunded = true;
-        refunds++;
+        let chargedCents = claimed.total_cents;
+        if (Number(claimed.credits_used) > 0) {
+          const intent = await stripe.paymentIntents.retrieve(claimed.stripe_payment_intent_id);
+          chargedCents = intent.amount_received || 0;
+        }
+        if (chargedCents > 0) {
+          await stripe.refunds.create({ payment_intent: claimed.stripe_payment_intent_id });
+          refunded = true;
+          refundedCents = chargedCents;
+          refunds++;
+        }
       } catch (e) {
-        console.error(`Refund failed for booking #${b.id} (non-fatal):`, e.message);
+        if (e.code !== 'charge_already_refunded') {
+          console.error(`Refund failed for booking #${b.id} (non-fatal):`, e.message);
+          failedRefunds.push({ booking_id: b.id, customer: b.customer_name, email: b.customer_email, cents: claimed.total_cents });
+        }
       }
+    } else if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status !== 'succeeded' && claimed.stripe_payment_status !== 'processing') {
+      try { await stripe.paymentIntents.cancel(claimed.stripe_payment_intent_id); } catch (e) { /* al betaald/verlopen */ }
     }
-    await queries.cancelBooking(b.id);
     let creditsRestored = 0;
-    if (Number(b.credits_used) > 0) {
-      const restored = await queries.restoreCreditsForBooking(b);
-      if (restored) creditsRestored = Number(b.credits_used);
+    if (Number(claimed.credits_used) > 0) {
+      const restored = await queries.restoreCreditsForBooking(claimed);
+      if (restored) creditsRestored = Number(claimed.credits_used);
     }
     const giftRestored = await queries.restoreGiftCardForBooking(b.id, 100);
     if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (slot delete, booking #${b.id})`);
+    await queries.releasePromoForBooking(b.id);
     try {
-      if (!mailedTo.has(b.customer_email)) {
-        mailedTo.add(b.customer_email);
-        await sendBookingCancelledEmail(b, { refunded, creditsRestored });
-      }
+      await sendBookingCancelledEmail(b, { refunded, refundedCents, creditsRestored, sessionCancelled: true });
     } catch (e) {
       console.error(`Cancellation email failed for booking #${b.id} (non-fatal):`, e.message);
     }
@@ -418,22 +424,27 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
     try {
       // Gratis wachtlijstplekken hebben geen payment intent - alleen mailen
       if (w.stripe_payment_intent_id) {
-        await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
-        refunds++;
+        try {
+          await stripe.refunds.create({ payment_intent: w.stripe_payment_intent_id });
+          refunds++;
+        } catch (e) {
+          if (e.code !== 'charge_already_refunded') throw e;
+        }
       }
       await queries.markWaitlistRefunded(w.id);
       try {
-        await sendBookingCancelledEmail(w, { refunded: !!w.stripe_payment_intent_id });
+        await sendBookingCancelledEmail(w, { refunded: !!w.stripe_payment_intent_id, sessionCancelled: true });
       } catch (e) {
         console.error(`Cancellation email failed for waitlist #${w.id} (non-fatal):`, e.message);
       }
     } catch (e) {
       console.error(`Waitlist refund failed for entry #${w.id} (non-fatal):`, e.message);
+      failedRefunds.push({ waitlist_id: w.id, customer: w.customer_name, email: w.customer_email, cents: w.total_cents });
     }
   }
 
-  queries.auditLog({ ...actorOf(req), action: 'slot_cancelled', target: `slot:${slotId}`, detail: `${bookings.length} bookings cancelled, ${refunds} refunds`, ip: req.ip });
-  res.json({ ok: true, cancelled_bookings: bookings.length, refunds });
+  queries.auditLog({ ...actorOf(req), action: 'slot_cancelled', target: `slot:${slotId}`, detail: `${cancelled} bookings cancelled, ${refunds} refunds, ${failedRefunds.length} refund failures`, ip: req.ip });
+  res.json({ ok: true, cancelled_bookings: cancelled, refunds, failed_refunds: failedRefunds });
 });
 
 // ─── Session types ────────────────────────────────────────────────────────────

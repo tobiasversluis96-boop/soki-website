@@ -36,16 +36,22 @@ router.post('/create-intent', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Een Community Rate-ticket kan niet met credits worden gecombineerd.' });
     if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
       return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek - extra personen boeken via de gewone betaling.' });
-    const sub    = await queries.getActiveSubscription(req.user.userId);
+    // Alleen een 'active' membership telt (past_due = incasso mislukt)
+    const sub    = await queries.getEntitledSubscription(req.user.userId);
     const passes = await queries.getActivePunchPasses(req.user.userId);
     const groupSize  = booking.group_size || 1;
     const perPerson  = (sub && sub.credits_per_month === null) ? 0 : (CREDIT_COST[slot.session_type_id] || 1.5);
     // Credits zijn persoonlijk: ze dekken alleen de eigen plek. Extra personen
     // (en evt. diner) worden via Stripe bijbetaald.
-    const covered = (sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= perPerson) : false)
-      || passes.some(p => Number(p.credits_remaining) >= perPerson);
+    const subCovers = sub ? (sub.credits_per_month === null || (Number(sub.credits_remaining) || 0) >= perPerson) : false;
+    const covered = subCovers || passes.some(p => Number(p.credits_remaining) >= perPerson);
     if (!covered)
       return res.status(400).json({ error: 'Onvoldoende credits voor deze sessie.' });
+    // Opgezegd membership: geen sessies ná de einddatum op het membership
+    const { membershipEndsAt } = require('./subscriptions');
+    const endsAt = subCovers ? membershipEndsAt(sub) : null;
+    if (endsAt && require('../utils/nl-time').nlToDate(slot.date, slot.start_time) > endsAt)
+      return res.status(400).json({ error: 'Je membership eindigt vóór deze sessie. Boek hem via de gewone betaling. / Your membership ends before this session. Please book it with a regular payment.', code: 'MEMBERSHIP_ENDED' });
     amount = (groupSize - 1) * slot.price_cents + (booking.kantine_addon_cents || 0);
     // Gereserveerde cadeaubon-/promokorting telt ook hier mee: zonder deze
     // aftrek rekent Stripe het volle bedrag af terwijl settleMemberCombi de
@@ -141,7 +147,13 @@ async function settleMemberCombi(intent) {
     return { ok: false };
   }
 
-  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.amount_received || intent.amount);
+  // Unlimited (0 credits): de boeking toch aan het membership koppelen
+  let unlimitedSubId = null;
+  if (!(creditsToUse > 0)) {
+    const sub = await queries.getEntitledSubscription(userId);
+    if (sub && sub.credits_per_month === null) unlimitedSubId = sub.id;
+  }
+  const result = await queries.confirmBookingWithCredits(bookingId, userId, creditsToUse, intent.id, intent.amount_received || intent.amount, unlimitedSubId);
   if (result.insufficient) {
     // Credits verdwenen tussen intent en betaling (zeldzaam): diner terugbetalen + boeking annuleren
     console.error(`Booking #${bookingId}: onvoldoende credits bij combi-settle - refund + annulering`);

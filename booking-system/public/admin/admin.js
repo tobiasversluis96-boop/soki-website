@@ -604,12 +604,22 @@
   window.cancelBooking = function (id) {
     showConfirm(
       'Boeking annuleren',
-      'Weet je zeker dat je boeking #' + id + ' wilt annuleren?',
+      'Weet je zeker dat je boeking #' + id + ' wilt annuleren? Je kiest hierna of de klant terugbetaald wordt.',
       async () => {
-        const r = await api('/bookings/' + id + '/cancel', { method: 'PATCH' });
+        // Standaard mét terugbetaling (SOKI annuleert); zonder = no-show of
+        // annulering binnen 24 uur volgens de voorwaarden
+        const withRefund = confirm(
+          'Terugbetalen?\n\n' +
+          'OK = MET terugbetaling: geld, credits en cadeaubonsaldo gaan terug naar de klant.\n' +
+          'Annuleren = ZONDER terugbetaling (no-show of annulering binnen 24 uur): de klant krijgt niets terug.'
+        );
+        const r = await api('/bookings/' + id + '/cancel', { method: 'PATCH', body: JSON.stringify({ refund: withRefund }) });
         const parts = [];
         if (r.refunded) parts.push(formatEur(r.refunded_cents) + ' teruggestort via Stripe');
+        if (r.already_refunded) parts.push('betaling was al eerder terugbetaald via Stripe');
+        if (r.payment_processing) parts.push('betaling is nog in verwerking (SEPA/iDEAL): wordt automatisch terugbetaald zodra die binnen is');
         if (r.refund_failed) parts.push('⚠️ LET OP: terugbetaling via Stripe is MISLUKT - controleer het Stripe-dashboard en betaal zo nodig handmatig terug');
+        if (r.refund_skipped) parts.push('zonder terugbetaling (op jouw keuze)');
         if (Number(r.credits_restored) > 0) parts.push(Number(r.credits_restored) + ' credit(s) teruggezet');
         if (Number(r.gift_restored_cents) > 0) parts.push(formatEur(r.gift_restored_cents) + ' teruggezet op cadeaubon');
         alert('Boeking geannuleerd. ' + (parts.length ? parts.join(' · ') + '.' : 'Geen terugbetaling van toepassing (geen online betaling).') + ' De klant heeft een mail ontvangen.');
@@ -834,8 +844,14 @@
       'Weet je zeker dat je slot #' + id + ' wilt annuleren? Alle bijbehorende boekingen worden geannuleerd, betaalde boekingen worden automatisch terugbetaald en alle klanten krijgen een annuleringsmail.',
       async () => {
         const result = await api('/slots/' + id, { method: 'DELETE' });
-        if (result && result.cancelled_bookings > 0) {
-          alert(`Slot geannuleerd. ${result.cancelled_bookings} boeking(en) geannuleerd, ${result.refunds} terugbetaling(en) gestart. Alle klanten hebben een mail ontvangen.`);
+        if (result && (result.cancelled_bookings > 0 || (result.failed_refunds || []).length)) {
+          let msg = `Slot geannuleerd. ${result.cancelled_bookings} boeking(en) geannuleerd, ${result.refunds} terugbetaling(en) gestart. Alle klanten hebben een mail ontvangen.`;
+          const failed = result.failed_refunds || [];
+          if (failed.length) {
+            msg += `\n\n⚠️ LET OP: ${failed.length} terugbetaling(en) MISLUKT - handmatig regelen via het Stripe-dashboard:\n` +
+              failed.map(f => `- ${f.customer || '?'} (${f.email || '?'}): ${formatEur(f.cents || 0)}${f.booking_id ? ' (boeking #' + f.booking_id + ')' : ''}${f.waitlist_id ? ' (wachtlijst #' + f.waitlist_id + ')' : ''}`).join('\n');
+          }
+          alert(msg);
         }
         loadSlots();
       }

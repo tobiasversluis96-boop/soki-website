@@ -32,7 +32,7 @@ var SOKI_I18N = {
     'faq.q.advance':      'Do I need to book in advance?',
     'faq.a.advance':      'Yes, advance booking is required. Capacity per session is limited, so we strongly recommend booking ahead.',
     'faq.q.cancel':       'What is your cancellation policy?',
-    'faq.a.cancel':       'Cancel more than 48 hours before your session for a full refund. Between 24 and 48 hours: 50% refund. Within 24 hours: cancellations are not possible.',
+    'faq.a.cancel':       'Cancel more than 48 hours before your session for a full refund. Between 24 and 48 hours: 50% refund. Within 24 hours: no refund (you can still cancel to free up your spot). Membership credits are restored up to 24 hours before the session.',
     'faq.q.waitlist':     'What if a session is fully booked?',
     'faq.a.waitlist':     "You can join the waitlist for any full session. If a spot opens up, you'll be notified by email.",
     'faq.q.giftcard':     'Do you sell gift cards?',
@@ -433,7 +433,7 @@ var SOKI_I18N = {
     'account.book.again':        'Book again \u2192',
     'booking.cancel':         'Cancel booking',
     'booking.cancel.title':   'Cancel booking?',
-    'booking.cancel.confirm': 'Full refund if you cancel more than 48 hours in advance, 50% refund between 24 and 48 hours. Cancellations within 24 hours are not possible.',
+    'booking.cancel.confirm': 'Full refund if you cancel more than 48 hours in advance, 50% refund between 24 and 48 hours. Within 24 hours: no refund.',
     'booking.cancel.no':      'Keep booking',
     'booking.cancel.yes':     'Yes, cancel',
     'booking.forgot':         'Forgot password?',
@@ -643,7 +643,7 @@ var SOKI_I18N = {
 
     /* --- Account extras --- */
     'account.datarights':   'Your data rights',
-    'account.cancelinfo':   'Cancellations are only possible up to 24 hours before the session. Confirmed bookings will be refunded.',
+    'account.cancelinfo':   'More than 48 hours before the session: full refund. Between 24 and 48 hours: 50% refund. Within 24 hours: no refund.',
 
     /* --- Reset password --- */
     'reset.title':       'Set new password',
@@ -691,7 +691,7 @@ var SOKI_I18N = {
     'faq.q.advance':      'Moet ik van tevoren boeken?',
     'faq.a.advance':      'Ja, vooraf boeken is verplicht. De capaciteit per sessie is beperkt, dus wij raden je aan vroeg te boeken.',
     'faq.q.cancel':       'Wat is het annuleringsbeleid?',
-    'faq.a.cancel':       'Annuleer meer dan 48 uur van tevoren en je krijgt het volledige bedrag terug. Tussen 24 en 48 uur: 50% terugbetaling. Binnen 24 uur: annuleren is niet meer mogelijk.',
+    'faq.a.cancel':       'Annuleer meer dan 48 uur van tevoren en je krijgt het volledige bedrag terug. Tussen 24 en 48 uur: 50% terugbetaling. Binnen 24 uur: geen terugbetaling (annuleren kan nog wel, zodat je plek vrijkomt). Membershipcredits krijg je terug tot 24 uur voor de sessie.',
     'faq.q.waitlist':     'Wat als een sessie vol is?',
     'faq.a.waitlist':     'Je kunt je aanmelden voor de wachtlijst. Als er een plek vrijkomt, ontvang je een e-mail.',
     'faq.q.giftcard':     'Verkopen jullie cadeaubonnen?',
@@ -1092,7 +1092,7 @@ var SOKI_I18N = {
     'account.book.again':        'Opnieuw boeken \u2192',
     'booking.cancel':         'Boeking annuleren',
     'booking.cancel.title':   'Boeking annuleren?',
-    'booking.cancel.confirm': 'Volledige terugbetaling bij annuleren meer dan 48 uur van tevoren, 50% tussen 24 en 48 uur. Binnen 24 uur is annuleren niet meer mogelijk.',
+    'booking.cancel.confirm': 'Volledige terugbetaling bij annuleren meer dan 48 uur van tevoren, 50% tussen 24 en 48 uur. Binnen 24 uur: geen terugbetaling.',
     'booking.cancel.no':      'Behoud boeking',
     'booking.cancel.yes':     'Ja, annuleer',
     'booking.forgot':         'Wachtwoord vergeten?',
@@ -1302,7 +1302,7 @@ var SOKI_I18N = {
 
     /* --- Account extras --- */
     'account.datarights':   'Jouw gegevensrechten',
-    'account.cancelinfo':   'Annuleren kan tot 24 uur voor de sessie. Bevestigde boekingen worden terugbetaald.',
+    'account.cancelinfo':   'Meer dan 48 uur voor de sessie: volledige terugbetaling. Tussen 24 en 48 uur: 50% terug. Binnen 24 uur: geen terugbetaling.',
 
     /* --- Reset password --- */
     'reset.title':       'Nieuw wachtwoord instellen',

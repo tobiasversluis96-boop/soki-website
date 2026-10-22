@@ -6,6 +6,8 @@ const express = require('express');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
+const { promoteWaitlist } = require('../utils/waitlist-promote');
+const nlTime = require('../utils/nl-time');
 
 const router = express.Router();
 
@@ -102,6 +104,12 @@ router.post('/cancel', requireAuth, async (req, res) => {
   }
   await queries.cancelSubscription(req.user.userId, endsAt);
 
+  // Sessies ná de einddatum die al op dit membership geboekt waren, gaan mee
+  // uit: anders boek je eerst alles vol en zeg je daarna op. Credits komen
+  // terug (daar kan de klant tot de einddatum nog mee boeken).
+  const droppedBookings = await cancelMembershipBookingsAfter(sub.id, endsAt ? new Date(endsAt) : null,
+    'Je membership is opgezegd en deze sessie valt na de einddatum. / Your membership has been cancelled and this session is after its end date.');
+
   try {
     const user = await queries.getUserById(req.user.userId);
     if (user) {
@@ -117,14 +125,68 @@ router.post('/cancel', requireAuth, async (req, res) => {
     console.error('Member-cancelled email failed (non-fatal):', e.message);
   }
 
-  res.json({ ok: true, ends_at: endsAt, min_term_applied: minTermApplied || undefined });
+  res.json({
+    ok: true, ends_at: endsAt, min_term_applied: minTermApplied || undefined,
+    cancelled_bookings: droppedBookings.map(b => ({ id: b.id, date: nlTime.normalizeDate(b.date), start_time: b.start_time, session_name: b.session_name })),
+  });
 });
+
+// Annuleer bevestigde boekingen op een membership die ná `endsAt` vallen
+// (endsAt null = alles vanaf nu: het membership is al beëindigd). Credits gaan
+// terug zolang het membership nog loopt; de klant krijgt per boeking een mail.
+// Retourneert de geannuleerde boekingen.
+async function cancelMembershipBookingsAfter(subscriptionId, endsAt, reason) {
+  const dropped = [];
+  let bookings = [];
+  try {
+    bookings = await queries.getConfirmedBookingsForSubscription(subscriptionId);
+  } catch (e) {
+    console.error('Membership-boekingen ophalen mislukt (non-fatal):', e.message);
+    return dropped;
+  }
+  for (const b of bookings) {
+    const startsAt = nlTime.nlToDate(b.date, b.start_time);
+    if (!startsAt || (endsAt && startsAt <= endsAt)) continue;
+    try {
+      const claimed = await queries.claimBookingCancel(b.id);
+      if (!claimed) continue;
+      let creditsRestored = 0;
+      if (Number(b.credits_used) > 0) {
+        const restored = await queries.restoreCreditsForBooking(claimed);
+        if (restored) creditsRestored = Number(b.credits_used);
+      }
+      // Eventueel via Stripe bijbetaald deel (extra personen/diner) terug
+      let refunded = false, refundedCents = 0;
+      if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status === 'succeeded' && Number(claimed.paid_cents) > 0) {
+        try {
+          await stripe.refunds.create({ payment_intent: claimed.stripe_payment_intent_id });
+          refunded = true; refundedCents = Number(claimed.paid_cents);
+        } catch (e) {
+          if (e.code !== 'charge_already_refunded') console.error(`Refund mislukt voor membership-boeking #${b.id}:`, e.message);
+        }
+      }
+      queries.auditLog({ actor_type: 'system', action: 'booking_cancelled', target: `booking:${b.id}`, detail: `membership ended (sub ${subscriptionId}); ${creditsRestored} credits restored` });
+      try {
+        const { sendBookingCancelledEmail } = require('../utils/email');
+        await sendBookingCancelledEmail(b, { refunded, refundedCents, creditsRestored, sessionCancelled: false, reason });
+      } catch (e) {
+        console.error('Membership-boeking annuleringsmail mislukt (non-fatal):', e.message);
+      }
+      await promoteWaitlist(b);
+      dropped.push(b);
+    } catch (e) {
+      console.error(`Membership-boeking #${b.id} annuleren mislukt (non-fatal):`, e.message);
+    }
+  }
+  return dropped;
+}
 
 // POST /api/subscriptions/credit-cost  -- returns cost for a slot
 router.post('/credit-cost', requireAuth, async (req, res) => {
   const { session_type_id } = req.body;
   const groupSize = Math.min(Math.max(parseInt(req.body.group_size) || 1, 1), 20);
-  const sub  = await queries.getActiveSubscription(req.user.userId);
+  // Alleen een 'active' membership geeft boekrecht (past_due = incasso mislukt)
+  const sub  = await queries.getEntitledSubscription(req.user.userId);
   const passes = await queries.getActivePunchPasses(req.user.userId);
   const passTotal = passes.reduce((sum, p) => sum + Number(p.credits_remaining), 0);
   // Credits (abonnement én strippenkaart) zijn persoonlijk: ze dekken alleen de eigen
@@ -143,5 +205,15 @@ router.post('/credit-cost', requireAuth, async (req, res) => {
   });
 });
 
+// Einddatum van een opgezegd membership (null als het gewoon doorloopt):
+// na dit moment mag er niet meer met credits/Unlimited op geboekt worden.
+function membershipEndsAt(sub) {
+  if (!sub || !sub.cancel_at_period_end) return null;
+  const end = sub.ends_at || sub.current_period_end;
+  return end ? new Date(end) : null;
+}
+
 module.exports = router;
 module.exports.CREDIT_COST = CREDIT_COST;
+module.exports.membershipEndsAt = membershipEndsAt;
+module.exports.cancelMembershipBookingsAfter = cancelMembershipBookingsAfter;

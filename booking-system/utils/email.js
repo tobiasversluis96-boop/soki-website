@@ -472,7 +472,13 @@ async function sendGiftCardPurchaseEmail(card) {
 }
 
 // Geen Brevo-template nodig: de annuleringsmail wordt als kant-en-klare HTML verstuurd
-async function sendBookingCancelledEmail(booking, { refunded = false, creditsRestored = 0 } = {}) {
+// Opties:
+//   sessionCancelled  true = de hele sessie gaat niet door (slot geannuleerd),
+//                     false = alleen deze boeking is geannuleerd
+//   refundedCents     werkelijk teruggestorte bedrag (bij credits+diner is dat
+//                     minder dan total_cents); zonder waarde: total_cents
+//   reason            optionele extra uitlegregel (NL / EN gescheiden met ' / ')
+async function sendBookingCancelledEmail(booking, { refunded = false, refundedCents = null, creditsRestored = 0, sessionCancelled = true, reason = null } = {}) {
   const [y, m, d] = String(booking.date).split('-').map(Number);
   const dateNl = new Date(y, m - 1, d).toLocaleDateString('nl-NL', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -480,9 +486,10 @@ async function sendBookingCancelledEmail(booking, { refunded = false, creditsRes
   const dateEn = new Date(y, m - 1, d).toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
-  const amount  = `€${((booking.total_cents || 0) / 100).toFixed(2).replace('.', ',')}`;
+  const cents   = refundedCents !== null && refundedCents !== undefined ? refundedCents : (booking.total_cents || 0);
+  const amount  = `€${(cents / 100).toFixed(2).replace('.', ',')}`;
   const bookUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/booking`;
-  const refundBlock = refunded
+  const refundBlock = refunded && cents > 0
     ? `<p style="background-color:#ffffff;border-left:4px solid #f2c299;padding:12px 16px;border-radius:0 4px 4px 0;margin:0 0 16px;">
          Je betaling van <strong>${amount}</strong> wordt automatisch teruggestort. Het bedrag staat binnen 5&ndash;10 werkdagen op je rekening.<br>
          <span style="color:${EMAIL_MUTED};">Your payment of <strong>${amount}</strong> will be refunded automatically. It will appear on your account within 5&ndash;10 business days.</span></p>`
@@ -492,17 +499,31 @@ async function sendBookingCancelledEmail(booking, { refunded = false, creditsRes
          Je gebruikte credits (${creditsRestored}) zijn teruggezet op je account.<br>
          <span style="color:${EMAIL_MUTED};">The credits you used (${creditsRestored}) have been returned to your account.</span></p>`
     : '';
+  const [reasonNl, reasonEn] = reason ? String(reason).split(' / ') : [null, null];
+  const reasonBlock = reasonNl
+    ? `<p style="margin:0 0 16px;">${escapeHtml(reasonNl)}<br>
+         <span style="color:${EMAIL_MUTED};">${escapeHtml(reasonEn || reasonNl)}</span></p>`
+    : '';
+  const session = `<strong>${escapeHtml(booking.session_name)}</strong>`;
+  const intro = sessionCancelled
+    ? `<p style="margin:0 0 16px;">Helaas gaat de sessie ${session} op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) niet door. Onze excuses voor het ongemak.<br>
+         <span style="color:${EMAIL_MUTED};">Unfortunately, the ${session} session on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled. We're sorry for the inconvenience.</span></p>`
+    : `<p style="margin:0 0 16px;">Je boeking voor ${session} op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) is geannuleerd.<br>
+         <span style="color:${EMAIL_MUTED};">Your booking for ${session} on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled.</span></p>`;
+  const subject = sessionCancelled
+    ? `Je sessie op ${dateNl} is geannuleerd / Your session on ${dateEn} has been cancelled`
+    : `Je boeking op ${dateNl} is geannuleerd / Your booking on ${dateEn} has been cancelled`;
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: booking.customer_email, name: booking.customer_name }],
     sender: {
       email: process.env.EMAIL_FROM,
       name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
     },
-    subject: `Je sessie op ${dateNl} is geannuleerd / Your session on ${dateEn} has been cancelled`,
-    htmlContent: emailLayout('Je sessie is geannuleerd', `
+    subject,
+    htmlContent: emailLayout(sessionCancelled ? 'Je sessie is geannuleerd' : 'Je boeking is geannuleerd', `
         <p style="margin:0 0 16px;">Hoi ${escapeHtml(booking.customer_name)},</p>
-        <p style="margin:0 0 16px;">Helaas gaat de sessie <strong>${escapeHtml(booking.session_name)}</strong> op <strong>${dateNl}</strong> (${booking.start_time}&ndash;${booking.end_time}) niet door. Onze excuses voor het ongemak.<br>
-           <span style="color:${EMAIL_MUTED};">Unfortunately, the <strong>${escapeHtml(booking.session_name)}</strong> session on <strong>${dateEn}</strong> (${booking.start_time}&ndash;${booking.end_time}) has been cancelled. We're sorry for the inconvenience.</span></p>
+        ${intro}
+        ${reasonBlock}
         ${refundBlock}
         ${creditsBlock}
         <p style="margin:0 0 16px;">We hopen je snel weer te zien!<br>

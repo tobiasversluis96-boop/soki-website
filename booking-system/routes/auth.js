@@ -26,6 +26,9 @@ async function requireAuth(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
+  // Alleen klanttokens: admin-/stafftokens hebben geen userId en horen hier niet
+  if (payload.type !== 'customer' || !payload.userId)
+    return res.status(401).json({ error: 'Invalid or expired token' });
   try {
     // Revocation check: a password reset bumps token_version and kills old tokens
     const currentVersion = await queries.getUserTokenVersion(payload.userId);

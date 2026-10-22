@@ -123,7 +123,13 @@ router.post('/confirm', async (req, res) => {
   if (isNaN(cardId)) return res.status(400).json({ error: 'Cadeaubon niet gevonden.' });
   const card   = await queries.getGiftCardById(cardId);
   if (!card) return res.status(404).json({ error: 'Cadeaubon niet gevonden.' });
-  if (card.status !== 'pending') return res.json({ ok: true, code: card.code }); // idempotent
+
+  // De code alleen tonen in de koopflow zelf (vlak na de betaling, bijv. na
+  // een refresh van de bedankpagina). Later is dit endpoint anders een manier
+  // om met alleen een payment-intent-id een besteedbare code op te vragen;
+  // de code staat dan allang in de mail.
+  const freshPurchase = Date.now() - new Date(card.created_at).getTime() < 60 * 60 * 1000;
+  if (card.status !== 'pending') return res.json({ ok: true, code: freshPurchase ? card.code : undefined }); // idempotent
 
   const activated = await activateGiftCardFromIntent(intent);
   res.json({ ok: true, code: (activated || card).code });

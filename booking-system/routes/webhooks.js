@@ -128,9 +128,13 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         const plan  = plans.find(p => p.id === planId);
         if (!plan) break;
 
+        // Pas boekrecht zodra de eerste betaling echt binnen is: bij SEPA staat
+        // de Checkout op 'unpaid' tot de incasso slaagt (invoice.payment_succeeded
+        // zet het membership dan op 'active').
+        const initialStatus = session.payment_status === 'paid' && stripeSub.status === 'active' ? 'active' : 'past_due';
         const createdSub = await queries.createSubscription(
           userId, planId, stripeSubId, stripeCustomer,
-          plan.credits_per_month, periodEnd
+          plan.credits_per_month, periodEnd, initialStatus
         );
         if (!createdSub) {
           // Gebruiker had al een lopend abonnement (twee Checkout-tabs): het
@@ -177,9 +181,15 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
+        const stripeSubId = invoice.subscription;
+        if (invoice.billing_reason === 'subscription_create' && stripeSubId) {
+          // Eerste (SEPA-)incasso alsnog geslaagd: membership vrijgeven
+          const activated = await queries.markSubscriptionActive(stripeSubId);
+          if (activated) console.log(`✓ Subscription ${stripeSubId} active na eerste betaling`);
+          break;
+        }
         if (invoice.billing_reason !== 'subscription_cycle') break;  // Only handle renewals
 
-        const stripeSubId = invoice.subscription;
         const sub = await queries.getSubscriptionByStripeId(stripeSubId);
         if (!sub) break;
 
@@ -360,18 +370,55 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'customer.subscription.deleted': {
         const stripeSub = event.data.object;
+        const local = await queries.getSubscriptionByStripeId(stripeSub.id);
         await queries.updateSubscriptionFromWebhook(stripeSub.id, 'expired', new Date(), false);
         console.log(`✓ Subscription expired: ${stripeSub.id}`);
+        // Het membership is nu echt voorbij: sessies die er nog op geboekt
+        // stonden (na de einddatum) vervallen mee
+        if (local) {
+          const { cancelMembershipBookingsAfter } = require('./subscriptions');
+          const dropped = await cancelMembershipBookingsAfter(local.id, null,
+            'Je membership is beëindigd; deze sessie was op je membership geboekt. / Your membership has ended; this session was booked on your membership.');
+          if (dropped.length) console.log(`✓ ${dropped.length} membership-boeking(en) geannuleerd na einde ${stripeSub.id}`);
+        }
         break;
       }
 
       // Note: 'charge.refunded' must be enabled in Stripe Dashboard webhook settings
       case 'charge.refunded': {
         const charge = event.data.object;
-        // Alleen bij volledige refund van een punch pass het tegoed intrekken
+        // Alleen bij een vólledige refund (charge.refunded = true) actie ondernemen
         if (!charge.payment_intent || !charge.refunded) break;
         const revoked = await queries.revokePunchPassByPaymentIntent(charge.payment_intent);
         if (revoked) console.log(`✓ Punch pass #${revoked.id} ingetrokken na volledige refund (intent ${charge.payment_intent})`);
+        const giftRevoked = await queries.revokeGiftCardByPaymentIntent(charge.payment_intent);
+        if (giftRevoked) console.log(`✓ Cadeaubon #${giftRevoked.id} ingetrokken na volledige refund`);
+
+        // Handmatige refund van een boeking in het Stripe-dashboard: de boeking
+        // mee annuleren, anders blijft de plek bezet zonder dat iemand het ziet
+        const booking = await queries.getBookingByPaymentIntent(charge.payment_intent);
+        if (booking && booking.status !== 'cancelled') {
+          const claimed = await queries.claimBookingCancel(booking.id);
+          if (claimed) {
+            let creditsRestored = 0;
+            if (Number(claimed.credits_used) > 0) {
+              const restored = await queries.restoreCreditsForBooking(claimed);
+              if (restored) creditsRestored = Number(claimed.credits_used);
+            }
+            await queries.restoreGiftCardForBooking(booking.id, 100);
+            await queries.releasePromoForBooking(booking.id);
+            queries.auditLog({ actor_type: 'system', action: 'booking_cancelled', target: `booking:${booking.id}`, detail: `refund via Stripe-dashboard (${charge.amount_refunded} cents)` });
+            try {
+              const { sendBookingCancelledEmail } = require('../utils/email');
+              await sendBookingCancelledEmail(booking, { refunded: true, refundedCents: charge.amount_refunded, creditsRestored, sessionCancelled: false });
+            } catch (e) {
+              console.error('Refund-cancel email failed (non-fatal):', e.message);
+            }
+            const { promoteWaitlist } = require('../utils/waitlist-promote');
+            await promoteWaitlist(booking);
+            console.log(`✓ Boeking #${booking.id} geannuleerd na volledige refund in Stripe`);
+          }
+        }
         break;
       }
     }
