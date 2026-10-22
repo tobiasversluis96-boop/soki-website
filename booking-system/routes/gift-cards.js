@@ -129,7 +129,10 @@ router.post('/confirm', async (req, res) => {
   // om met alleen een payment-intent-id een besteedbare code op te vragen;
   // de code staat dan allang in de mail.
   const freshPurchase = Date.now() - new Date(card.created_at).getTime() < 60 * 60 * 1000;
-  if (card.status !== 'pending') return res.json({ ok: true, code: freshPurchase ? card.code : undefined }); // idempotent
+  if (card.status !== 'pending') { // idempotent
+    if (freshPurchase) return res.json({ ok: true, code: card.code });
+    return res.json({ ok: true, already_sent: true });
+  }
 
   const activated = await activateGiftCardFromIntent(intent);
   res.json({ ok: true, code: (activated || card).code });

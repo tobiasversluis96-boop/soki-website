@@ -7,11 +7,15 @@
  */
 const { queries, getPool } = require('../db/database');
 const { sendWaitlistNotification, sendAutoBookedEmail } = require('./email');
+const nlTime = require('./nl-time');
 
 // slotInfo: { time_slot_id, session_name, date, start_time, end_time }
 // Fouten worden gelogd, nooit gegooid: een annulering mag hier niet op stuklopen.
 async function promoteWaitlist(slotInfo) {
   const slotId = slotInfo.time_slot_id;
+  // Een sessie die al begonnen of geweest is krijgt geen wachtlijster meer
+  // toegewezen (bijv. bij een refund achteraf van een bezochte sessie)
+  if (slotInfo.date && slotInfo.start_time && !(nlTime.hoursUntil(slotInfo.date, slotInfo.start_time) > 0)) return null;
   try {
     const paidWaiter = await queries.getFirstPaidWaitlistUser(slotId);
     if (paidWaiter) {

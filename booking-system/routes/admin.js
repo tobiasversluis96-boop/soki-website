@@ -10,6 +10,7 @@ const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
 const { sendBookingConfirmation, sendBookingCancelledEmail } = require('../utils/email');
 const { promoteWaitlist } = require('../utils/waitlist-promote');
+const { refundBookingCharge, cancelOpenIntent } = require('../utils/refunds');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
@@ -214,37 +215,12 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
   const claimed = await queries.claimBookingCancel(booking.id);
   if (!claimed) return res.status(400).json({ error: 'Booking is already cancelled' });
   const payStatus = claimed.stripe_payment_status;
-  const intentId  = claimed.stripe_payment_intent_id;
 
-  let refunded = false;
-  let refundFailed = false;
-  let alreadyRefunded = false;
-  let refundedCents = 0;
-  if (wantRefund && intentId && payStatus === 'succeeded') {
-    try {
-      // Bij credits + bijbetaling is via Stripe minder dan total_cents betaald
-      let chargedCents = claimed.total_cents;
-      if (Number(claimed.credits_used) > 0) {
-        const intent = await stripe.paymentIntents.retrieve(intentId);
-        chargedCents = intent.amount_received || 0;
-      }
-      if (chargedCents > 0) {
-        await stripe.refunds.create({ payment_intent: intentId });
-        refunded = true;
-        refundedCents = chargedCents;
-      }
-    } catch (stripeErr) {
-      if (stripeErr.code === 'charge_already_refunded') {
-        alreadyRefunded = true;
-      } else {
-        refundFailed = true;
-        console.error('Stripe refund failed (non-fatal):', stripeErr.message);
-      }
-    }
-  } else if (intentId && payStatus !== 'succeeded' && payStatus !== 'processing') {
-    // Onbetaalde boeking: open betaalintentie sluiten
-    try { await stripe.paymentIntents.cancel(intentId); } catch (e) { /* al betaald/verlopen */ }
-  }
+  // Refund (non-fataal: de boeking is al geannuleerd, een mislukte refund
+  // wordt aan de admin gemeld), zie utils/refunds.js
+  const refund = wantRefund ? await refundBookingCharge(claimed, 100) : { refunded: false, refundedCents: 0, alreadyRefunded: false, failed: false };
+  const refunded = refund.refunded, refundFailed = refund.failed, alreadyRefunded = refund.alreadyRefunded, refundedCents = refund.refundedCents;
+  await cancelOpenIntent(claimed);
 
   let creditsRestored = 0;
   let giftRestored = null;
@@ -375,34 +351,17 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
   let refunds = 0;
   let cancelled = 0;
   const failedRefunds = [];
+  // Eén mail per klant, ook als die meerdere boekingen in dit slot had:
+  // bedragen en credits worden per e-mailadres opgeteld
+  const mailPerCustomer = new Map();
   for (const b of bookings) {
     const claimed = await queries.claimBookingCancel(b.id);
     if (!claimed) continue;
     cancelled++;
-    let refunded = false;
-    let refundedCents = 0;
-    if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status === 'succeeded') {
-      try {
-        let chargedCents = claimed.total_cents;
-        if (Number(claimed.credits_used) > 0) {
-          const intent = await stripe.paymentIntents.retrieve(claimed.stripe_payment_intent_id);
-          chargedCents = intent.amount_received || 0;
-        }
-        if (chargedCents > 0) {
-          await stripe.refunds.create({ payment_intent: claimed.stripe_payment_intent_id });
-          refunded = true;
-          refundedCents = chargedCents;
-          refunds++;
-        }
-      } catch (e) {
-        if (e.code !== 'charge_already_refunded') {
-          console.error(`Refund failed for booking #${b.id} (non-fatal):`, e.message);
-          failedRefunds.push({ booking_id: b.id, customer: b.customer_name, email: b.customer_email, cents: claimed.total_cents });
-        }
-      }
-    } else if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status !== 'succeeded' && claimed.stripe_payment_status !== 'processing') {
-      try { await stripe.paymentIntents.cancel(claimed.stripe_payment_intent_id); } catch (e) { /* al betaald/verlopen */ }
-    }
+    const refund = await refundBookingCharge(claimed, 100);
+    if (refund.refunded) refunds++;
+    if (refund.failed) failedRefunds.push({ booking_id: b.id, customer: b.customer_name, email: b.customer_email, cents: claimed.total_cents });
+    await cancelOpenIntent(claimed);
     let creditsRestored = 0;
     if (Number(claimed.credits_used) > 0) {
       const restored = await queries.restoreCreditsForBooking(claimed);
@@ -411,10 +370,18 @@ router.delete('/slots/:id', requireAdmin, async (req, res) => {
     const giftRestored = await queries.restoreGiftCardForBooking(b.id, 100);
     if (giftRestored) console.log(`✓ Gift card ${giftRestored.gift_card_id}: ${giftRestored.restored_cents} cents restored (slot delete, booking #${b.id})`);
     await queries.releasePromoForBooking(b.id);
+    const key = String(b.customer_email || '').toLowerCase();
+    const agg = mailPerCustomer.get(key) || { booking: b, refunded: false, refundedCents: 0, creditsRestored: 0 };
+    agg.refunded = agg.refunded || refund.refunded;
+    agg.refundedCents += refund.refundedCents;
+    agg.creditsRestored += creditsRestored;
+    mailPerCustomer.set(key, agg);
+  }
+  for (const agg of mailPerCustomer.values()) {
     try {
-      await sendBookingCancelledEmail(b, { refunded, refundedCents, creditsRestored, sessionCancelled: true });
+      await sendBookingCancelledEmail(agg.booking, { refunded: agg.refunded, refundedCents: agg.refundedCents, creditsRestored: agg.creditsRestored, sessionCancelled: true });
     } catch (e) {
-      console.error(`Cancellation email failed for booking #${b.id} (non-fatal):`, e.message);
+      console.error(`Cancellation email failed for booking #${agg.booking.id} (non-fatal):`, e.message);
     }
   }
 

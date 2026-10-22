@@ -7,6 +7,7 @@ const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
 const { requireAuth } = require('./auth');
 const { promoteWaitlist } = require('../utils/waitlist-promote');
+const { refundBookingCharge } = require('../utils/refunds');
 const nlTime = require('../utils/nl-time');
 
 const router = express.Router();
@@ -144,9 +145,11 @@ async function cancelMembershipBookingsAfter(subscriptionId, endsAt, reason) {
     console.error('Membership-boekingen ophalen mislukt (non-fatal):', e.message);
     return dropped;
   }
+  const now = new Date();
   for (const b of bookings) {
     const startsAt = nlTime.nlToDate(b.date, b.start_time);
-    if (!startsAt || (endsAt && startsAt <= endsAt)) continue;
+    // Alleen sessies die nog moeten komen én na de einddatum vallen
+    if (!startsAt || startsAt <= now || (endsAt && startsAt <= endsAt)) continue;
     try {
       const claimed = await queries.claimBookingCancel(b.id);
       if (!claimed) continue;
@@ -156,19 +159,12 @@ async function cancelMembershipBookingsAfter(subscriptionId, endsAt, reason) {
         if (restored) creditsRestored = Number(b.credits_used);
       }
       // Eventueel via Stripe bijbetaald deel (extra personen/diner) terug
-      let refunded = false, refundedCents = 0;
-      if (claimed.stripe_payment_intent_id && claimed.stripe_payment_status === 'succeeded' && Number(claimed.paid_cents) > 0) {
-        try {
-          await stripe.refunds.create({ payment_intent: claimed.stripe_payment_intent_id });
-          refunded = true; refundedCents = Number(claimed.paid_cents);
-        } catch (e) {
-          if (e.code !== 'charge_already_refunded') console.error(`Refund mislukt voor membership-boeking #${b.id}:`, e.message);
-        }
-      }
-      queries.auditLog({ actor_type: 'system', action: 'booking_cancelled', target: `booking:${b.id}`, detail: `membership ended (sub ${subscriptionId}); ${creditsRestored} credits restored` });
+      const refund = await refundBookingCharge(claimed, 100);
+      if (refund.failed) console.error(`Refund mislukt voor membership-boeking #${b.id} - handmatig nakijken in Stripe`);
+      queries.auditLog({ actor_type: 'system', action: 'booking_cancelled', target: `booking:${b.id}`, detail: `membership ended (sub ${subscriptionId}); ${creditsRestored} credits restored; refund ${refund.refundedCents} cents` });
       try {
         const { sendBookingCancelledEmail } = require('../utils/email');
-        await sendBookingCancelledEmail(b, { refunded, refundedCents, creditsRestored, sessionCancelled: false, reason });
+        await sendBookingCancelledEmail(b, { refunded: refund.refunded, refundedCents: refund.refundedCents, creditsRestored, sessionCancelled: false, reason });
       } catch (e) {
         console.error('Membership-boeking annuleringsmail mislukt (non-fatal):', e.message);
       }

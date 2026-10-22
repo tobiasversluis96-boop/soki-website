@@ -9,6 +9,7 @@ const { queries, getPool } = require('../db/database');
 const { requireAuth } = require('./auth');
 const { sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/email');
 const { promoteWaitlist } = require('../utils/waitlist-promote');
+const { refundBookingCharge, cancelOpenIntent } = require('../utils/refunds');
 const nlTime = require('../utils/nl-time');
 
 const router = express.Router();
@@ -416,45 +417,17 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   if (!claimed)
     return res.status(400).json({ error: 'Booking is already cancelled' });
   const payStatus = claimed.stripe_payment_status;
-  const intentId  = claimed.stripe_payment_intent_id;
   const creditsUsed = Number(claimed.credits_used) || 0;
 
-  // Refund via Stripe if payment was confirmed
-  let refundAmountCents = 0;
-  if (refundPct > 0 && intentId && payStatus === 'succeeded') {
-    try {
-      // Bij (deels) met credits betaalde boekingen is via Stripe minder dan
-      // total_cents betaald (alleen diner, of extra personen + diner), of zelfs
-      // niets (oude intent van een afgebroken betaalpoging) - refund berekenen
-      // over wat er écht is afgerekend.
-      let chargedCents = claimed.total_cents;
-      if (creditsUsed > 0) {
-        const intent = await stripe.paymentIntents.retrieve(intentId);
-        chargedCents = intent.amount_received || 0;
-      }
-      if (chargedCents > 0) {
-        refundAmountCents = refundPct === 100 ? chargedCents : Math.floor(chargedCents * refundPct / 100);
-        const refundArgs = { payment_intent: intentId };
-        // Only pass amount for partial refund; omit for full so Stripe refunds the whole intent
-        if (refundPct !== 100) refundArgs.amount = refundAmountCents;
-        await stripe.refunds.create(refundArgs);
-      }
-    } catch (stripeErr) {
-      if (stripeErr.code === 'charge_already_refunded') {
-        // Al (handmatig via het Stripe-dashboard) terugbetaald: niets meer te doen
-        refundAmountCents = 0;
-      } else {
-        console.error('Stripe refund failed:', stripeErr.message);
-        // Claim terugdraaien zodat de klant het opnieuw kan proberen
-        await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [booking.id, claimed.prev_status]);
-        return res.status(502).json({ error: 'Refund failed - please contact us to cancel' });
-      }
-    }
-  } else if (intentId && payStatus !== 'succeeded' && payStatus !== 'processing') {
-    // Onbetaalde boeking: de open betaalintentie sluiten, zodat er niet alsnog
-    // betaald wordt op een geannuleerde boeking
-    try { await stripe.paymentIntents.cancel(intentId); } catch (e) { /* al betaald of verlopen: late betaling wordt door de webhook terugbetaald */ }
+  // Refund via Stripe if payment was confirmed (zie utils/refunds.js)
+  const refund = await refundBookingCharge(claimed, refundPct);
+  if (refund.failed) {
+    // Claim terugdraaien zodat de klant het opnieuw kan proberen
+    await getPool().query('UPDATE bookings SET status = $2 WHERE id = $1', [booking.id, claimed.prev_status]);
+    return res.status(502).json({ error: 'Refund failed - please contact us to cancel' });
   }
+  const refundAmountCents = refund.refundedCents;
+  await cancelOpenIntent(claimed);
 
   // Membercredits terug (naar strippenkaart óf abonnement) - maar binnen 24u
   // vóór de sessie ben je ze kwijt. Credits uit een vorige maand of van een
@@ -567,10 +540,6 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
     });
   }
 
-  // Een bij het boeken meegegeven bon/code is hier nergens voor nodig (credits
-  // dekken de plek volledig): loslaten in plaats van voor niets inwisselen
-  await queries.clearPendingPromo(bookingId);
-
   // Credits afschrijven + bevestigen via de kanonieke, idempotente helper: die
   // locket de boekingsrij en bevestigt alléén een pending boeking. Een dubbel-
   // klik of een race met de betaalwebhook kan zo nooit dubbel afschrijven.
@@ -581,6 +550,12 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
     if (result.ok) return res.json({ ok: true, booking_id: bookingId, already_confirmed: true });
     return res.status(400).json({ error: 'Booking already processed' });
   }
+
+  // Pas ná een geslaagde bevestiging: een bij het boeken meegegeven bon/code is
+  // nu nergens voor nodig (credits dekken de plek volledig), dus loslaten in
+  // plaats van voor niets inwisselen. Mislukt de bevestiging, dan blijft de
+  // reservering staan voor de gewone betaling (die rekent met de korting).
+  await queries.clearPendingPromo(bookingId);
 
   // Send confirmation email (non-fatal, atomaire claim tegen dubbel versturen)
   if (await queries.claimConfirmationSend(bookingId)) {

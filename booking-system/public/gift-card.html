@@ -325,7 +325,10 @@
         trackGiftCardPurchase();
         document.getElementById('gc-form').style.display = 'none';
         document.getElementById('success-box').style.display = 'block';
-        document.getElementById('success-code').textContent = res.code;
+        // Na een uur geeft de server de code niet meer terug (die staat in de mail)
+        var isNL = (typeof SOKI_LANG !== 'undefined' ? SOKI_LANG : 'en') === 'nl';
+        document.getElementById('success-code').textContent = res.code
+          || (isNL ? 'De code staat in je e-mail' : 'The code is in your email');
       } else if (res.processing) {
         showProcessingNotice();
       }

@@ -395,9 +395,15 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (giftRevoked) console.log(`✓ Cadeaubon #${giftRevoked.id} ingetrokken na volledige refund`);
 
         // Handmatige refund van een boeking in het Stripe-dashboard: de boeking
-        // mee annuleren, anders blijft de plek bezet zonder dat iemand het ziet
+        // mee annuleren, anders blijft de plek bezet zonder dat iemand het ziet.
+        // Alleen voor sessies die nog moeten komen: een coulance-refund van
+        // een bezochte sessie is geen annulering.
         const booking = await queries.getBookingByPaymentIntent(charge.payment_intent);
-        if (booking && booking.status !== 'cancelled') {
+        const upcoming = booking && require('../utils/nl-time').hoursUntil(booking.date, booking.start_time) > 0;
+        if (booking && booking.status !== 'cancelled' && !upcoming) {
+          queries.auditLog({ actor_type: 'system', action: 'booking_refunded', target: `booking:${booking.id}`, detail: `refund via Stripe-dashboard (${charge.amount_refunded} cents), sessie al geweest - boeking blijft staan` });
+        }
+        if (booking && booking.status !== 'cancelled' && upcoming) {
           const claimed = await queries.claimBookingCancel(booking.id);
           if (claimed) {
             let creditsRestored = 0;

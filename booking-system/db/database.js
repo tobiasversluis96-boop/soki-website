@@ -520,6 +520,28 @@ async function initializeDB() {
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credits_deducted_at TIMESTAMPTZ');
   // Ingewisselde mijlpaalcode, zodat die bij volledige annulering weer vrijkomt
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS applied_milestone_id INTEGER');
+  // Backfill: membership-boekingen van vóór de subscription_id-kolom koppelen
+  // aan het lopende membership van de gebruiker (credits van het abonnement,
+  // of Unlimited: bevestigd zonder Stripe-betaling en zonder credits).
+  // Idempotent: raakt alleen rijen zonder koppeling.
+  await pool.query(`
+    UPDATE bookings b
+    SET subscription_id = s.id
+    FROM subscriptions s
+    JOIN subscription_plans p ON p.id = s.plan_id
+    WHERE b.subscription_id IS NULL
+      AND b.user_id = s.user_id
+      AND s.status IN ('active', 'past_due', 'paused')
+      AND b.status = 'confirmed'
+      AND b.punch_pass_id IS NULL
+      AND COALESCE(b.is_walkin, FALSE) = FALSE
+      AND b.created_at >= s.created_at
+      AND (
+        COALESCE(b.credits_used, 0) > 0
+        OR (p.credits_per_month IS NULL AND COALESCE(b.credits_used, 0) = 0
+            AND b.stripe_payment_status = 'succeeded' AND b.stripe_payment_intent_id IS NULL)
+      )
+  `);
 
   // Strippenkaart: losse creditbundels (eenmalige aankoop, geen abonnement)
   await pool.query(`CREATE TABLE IF NOT EXISTS punch_pass_bundles (
@@ -1211,11 +1233,13 @@ const queries = {
   // Lopende (pending) boekingen die deze code al vasthouden - tellen mee voor
   // max_uses / once_per_customer, anders kun je met parallelle boekingen een
   // eenmalige code meerdere keren laten valideren vóór hij wordt afgeboekt.
+  // Eigen pendings tellen niet mee: die worden bij een nieuwe boeking
+  // vervangen (supersedePendingBookings), net als bij de bon-/mijlpaalcheck.
   countPendingDiscountHolds: async (codeId, userId) => {
     const { rows } = await pool.query(
-      `SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE user_id = $2)::int AS mine
+      `SELECT COUNT(*)::int AS total
        FROM bookings
-       WHERE pending_discount_code_id = $1 AND status = 'pending'
+       WHERE pending_discount_code_id = $1 AND status = 'pending' AND user_id != $2
          AND (hold_until IS NULL OR hold_until > NOW())`,
       [codeId, userId]
     );
