@@ -63,10 +63,13 @@ function signCustomerToken(user) {
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { name, password } = req.body;
+  const { password } = req.body;
+  const name  = String(req.body.name || '').trim();
   const email = normalizeEmail(req.body.email);
   if (!name || !email || !password)
     return res.status(400).json({ error: 'name, email and password are required' });
+  if (name.length > 80)
+    return res.status(400).json({ error: 'Naam is te lang (max 80 tekens). / Name is too long (max 80 characters).' });
   if (password.length < 8)
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
@@ -115,6 +118,28 @@ router.post('/verify-email', requireAuth, async (req, res) => {
   const ok = await queries.verifyEmailCode(req.user.userId, String(code).trim());
   if (!ok) return res.status(400).json({ error: 'Invalid or expired code' });
 
+  // Openstaande e-mailwijziging (Google-account): de code is naar het nieuwe
+  // adres gestuurd, dus die bevestigt meteen dat het adres van de klant is
+  const user = await queries.getUserCredentials(req.user.userId);
+  if (user && user.pending_email) {
+    const applied = await queries.applyPendingEmail(user.id);
+    if (applied && applied.conflict)
+      return res.status(409).json({ error: 'Er bestaat al een account met dit e-mailadres. / An account with this email already exists.' });
+    if (applied && applied.email) {
+      if (user.marketing_opt_in_at) {
+        try {
+          const { subscribeToMarketingList, unsubscribeFromMarketingList } = require('../utils/email');
+          await subscribeToMarketingList(applied.email, user.name);
+          await unsubscribeFromMarketingList(user.email);
+        } catch (err) {
+          console.error('Brevo e-mailwissel (non-fatal):', err.message);
+        }
+      }
+      queries.auditLog({ actor_type: 'customer', actor_id: user.id, action: 'email_changed', detail: `${user.email} -> ${applied.email}`, ip: req.ip });
+      return res.json({ ok: true, email: applied.email });
+    }
+  }
+
   queries.auditLog({ actor_type: 'customer', actor_id: req.user.userId, action: 'email_verified', ip: req.ip });
   res.json({ ok: true });
 });
@@ -123,10 +148,11 @@ router.post('/verify-email', requireAuth, async (req, res) => {
 router.post('/resend-verification', requireAuth, async (req, res) => {
   const user = await queries.getUserById(req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  if (user.email_verified_at) return res.json({ ok: true, already_verified: true });
+  // Openstaande e-mailwijziging: de code hoort naar het níeuwe adres
+  if (user.email_verified_at && !user.pending_email) return res.json({ ok: true, already_verified: true });
 
   try {
-    await startEmailVerification(user.id, user.name, user.email);
+    await startEmailVerification(user.id, user.name, user.pending_email || user.email);
   } catch (err) {
     console.error('Verification email failed:', err.message);
     return res.status(502).json({ error: 'Could not send email - please try again later' });
@@ -287,6 +313,23 @@ router.patch('/me/email', requireAuth, async (req, res) => {
   const existing = await queries.getUserByEmail(newEmail);
   if (existing && existing.id !== user.id)
     return res.status(409).json({ error: 'Er bestaat al een account met dit e-mailadres. / An account with this email already exists.' });
+
+  if (!user.password_hash) {
+    // Google-account: niets om de wijziging mee te bevestigen behalve het
+    // nieuwe adres zelf. Pas na het invoeren van de code (naar het nieuwe
+    // adres gestuurd) gaat de wijziging in; een gestolen sessietoken alleen
+    // is zo niet genoeg om het account over te nemen.
+    await queries.setPendingEmail(user.id, newEmail);
+    try {
+      await startEmailVerification(user.id, user.name, newEmail);
+    } catch (err) {
+      console.error('Verification email failed:', err.message);
+      await queries.setPendingEmail(user.id, null);
+      return res.status(502).json({ error: 'Kon geen bevestigingsmail sturen - probeer het later opnieuw. / Could not send the confirmation email - please try again later.' });
+    }
+    queries.auditLog({ actor_type: 'customer', actor_id: user.id, action: 'email_change_requested', detail: `${oldEmail} -> ${newEmail}`, ip: req.ip });
+    return res.json({ ok: true, pending: true, email: oldEmail, pending_email: newEmail });
+  }
 
   const updated = await queries.updateUserEmail(user.id, newEmail);
   if (!updated)

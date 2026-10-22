@@ -892,7 +892,7 @@ router.get('/analytics/enhanced', requireStaff('revenue'), async (req, res) => {
   });
   } catch (err) {
     console.error('Enhanced analytics error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Analytics konden niet worden geladen.' });
   }
 });
 
@@ -1212,7 +1212,12 @@ router.post('/walkin/book', requireAdmin, async (req, res) => {
   try {
     booking = await queries.createWalkinBookingWithHold(user_id, slot_id, group_size, totalCents, holdMinutes);
   } catch (err) {
-    return res.status(400).json({ error: err.message, code: err.code });
+    // Alleen onze eigen, voor de balie bedoelde meldingen (NO_CAPACITY e.d.)
+    // doorgeven; databasefouten blijven in de log
+    if (err.code === 'NO_CAPACITY' || err.code === 'NO_COMMUNITY')
+      return res.status(400).json({ error: err.message, code: err.code });
+    console.error('Walk-in booking error:', err.message);
+    return res.status(500).json({ error: 'Boeking aanmaken mislukt.' });
   }
 
   queries.auditLog({ ...actorOf(req), action: 'walkin_booking_created', target: `booking:${booking.id}`, detail: `${payment_mode}, ${group_size}p, ${totalCents} cents`, ip: req.ip });

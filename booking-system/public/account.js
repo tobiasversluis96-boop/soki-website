@@ -142,9 +142,16 @@
         if (res.error) { msg.style.color = '#C62828'; msg.textContent = res.error; return; }
         document.getElementById('account-email').textContent = res.email;
         msg.style.color = '#2E7D32';
-        msg.textContent = isNl
-          ? 'Gelukt! We hebben een verificatiecode naar je nieuwe adres gestuurd.'
-          : 'Done! We sent a verification code to your new address.';
+        if (res.pending) {
+          // Google-account: adres wijzigt pas na bevestiging van de code
+          msg.textContent = isNl
+            ? 'We hebben een bevestigingscode naar ' + res.pending_email + ' gestuurd. Vul die hieronder in; daarna wordt je e-mailadres gewijzigd.'
+            : 'We sent a confirmation code to ' + res.pending_email + '. Enter it below and your email address will be changed.';
+        } else {
+          msg.textContent = isNl
+            ? 'Gelukt! We hebben een verificatiecode naar je nieuwe adres gestuurd.'
+            : 'Done! We sent a verification code to your new address.';
+        }
         initVerifyBanner();
       }).catch(function () {
         btn.disabled = false;
@@ -167,7 +174,9 @@
       var code = document.getElementById('verify-code').value.trim();
       if (!code) return;
       postApi('/auth/verify-email', { code: code }).then(function (res) {
-        if (res.error) { msg.style.color = '#C0392B'; msg.textContent = t('account.verify.err'); return; }
+        if (res.error) { msg.style.color = '#C0392B'; msg.textContent = res.error && /bestaat al|already exists/.test(res.error) ? res.error : t('account.verify.err'); return; }
+        // Bevestigde e-mailwijziging: nieuw adres tonen
+        if (res.email) { var el = document.getElementById('account-email'); if (el) el.textContent = res.email; }
         msg.style.color = '#2E7D32';
         msg.textContent = t('account.verify.done');
         setTimeout(function () { banner.style.display = 'none'; }, 2500);

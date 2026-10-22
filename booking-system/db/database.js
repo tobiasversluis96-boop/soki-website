@@ -524,6 +524,10 @@ async function initializeDB() {
   // een betaling die daarna alsnog binnenkomt (SEPA/iDEAL 'processing') wordt
   // volgens datzelfde percentage terugbetaald, niet automatisch 100%
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancel_refund_pct INTEGER');
+  // E-mailwijziging van een Google-account (geen wachtwoord om mee te
+  // bevestigen): het nieuwe adres gaat pas in na bevestiging met de code die
+  // naar dat nieuwe adres is gestuurd
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT');
   // Backfill: membership-boekingen van vóór de subscription_id-kolom koppelen
   // aan het lopende membership van de gebruiker (credits van het abonnement,
   // of Unlimited: bevestigd zonder Stripe-betaling en zonder credits).
@@ -792,14 +796,35 @@ const queries = {
   },
 
   getUserById: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct, marketing_opt_in_at, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, created_at, waiver_signed_at, email_verified_at, discount_pct, marketing_opt_in_at, pending_email, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1', [id]);
     return rows[0] || null;
   },
 
   // Voor gevoelige acties (e-mail wijzigen): inclusief password_hash
   getUserCredentials: async (id) => {
-    const { rows } = await pool.query('SELECT id, name, email, password_hash, google_id, marketing_opt_in_at FROM users WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT id, name, email, password_hash, google_id, marketing_opt_in_at, pending_email FROM users WHERE id = $1', [id]);
     return rows[0] || null;
+  },
+
+  setPendingEmail: async (userId, email) => {
+    await pool.query('UPDATE users SET pending_email = $2 WHERE id = $1', [userId, email]);
+  },
+
+  // Bevestigd nieuw adres doorvoeren. Retourneert { email } of null (geen
+  // wijziging open) of { conflict: true } als het adres intussen bezet is.
+  applyPendingEmail: async (userId) => {
+    try {
+      const { rows } = await pool.query(
+        `UPDATE users SET email = pending_email, pending_email = NULL, email_verified_at = NOW()
+         WHERE id = $1 AND pending_email IS NOT NULL RETURNING email`,
+        [userId]
+      );
+      return rows[0] || null;
+    } catch (err) {
+      if (err.code !== '23505') throw err;
+      await pool.query('UPDATE users SET pending_email = NULL WHERE id = $1', [userId]);
+      return { conflict: true };
+    }
   },
 
   // Nieuw adres = opnieuw verifiëren; retourneert false bij een e-mailconflict
@@ -2764,14 +2789,14 @@ const queries = {
   updateStaffPermissions: async (id, fields) => {
     await pool.query(`
       UPDATE staff_users SET
-        is_active      = $2,
-        perm_revenue   = $3,
-        perm_bookings  = $4,
-        perm_slots     = $5,
-        perm_generate  = $6,
-        perm_schedule  = $7,
-        perm_customers = $8,
-        perm_messages  = $9
+        is_active      = COALESCE($2, is_active),
+        perm_revenue   = COALESCE($3, perm_revenue),
+        perm_bookings  = COALESCE($4, perm_bookings),
+        perm_slots     = COALESCE($5, perm_slots),
+        perm_generate  = COALESCE($6, perm_generate),
+        perm_schedule  = COALESCE($7, perm_schedule),
+        perm_customers = COALESCE($8, perm_customers),
+        perm_messages  = COALESCE($9, perm_messages)
       WHERE id = $1
     `, [id, fields.is_active, fields.perm_revenue, fields.perm_bookings, fields.perm_slots, fields.perm_generate, fields.perm_schedule, fields.perm_customers, fields.perm_messages]);
   },
