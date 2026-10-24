@@ -26,6 +26,7 @@ function publicSlot(slot) {
     end_time:        slot.end_time,
     price_cents:     slot.price_cents,
     artist:          slot.artist,
+    edition:         slot.edition || null,
     is_private:      slot.is_private,
     capacity,
     spots_left:      capacity - slot.booked,

@@ -46,6 +46,13 @@
     return n + ' ' + (n === 1 ? t('booking.person') : t('booking.persons'));
   }
 
+  // Speciale editie (bijv. "Singles edition") achter de sessienaam
+  function editionTag(b) {
+    return b.edition
+      ? ' <span style="font-weight:600;color:#B23A0F;font-size:0.85em;">✨ ' + esc(b.edition) + '</span>'
+      : '';
+  }
+
   function statusBadge(status) {
     var map = {
       confirmed: [t('account.status.confirmed'), 'confirmed'],
@@ -68,7 +75,7 @@
       : '';
     return '<div class="history-item">' +
       '<div>' +
-        '<div class="history-item__name">' + esc(b.session_name) + '</div>' +
+        '<div class="history-item__name">' + esc(b.session_name) + editionTag(b) + '</div>' +
         '<div class="history-item__meta">' +
           fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
           ' · ' + personStr(b.group_size) +
@@ -239,7 +246,7 @@
               : '';
             return '<div class="history-item" style="border-left:3px solid #F59E0B;padding-left:12px">' +
               '<div>' +
-                '<div class="history-item__name">' + esc(b.session_name) + '</div>' +
+                '<div class="history-item__name">' + esc(b.session_name) + editionTag(b) + '</div>' +
                 '<div class="history-item__meta">' +
                   fmtDate(b.date) + ' · ' + b.start_time + '–' + b.end_time +
                   ' · ' + personStr(b.group_size) +

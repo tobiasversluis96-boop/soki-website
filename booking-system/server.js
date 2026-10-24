@@ -227,7 +227,7 @@ app.get('/api/upcoming-slots', async (req, res) => {
 
   const { rows: slots } = await getPool().query(`
     SELECT ts.id, ts.session_type_id, ts.date, ts.start_time, ts.end_time,
-           ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist,
+           ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist, ts.edition,
            st.name         AS session_name,
            COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
            st.color        AS color,
@@ -278,6 +278,7 @@ app.get('/api/slots/:id', async (req, res) => {
     color:           slot.color,
     price_cents:     slot.price_cents,
     artist:          slot.artist || null,
+    edition:         slot.edition || null,
     is_private:      slot.is_private,
     is_cancelled:    slot.is_cancelled,
     capacity,

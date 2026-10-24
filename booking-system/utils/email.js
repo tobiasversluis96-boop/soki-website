@@ -48,6 +48,12 @@ function pickTemplate(standardId, ambientId, booking) {
   return (ambientId && isAmbientBooking(booking)) ? ambientId : standardId;
 }
 
+// Sessienaam zoals de klant hem in de mail ziet: bij een speciale editie
+// (bijv. "Singles edition") komt het label achter de naam.
+function sessionLabel(booking) {
+  return booking.edition ? `${booking.session_name} - ${booking.edition}` : booking.session_name;
+}
+
 async function sendBookingConfirmation(booking) {
   await send(
     pickTemplate(process.env.BREVO_TEMPLATE_CONFIRMATION, process.env.BREVO_TEMPLATE_CONFIRMATION_AMBIENT, booking),
@@ -56,7 +62,7 @@ async function sendBookingConfirmation(booking) {
     {
       CUSTOMER_NAME:  booking.customer_name,
       BOOKING_ID:     booking.id,
-      SESSION_NAME:   booking.session_name,
+      SESSION_NAME:   sessionLabel(booking),
       DATE:           formatDate(booking.date),
       START_TIME:     booking.start_time,
       END_TIME:       booking.end_time,
@@ -81,7 +87,7 @@ async function sendReminderEmail(booking) {
     booking.customer_name,
     {
       CUSTOMER_NAME: booking.customer_name,
-      SESSION_NAME:  booking.session_name,
+      SESSION_NAME:  sessionLabel(booking),
       DATE:          formatDate(booking.date),
       START_TIME:    booking.start_time,
       END_TIME:      booking.end_time,

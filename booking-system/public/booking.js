@@ -126,7 +126,9 @@
   function summaryHTML(includeTotal) {
     if (!state.slot || !state.sessionType) return '';
     var rows = [
-      [t('booking.summary.session'), state.sessionType.name + (state.slot.artist ? ' - ' + t('booking.slot.with') + ': ' + state.slot.artist : '')],
+      [t('booking.summary.session'), state.sessionType.name
+        + (state.slot.edition ? ' - ' + state.slot.edition : '')
+        + (state.slot.artist ? ' - ' + t('booking.slot.with') + ': ' + state.slot.artist : '')],
       [t('booking.summary.date'),    fmtDate(state.slot.date)],
       [t('booking.summary.time'),    state.slot.start_time + ' – ' + state.slot.end_time],
       [t('booking.summary.group'),   personStr(state.groupSize)],
@@ -384,6 +386,13 @@
       return '<div class="slot-item__type"><span class="slot-item__type-dot" style="background:' + esc(s.type_color || '#D94D1A') + '"></span>' + esc(s.session_name || '') + '</div>';
     }
 
+    // Speciale editie (bijv. "Singles edition"): label zoals de admin het invult
+    function editionLine(s) {
+      return s.edition
+        ? '<div class="slot-item__info" style="color:#B23A0F;font-weight:700;">✨ ' + esc(s.edition) + '</div>'
+        : '';
+    }
+
     function ambientLine(s) {
       return /ambient/i.test(s.session_name || '')
         ? '<div class="slot-item__info" data-i18n="booking.ambient.event">' + t('booking.ambient.event') + '</div>'
@@ -416,6 +425,7 @@
         '<div>' +
           typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+          editionLine(s) +
           artistLine +
           ambientLine(s) +
           buddyLine(s) +
@@ -432,6 +442,7 @@
         '<div>' +
           typeLine(s) +
           '<div class="slot-item__time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+          editionLine(s) +
           artistLine +
           ambientLine(s) +
           buddyLine(s) +

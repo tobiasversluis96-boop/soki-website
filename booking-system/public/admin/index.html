@@ -933,6 +933,12 @@
                 <input class="form-input" type="text" id="gen-artist" maxlength="100" placeholder="bijv. August">
               </div>
 
+              <div class="form-group">
+                <label class="form-label">Speciale editie (optioneel - zichtbaar als label op de site en in de mail)</label>
+                <input class="form-input" type="text" id="gen-edition" maxlength="60" list="edition-presets" placeholder="bijv. Singles edition">
+                <div style="font-size:12px;color:var(--muted);margin-top:4px;">Wordt letterlijk getoond, in beide talen. Kies dus een tekst die in NL én EN werkt.</div>
+              </div>
+
               <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" id="gen-free" style="width:auto;" />
                 <label for="gen-free" style="margin:0;cursor:pointer;font-size:13px;">Gratis sessies (bv. try-out weekend - klanten hoeven niet te betalen)</label>
@@ -1271,6 +1277,16 @@
         <input class="form-input" type="text" id="slot-artist" maxlength="100" placeholder="bijv. August">
       </div>
       <div class="form-group">
+        <label class="form-label">Speciale editie (optioneel - zichtbaar als label op de site en in de mail)</label>
+        <input class="form-input" type="text" id="slot-edition" maxlength="60" list="edition-presets" placeholder="bijv. Singles edition">
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Wordt letterlijk getoond, in beide talen. Leeg laten = gewone sessie.</div>
+      </div>
+      <datalist id="edition-presets">
+        <option value="Singles edition"></option>
+        <option value="Women only"></option>
+        <option value="Silent edition"></option>
+      </datalist>
+      <div class="form-group">
         <label class="form-label">Notities (optioneel, alleen intern)</label>
         <input class="form-input" type="text" id="slot-notes" placeholder="bijv. speciale aankondiging">
       </div>
@@ -1383,7 +1399,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20261022-1"></script>
+<script src="/admin/admin.js?v=20261024-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

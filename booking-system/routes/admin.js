@@ -259,6 +259,16 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
 
 // ─── Slots ───────────────────────────────────────────────────────────────────
 
+// Speciale editie (bijv. "Singles edition"): vrij label, getrimd; null als leeg.
+// Geeft { error } terug als het label te lang is.
+const EDITION_MAX = 60;
+function parseEdition(raw) {
+  const value = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (!value) return { edition: null };
+  if (value.length > EDITION_MAX) return { error: `Editie-label is te lang (max ${EDITION_MAX} tekens).` };
+  return { edition: value };
+}
+
 router.get('/slots', requireStaff('slots'), async (req, res) => {
   const slots = await queries.getAllSlots(req.query);
   res.json(slots);
@@ -272,6 +282,8 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
   const artist = slots[0] && slots[0].artist ? String(slots[0].artist).trim() : null;
   if (artist && artist.length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
+  const bulkEdition = parseEdition(slots[0] && slots[0].edition);
+  if (bulkEdition.error) return res.status(400).json({ error: bulkEdition.error });
 
   const results = { created: 0, skipped: 0, errors: [], conflicts: [] };
   for (const s of slots) {
@@ -282,7 +294,7 @@ router.post('/slots/bulk', requireAdmin, async (req, res) => {
         results.conflicts.push(`${s.date}: overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}`);
         continue;
       }
-      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null, false, s.artist ? String(s.artist).trim() : null);
+      await queries.createSlot(s.session_type_id, s.date, s.start_time, s.end_time, s.max_capacity || null, s.notes || null, s.price_cents ?? null, false, s.artist ? String(s.artist).trim() : null, parseEdition(s.edition).edition || null);
       results.created++;
     } catch (err) {
       results.skipped++;
@@ -300,6 +312,8 @@ router.post('/slots', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
+  const { edition, error: editionError } = parseEdition(req.body.edition);
+  if (editionError) return res.status(400).json({ error: editionError });
 
   // Zelfde overlapcheck als /slots/bulk: er is maar één sauna. Met
   // allow_overlap kan de admin bewust doorzetten (bijv. een publiek slot
@@ -310,7 +324,7 @@ router.post('/slots', requireAdmin, async (req, res) => {
       return res.status(409).json({ code: 'OVERLAP', error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
   }
 
-  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private, artist ? String(artist).trim() : null);
+  const slot = await queries.createSlot(session_type_id, date, start_time, end_time, max_capacity, notes, price_cents ?? null, !!is_private, artist ? String(artist).trim() : null, edition);
   res.status(201).json({ id: slot.id });
 });
 
@@ -327,6 +341,8 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Privéverhuur vereist aantal personen en een totaalprijs boven €0.' });
   if (artist && String(artist).length > 100)
     return res.status(400).json({ error: 'Artiestnaam is te lang (max 100 tekens).' });
+  const { edition, error: editionError } = parseEdition(req.body.edition);
+  if (editionError) return res.status(400).json({ error: editionError });
 
   // Zelfde overlapcheck als /slots/bulk (het slot zelf telt niet mee);
   // allow_overlap laat de admin bewust doorzetten
@@ -336,7 +352,7 @@ router.put('/slots/:id', requireAdmin, async (req, res) => {
       return res.status(409).json({ code: 'OVERLAP', error: `Overlapt met ${overlap.session_name} ${String(overlap.start_time).slice(0, 5)}-${String(overlap.end_time).slice(0, 5)}.` });
   }
 
-  await queries.updateSlot(req.params.id, { session_type_id: session_type_id ? parseInt(session_type_id) : null, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null });
+  await queries.updateSlot(req.params.id, { session_type_id: session_type_id ? parseInt(session_type_id) : null, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist: artist ? String(artist).trim() : null, edition });
   res.json({ ok: true });
 });
 

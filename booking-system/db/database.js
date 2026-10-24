@@ -375,6 +375,8 @@ async function initializeDB() {
   await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
+  // Speciale editie (bijv. "Singles edition"): vrij label, zichtbaar op de site
+  await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS edition TEXT');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_addon_cents INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
@@ -751,7 +753,7 @@ const queries = {
     const to   = `${year}-${String(month).padStart(2, '0')}-31`;
     const { rows } = await pool.query(`
       SELECT ts.id, ts.session_type_id, ts.date, ts.start_time, ts.end_time,
-             ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist,
+             ts.max_capacity, ts.is_cancelled, ts.is_private, ts.artist, ts.edition,
              st.name         AS session_name,
              st.color        AS type_color,
              COALESCE(ts.price_cents, st.price_cents)  AS price_cents,
@@ -958,6 +960,7 @@ const queries = {
         ts.id         AS slot_id,
         ts.start_time,
         ts.end_time,
+        ts.edition,
         st.name       AS session_name,
         st.color,
         al.variant    AS aufguss_variant,
@@ -1067,7 +1070,7 @@ const queries = {
       SELECT b.id, b.group_size, b.status, b.total_cents, b.credits_used, b.created_at,
              b.punch_pass_id, b.paid_cents,
              pp.price_cents AS punch_pass_price_cents,
-             ts.date, ts.start_time, ts.end_time,
+             ts.date, ts.start_time, ts.end_time, ts.edition,
              st.name AS session_name
       FROM bookings b
       JOIN time_slots ts ON ts.id = b.time_slot_id
@@ -1149,7 +1152,7 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT b.*,
              u.name AS customer_name, u.email AS customer_email,
-             ts.date, ts.start_time, ts.end_time, ts.artist,
+             ts.date, ts.start_time, ts.end_time, ts.artist, ts.edition,
              st.name AS session_name, st.duration_min
       FROM bookings b
       JOIN users u ON u.id = b.user_id
@@ -1590,12 +1593,12 @@ const queries = {
     return rows[0] || null;
   },
 
-  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate, artist) => {
+  createSlot: async (sessionTypeId, date, startTime, endTime, maxCapacity, notes, priceCents, isPrivate, artist, edition = null) => {
     const price = (priceCents === null || priceCents === undefined) ? null : parseInt(priceCents);
     const { rows } = await pool.query(`
-      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
-    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price, !!isPrivate, artist || null]);
+      INSERT INTO time_slots (session_type_id, date, start_time, end_time, max_capacity, notes, price_cents, is_private, artist, edition)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
+    `, [sessionTypeId, date, startTime, endTime, maxCapacity || null, notes || null, price, !!isPrivate, artist || null, edition || null]);
     return rows[0]; // { id }
   },
 
@@ -1603,9 +1606,9 @@ const queries = {
     const price = (data.price_cents === null || data.price_cents === undefined) ? null : parseInt(data.price_cents);
     await pool.query(`
       UPDATE time_slots SET date = $1, start_time = $2, end_time = $3, max_capacity = $4, notes = $5, price_cents = $6, is_private = $7, artist = $8,
-        session_type_id = COALESCE($10, session_type_id)
+        session_type_id = COALESCE($10, session_type_id), edition = $11
       WHERE id = $9
-    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, data.artist || null, id, data.session_type_id || null]);
+    `, [data.date, data.start_time, data.end_time, data.max_capacity || null, data.notes || null, price, !!data.is_private, data.artist || null, id, data.session_type_id || null, data.edition || null]);
   },
 
   cancelSlot: async (id) => {
@@ -1741,7 +1744,7 @@ const queries = {
     const { rows } = await pool.query(`
       SELECT b.id, b.group_size, b.total_cents,
              u.name AS customer_name, u.email AS customer_email,
-             ts.date, ts.start_time, ts.end_time, ts.artist,
+             ts.date, ts.start_time, ts.end_time, ts.artist, ts.edition,
              st.name AS session_name
       FROM bookings b
       JOIN users u ON u.id = b.user_id
@@ -2318,6 +2321,7 @@ const queries = {
         ts.date,
         ts.start_time,
         ts.end_time,
+        ts.edition,
         COALESCE(ts.price_cents, st.price_cents) AS price_cents,
         st.duration_min,
         st.id            AS session_type_id,

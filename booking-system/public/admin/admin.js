@@ -673,10 +673,13 @@
       const fBadge = !s.is_private && s.price_cents === 0
         ? '<span title="Gratis sessie" style="display:inline-flex;align-items:center;background:#E8F5E9;color:#2E7D32;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">Gratis</span>'
         : '';
+      const eBadge = s.edition
+        ? `<span title="Speciale editie" style="display:inline-flex;align-items:center;background:#FDE7DC;color:#B23A0F;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">✨ ${escapeHtml(s.edition)}</span>`
+        : '';
       return `
       <tr>
         <td>${s.id}</td>
-        <td>${escapeHtml(s.session_name)}${pBadge}${fBadge}</td>
+        <td>${escapeHtml(s.session_name)}${eBadge}${pBadge}${fBadge}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
@@ -753,6 +756,7 @@
     document.getElementById('slot-capacity').value = slot && slot.max_capacity ? slot.max_capacity : '';
     document.getElementById('slot-notes').value    = slot ? (slot.notes || '') : '';
     document.getElementById('slot-artist').value   = slot ? (slot.artist || '') : '';
+    document.getElementById('slot-edition').value  = slot ? (slot.edition || '') : '';
     const isPrivate = !!(slot && slot.is_private);
     document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0 && !isPrivate);
     const privBox = document.getElementById('slot-private');
@@ -789,6 +793,7 @@
         : (document.getElementById('slot-capacity').value || null),
       notes:      document.getElementById('slot-notes').value || null,
       artist:     document.getElementById('slot-artist').value.trim() || null,
+      edition:    document.getElementById('slot-edition').value.trim() || null,
       is_private: isPrivate,
       price_cents: isPrivate
         ? (isNaN(privatePrice) ? null : Math.round(privatePrice * 100))
@@ -970,6 +975,7 @@
         slotMap.set(r.slot_id, {
           slot_id:      r.slot_id,
           session_name: r.session_name,
+          edition:      r.edition || null,
           color:        r.color,
           start_time:   r.start_time,
           end_time:     r.end_time,
@@ -1049,7 +1055,7 @@
             <div class="slot-card__title">
               <div class="slot-color-dot" style="background:${sl.color}"></div>
               <div>
-                <div class="slot-card__name">${escapeHtml(sl.session_name)}</div>
+                <div class="slot-card__name">${escapeHtml(sl.session_name)}${sl.edition ? ` <span style="font-weight:600;color:#B23A0F;font-size:12px;">✨ ${escapeHtml(sl.edition)}</span>` : ''}</div>
                 <div class="slot-card__time">${sl.start_time} – ${sl.end_time}</div>
               </div>
             </div>
@@ -1404,6 +1410,7 @@
     const days      = [...document.querySelectorAll('#gen-days input:checked')].map(i => parseInt(i.value));
     const isFree    = document.getElementById('gen-free').checked;
     const artist    = document.getElementById('gen-artist').value.trim() || null;
+    const edition   = document.getElementById('gen-edition').value.trim() || null;
 
     if (!typeId || !startTime || !endTime || !fromDate || !toDate || !days.length) return null;
     if (fromDate > toDate) return null;
@@ -1422,6 +1429,7 @@
           max_capacity: capacity,
           price_cents: isFree ? 0 : null,
           artist: artist,
+          edition: edition,
         });
       }
       cur.setDate(cur.getDate() + 1);
@@ -1511,7 +1519,7 @@
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.date}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${DAY_NL[d.getDay()]}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}${overlapNote}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.artist ? ` <span style="color:var(--muted);font-size:11px;">· met ${escapeHtml(s.artist)}</span>` : ''}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.edition ? ` <span style="color:#B23A0F;font-size:11px;font-weight:600;">✨ ${escapeHtml(s.edition)}</span>` : ''}${s.artist ? ` <span style="color:var(--muted);font-size:11px;">· met ${escapeHtml(s.artist)}</span>` : ''}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
       </tr>`;
     }).join('');
     const overlapBadge = overlapCount
@@ -2246,7 +2254,7 @@
       const price = formatEur(s.price_cents);
       return `<label style="display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;">
         <input type="radio" name="walkin-slot" data-slot-id="${s.id}" data-price="${s.price_cents}" data-name="${escapeHtml(s.session_name)}" />
-        <div><strong>${escapeHtml(s.session_name)}</strong><div style="font-size:11px;color:var(--text-muted);">${dateFmt} · ${s.start_time}–${s.end_time}</div></div>
+        <div><strong>${escapeHtml(s.session_name)}</strong>${s.edition ? ` <span style="font-size:11px;font-weight:600;color:#B23A0F;">✨ ${escapeHtml(s.edition)}</span>` : ''}<div style="font-size:11px;color:var(--text-muted);">${dateFmt} · ${s.start_time}–${s.end_time}</div></div>
         <span style="font-size:12px;color:var(--text-muted);">${s.spots_left} vrij</span>
         <span style="font-weight:600;">${price}</span>
       </label>`;
