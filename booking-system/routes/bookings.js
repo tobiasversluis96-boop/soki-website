@@ -11,6 +11,7 @@ const { sendBookingConfirmation, sendSelfCancelledEmail } = require('../utils/em
 const { promoteWaitlist } = require('../utils/waitlist-promote');
 const { refundBookingCharge, cancelOpenIntent } = require('../utils/refunds');
 const nlTime = require('../utils/nl-time');
+const { isSpecial } = require('../utils/special');
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ function publicSlot(slot) {
     price_cents:     slot.price_cents,
     artist:          slot.artist,
     edition:         slot.edition || null,
+    is_special:      isSpecial(slot),
     is_private:      slot.is_private,
     capacity,
     spots_left:      capacity - slot.booked,
@@ -522,6 +524,8 @@ router.post('/:id/confirm-member', requireAuth, async (req, res) => {
   if (!slot) return res.status(404).json({ error: 'Slot not found' });
   if (slot.is_private)
     return res.status(400).json({ error: 'Privéverhuur kan niet met membershipcredits worden geboekt.' });
+  if (isSpecial(slot))
+    return res.status(400).json({ error: 'Specials vallen buiten het membership en de strippenkaart. / Specials are not covered by memberships or punch passes.', code: 'SPECIAL_NO_CREDITS' });
   if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
     return res.status(400).json({ error: 'Je hebt deze sessie al met je membership of strippenkaart geboekt. Credits gelden alleen voor je eigen plek - extra personen boeken via de gewone betaling.' });
   // Unlimited membership = 0 credits

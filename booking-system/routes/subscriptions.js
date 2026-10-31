@@ -181,6 +181,11 @@ async function cancelMembershipBookingsAfter(subscriptionId, endsAt, reason) {
 router.post('/credit-cost', requireAuth, async (req, res) => {
   const { session_type_id } = req.body;
   const groupSize = Math.min(Math.max(parseInt(req.body.group_size) || 1, 1), 20);
+  // Specials (losse sessies met eigen prijs) vallen buiten membership en strippenkaart
+  const types = await queries.getSessionTypes();
+  const type  = types.find(t => t.id === parseInt(session_type_id));
+  if (type && require('../utils/special').isSpecial(type))
+    return res.json({ has_subscription: false, credits_cost: 0, credits_remaining: 0, is_unlimited: false, can_book: false, credit_partial: false, special: true });
   // Alleen een 'active' membership geeft boekrecht (past_due = incasso mislukt)
   const sub  = await queries.getEntitledSubscription(req.user.userId);
   const passes = await queries.getActivePunchPasses(req.user.userId);

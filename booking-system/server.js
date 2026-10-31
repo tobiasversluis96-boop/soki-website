@@ -35,6 +35,7 @@ const rateLimit = require('express-rate-limit');
 const { sendReminderEmail } = require('./utils/email');
 
 const { initializeDB, getPool, queries } = require('./db/database');
+const special = require('./utils/special');
 const authRoutes          = require('./routes/auth');
 const bookingRoutes       = require('./routes/bookings');
 const paymentRoutes       = require('./routes/payments');
@@ -203,6 +204,7 @@ app.get('/api/slots', async (req, res) => {
     const { community_booked, ...pub } = s;
     return {
       ...pub,
+      is_special: special.isSpecial(s),
       capacity:   s.max_capacity || s.type_capacity,
       spots_left: spotsLeft,
       is_full:    spotsLeft <= 0,
@@ -249,8 +251,11 @@ app.get('/api/upcoming-slots', async (req, res) => {
 
   res.json(slots.map(s => ({
     ...s,
-    capacity:   s.max_capacity || s.type_capacity,
-    spots_left: (s.max_capacity || s.type_capacity) - s.booked,
+    // Specials hebben geen vaste duur: toon de werkelijke slotduur
+    duration_min: special.isSpecial(s) ? (special.slotMinutes(s.start_time, s.end_time) || s.duration_min) : s.duration_min,
+    is_special:   special.isSpecial(s),
+    capacity:     s.max_capacity || s.type_capacity,
+    spots_left:   (s.max_capacity || s.type_capacity) - s.booked,
   })));
 });
 
@@ -274,11 +279,12 @@ app.get('/api/slots/:id', async (req, res) => {
     date:            slot.date,
     start_time:      slot.start_time,
     end_time:        slot.end_time,
-    duration_min:    slot.duration_min,
+    duration_min:    special.isSpecial(slot) ? (special.slotMinutes(slot.start_time, slot.end_time) || slot.duration_min) : slot.duration_min,
     color:           slot.color,
     price_cents:     slot.price_cents,
     artist:          slot.artist || null,
     edition:         slot.edition || null,
+    is_special:      special.isSpecial(slot),
     is_private:      slot.is_private,
     is_cancelled:    slot.is_cancelled,
     capacity,

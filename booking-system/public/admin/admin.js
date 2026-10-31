@@ -676,10 +676,14 @@
       const eBadge = s.edition
         ? `<span title="Speciale editie" style="display:inline-flex;align-items:center;background:#FDE7DC;color:#B23A0F;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">✨ ${escapeHtml(s.edition)}</span>`
         : '';
+      // Eigen prijs (special of afwijkende prijs) zichtbaar in de lijst
+      const priceBadge = !s.is_private && s.slot_price_cents != null && s.slot_price_cents > 0
+        ? `<span title="Eigen prijs per persoon" style="display:inline-flex;align-items:center;background:#FFF8E1;color:#7A5A00;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:4px;">€${(s.slot_price_cents / 100).toFixed(2).replace('.', ',')}</span>`
+        : '';
       return `
       <tr>
         <td>${s.id}</td>
-        <td>${escapeHtml(s.session_name)}${eBadge}${pBadge}${fBadge}</td>
+        <td>${escapeHtml(s.session_name)}${eBadge}${priceBadge}${pBadge}${fBadge}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start_time}</td>
         <td>${s.end_time}</td>
@@ -716,11 +720,35 @@
   // Duurcontrole: waarschuw als start/eind niet overeenkomt met de
   // standaardduur van het sessietype; wegklikbaar voor uitzonderingen.
   let durationOverride = false;
+
+  // "Special": los sessietype voor eenmalige sessies (naam/prijs/capaciteit per
+  // slot, geen vaste duur, niet met credits te boeken)
+  function isSpecialType(type) {
+    return !!type && /^special$/i.test(String(type.name || '').trim());
+  }
+  function updateSlotSpecialUI() {
+    const type = sessionTypes.find(t => t.id === +document.getElementById('slot-session-type').value);
+    const special = isSpecialType(type);
+    document.getElementById('slot-special-box').style.display = special ? 'block' : 'none';
+    document.getElementById('slot-edition-label').textContent = special
+      ? 'Naam van de special (verplicht - zo staat hij op de site en in de mail)'
+      : 'Speciale editie (optioneel - zichtbaar als label op de site en in de mail)';
+    document.getElementById('slot-edition').placeholder = special ? 'bijv. Aufguss mini masterclass' : 'bijv. Singles edition';
+    document.getElementById('slot-edition-hint').textContent = special
+      ? 'Op de site verschijnt "Special" met daaronder deze naam, in beide talen.'
+      : 'Wordt letterlijk getoond, in beide talen. Leeg laten = gewone sessie.';
+    document.getElementById('slot-price-label').textContent = special
+      ? 'Prijs per persoon (€) - verplicht'
+      : 'Prijs per persoon (€) - leeg = standaard van het type';
+    document.getElementById('slot-price').placeholder = special ? 'bijv. 35' : 'Standaard';
+  }
+  document.getElementById('slot-session-type').addEventListener('change', updateSlotSpecialUI);
+
   function slotDurationMismatch() {
     const type  = sessionTypes.find(t => t.id === +document.getElementById('slot-session-type').value);
     const start = document.getElementById('slot-start').value;
     const end   = document.getElementById('slot-end').value;
-    if (!type || !type.duration_min || !start || !end) return null;
+    if (!type || !type.duration_min || !start || !end || isSpecialType(type)) return null;
     const mins = (parseInt(end.slice(0, 2), 10) * 60 + parseInt(end.slice(3, 5), 10))
                - (parseInt(start.slice(0, 2), 10) * 60 + parseInt(start.slice(3, 5), 10));
     if (mins <= 0 || mins === type.duration_min) return null;
@@ -758,6 +786,9 @@
     document.getElementById('slot-artist').value   = slot ? (slot.artist || '') : '';
     document.getElementById('slot-edition').value  = slot ? (slot.edition || '') : '';
     const isPrivate = !!(slot && slot.is_private);
+    // slot_price_cents = de eigen prijs van het slot (null = standaard van het type)
+    document.getElementById('slot-price').value =
+      slot && !isPrivate && slot.slot_price_cents != null && slot.slot_price_cents > 0 ? (slot.slot_price_cents / 100) : '';
     document.getElementById('slot-free').checked   = !!(slot && slot.price_cents === 0 && !isPrivate);
     const privBox = document.getElementById('slot-private');
     privBox.checked = isPrivate;
@@ -769,6 +800,7 @@
     if (slot) document.getElementById('slot-session-type').value = slot.session_type_id;
     document.getElementById('slot-error').textContent = '';
     durationOverride = false;
+    updateSlotSpecialUI();
     updateDurationWarning();
     document.getElementById('slot-modal').classList.add('open');
   }
@@ -783,6 +815,9 @@
     const isPrivate = document.getElementById('slot-private').checked;
     const privatePersons = parseInt(document.getElementById('slot-private-persons').value, 10);
     const privatePrice   = parseFloat(document.getElementById('slot-private-price').value);
+    const priceRaw       = document.getElementById('slot-price').value.trim();
+    const customPrice    = priceRaw === '' ? null : Math.round(parseFloat(priceRaw) * 100);
+    const slotType       = sessionTypes.find(t => t.id === +document.getElementById('slot-session-type').value);
     const body = {
       session_type_id: +document.getElementById('slot-session-type').value,
       date:       document.getElementById('slot-date').value,
@@ -797,13 +832,23 @@
       is_private: isPrivate,
       price_cents: isPrivate
         ? (isNaN(privatePrice) ? null : Math.round(privatePrice * 100))
-        : (document.getElementById('slot-free').checked ? 0 : null),
+        : (document.getElementById('slot-free').checked ? 0 : (customPrice !== null && !isNaN(customPrice) ? customPrice : null)),
     };
 
     if (isPrivate && (!body.price_cents || body.price_cents <= 0 || !body.max_capacity)) {
       document.getElementById('slot-error').textContent =
         'Privéverhuur: vul zowel het aantal personen als de totaalprijs (meer dan €0) in.';
       return;
+    }
+    if (!isPrivate && isSpecialType(slotType)) {
+      if (!body.edition) {
+        document.getElementById('slot-error').textContent = 'Geef de special een naam (bijv. "Aufguss mini masterclass").';
+        return;
+      }
+      if (body.price_cents === null) {
+        document.getElementById('slot-error').textContent = 'Vul een prijs per persoon in voor de special (of vink "Gratis sessie" aan).';
+        return;
+      }
     }
 
     if (slotDurationMismatch() && !durationOverride) {
@@ -1398,6 +1443,7 @@
     document.getElementById('gen-from').value = nlDateStr(1);
     document.getElementById('gen-to').value   = nlDateStr(56);
     document.getElementById('gen-preview').style.display = 'none';
+    updateGenSpecialUI();
   }
 
   function buildSlotList() {
@@ -1411,6 +1457,8 @@
     const isFree    = document.getElementById('gen-free').checked;
     const artist    = document.getElementById('gen-artist').value.trim() || null;
     const edition   = document.getElementById('gen-edition').value.trim() || null;
+    const priceRaw  = document.getElementById('gen-price').value.trim();
+    const customPrice = priceRaw === '' || isNaN(parseFloat(priceRaw)) ? null : Math.round(parseFloat(priceRaw) * 100);
 
     if (!typeId || !startTime || !endTime || !fromDate || !toDate || !days.length) return null;
     if (fromDate > toDate) return null;
@@ -1427,7 +1475,7 @@
           start_time: startTime,
           end_time:   endTime,
           max_capacity: capacity,
-          price_cents: isFree ? 0 : null,
+          price_cents: isFree ? 0 : customPrice,
           artist: artist,
           edition: edition,
         });
@@ -1441,11 +1489,25 @@
 
   // Zelfde duurcontrole als het losse slot-formulier, maar dan voor de generator
   let genDurationOverride = false;
+  function updateGenSpecialUI() {
+    const type = sessionTypes.find(t => t.id === +document.getElementById('gen-session-type').value);
+    const special = isSpecialType(type);
+    document.getElementById('gen-special-box').style.display = special ? 'block' : 'none';
+    document.getElementById('gen-edition-label').textContent = special
+      ? 'Naam van de special (verplicht)'
+      : 'Speciale editie (optioneel - label op de site en in de mail)';
+    document.getElementById('gen-edition').placeholder = special ? 'bijv. Aufguss mini masterclass' : 'bijv. Singles edition';
+    document.getElementById('gen-price-label').textContent = special
+      ? 'Prijs per persoon (€) - verplicht'
+      : 'Prijs per persoon (€) - leeg = standaard van het type';
+  }
+  document.getElementById('gen-session-type').addEventListener('change', updateGenSpecialUI);
+
   function genDurationMismatch() {
     const type  = sessionTypes.find(t => t.id === +document.getElementById('gen-session-type').value);
     const start = document.getElementById('gen-start').value;
     const end   = document.getElementById('gen-end').value;
-    if (!type || !type.duration_min || !start || !end) return null;
+    if (!type || !type.duration_min || !start || !end || isSpecialType(type)) return null;
     const mins = (parseInt(end.slice(0, 2), 10) * 60 + parseInt(end.slice(3, 5), 10))
                - (parseInt(start.slice(0, 2), 10) * 60 + parseInt(start.slice(3, 5), 10));
     if (mins <= 0 || mins === type.duration_min) return null;
@@ -1495,6 +1557,19 @@
 
     updateGenDurationWarning();
 
+    // Special: naam en prijs zijn verplicht
+    const genType = sessionTypes.find(t => t.id === +document.getElementById('gen-session-type').value);
+    if (isSpecialType(genType)) {
+      if (!document.getElementById('gen-edition').value.trim()) {
+        alert('Geef de special een naam (bijv. "Aufguss mini masterclass").');
+        return;
+      }
+      if (slots[0].price_cents === null) {
+        alert('Vul een prijs per persoon in voor de special (of vink "Gratis sessies" aan).');
+        return;
+      }
+    }
+
     // Bestaande slots in de periode ophalen om overlap te markeren
     let existing = [];
     try {
@@ -1519,7 +1594,7 @@
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.date}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${DAY_NL[d.getDay()]}</td>
         <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${s.start_time} – ${s.end_time}${overlapNote}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.edition ? ` <span style="color:#B23A0F;font-size:11px;font-weight:600;">✨ ${escapeHtml(s.edition)}</span>` : ''}${s.artist ? ` <span style="color:var(--muted);font-size:11px;">· met ${escapeHtml(s.artist)}</span>` : ''}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid var(--border)">${typeName}${s.edition ? ` <span style="color:#B23A0F;font-size:11px;font-weight:600;">✨ ${escapeHtml(s.edition)}</span>` : ''}${s.artist ? ` <span style="color:var(--muted);font-size:11px;">· met ${escapeHtml(s.artist)}</span>` : ''}${s.price_cents > 0 ? ` <span style="color:#7A5A00;font-size:11px;font-weight:600;">· €${(s.price_cents / 100).toFixed(2).replace('.', ',')} p.p.</span>` : ''}${s.price_cents === 0 ? ' <span style="color:#2E7D32;font-size:11px;font-weight:600;">· gratis</span>' : ''}</td>
       </tr>`;
     }).join('');
     const overlapBadge = overlapCount

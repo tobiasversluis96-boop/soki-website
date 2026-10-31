@@ -891,8 +891,10 @@
 
     // Check subscription first (niet bij privéverhuur: daar geldt de afgesproken
     // totaalprijs; niet bij Community Rate: dat is al het laagste tarief en
-    // niet combineerbaar met credits)
-    if (state.token && !communityActive() && !(state.slot && state.slot.is_private)) {
+    // niet combineerbaar met credits; niet bij specials: die vallen buiten
+    // membership en strippenkaart)
+    var isSpecialSlot = !!(state.slot && state.slot.is_special) || /^special$/i.test(state.sessionType && state.sessionType.name || '');
+    if (state.token && !communityActive() && !(state.slot && state.slot.is_private) && !isSpecialSlot) {
       fetch('/api/subscriptions/credit-cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },

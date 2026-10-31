@@ -377,6 +377,13 @@ async function initializeDB() {
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS artist TEXT');
   // Speciale editie (bijv. "Singles edition"): vrij label, zichtbaar op de site
   await pool.query('ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS edition TEXT');
+  // Vast sessietype "Special" voor losse eenmalige sessies (bijv. Aufguss mini
+  // masterclass): naam, prijs en capaciteit worden per slot ingesteld.
+  await pool.query(`
+    INSERT INTO session_types (name, description, duration_min, price_cents, max_capacity, color)
+    SELECT 'Special', 'One-off special session. Name, price and capacity are set per slot.', 90, 3500, 15, '#B8860B'
+    WHERE NOT EXISTS (SELECT 1 FROM session_types WHERE LOWER(name) = 'special')
+  `);
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_addon_cents INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kantine_redeemed_at TIMESTAMPTZ');
@@ -1560,6 +1567,7 @@ const queries = {
   getAllSlots: async (filters = {}) => {
     let sql = `
       SELECT ts.*,
+             ts.price_cents AS slot_price_cents,
              st.name AS session_name, COALESCE(ts.price_cents, st.price_cents) AS price_cents, st.max_capacity AS type_capacity,
              COALESCE(SUM(CASE WHEN b.status != 'cancelled' AND (b.hold_until IS NULL OR b.hold_until > NOW()) THEN b.group_size ELSE 0 END), 0)::int AS booked,
              (SELECT COUNT(*)::int FROM waitlist w WHERE w.time_slot_id = ts.id) AS waitlist_count

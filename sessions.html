@@ -234,6 +234,7 @@
         <button class="filter-btn" data-filter="social">Extended</button>
         <button class="filter-btn" data-filter="ambient">Ambient</button>
         <button class="filter-btn" data-filter="aufguss">Aufguss / Opgieting</button>
+        <button class="filter-btn" data-filter="special">Specials</button>
       </div>
 
       <div id="programme-container">
@@ -313,7 +314,7 @@
                 var dateParts = s.date.split('-').map(Number);
                 var day = dateParts[2];
                 var mon = MONTH_ABBR[dateParts[1] - 1];
-                var typeSlug = TYPE_MAP[s.type_id] || 'other';
+                var typeSlug = s.is_special ? 'special' : (TYPE_MAP[s.type_id] || 'other');
                 var typeCls = tagClass(s.session_name);
                 var isFree = s.price_cents === 0;
                 var spotsLeft = s.spots_left;
@@ -322,7 +323,7 @@
                 var durationText = s.duration_min + ' ' + STR.min + (isAmbient ? (' ' + STR.sauna + ' \u00b7 ' + STR.musicDur) : '');
                 var priceHtml = isFree
                   ? '<span class="tag tag--free" style="background:#2E7D32;color:#fff;">' + STR.free + ' \u00b7 ' + durationText + '</span>'
-                  : '<span class="tag ' + typeCls + '">' + eur(s.price_cents) + ' \u00b7 ' + durationText + '</span>';
+                  : '<span class="tag ' + typeCls + '"' + (s.is_special ? ' style="background:rgba(184,134,11,0.16);color:#7A5A00;"' : '') + '>' + eur(s.price_cents) + ' \u00b7 ' + durationText + '</span>';
 
                 var spotsHtml;
                 if (spotsLeft <= 0)       spotsHtml = '<span class="spots-badge spots-badge--full">' + STR.full + '</span>';

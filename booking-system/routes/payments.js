@@ -32,6 +32,8 @@ router.post('/create-intent', requireAuth, async (req, res) => {
     const slot = await queries.getSlotById(booking.time_slot_id);
     if (!slot || slot.is_private)
       return res.status(400).json({ error: 'Deze sessie kan niet met credits worden geboekt.' });
+    if (require('../utils/special').isSpecial(slot))
+      return res.status(400).json({ error: 'Specials vallen buiten het membership en de strippenkaart. / Specials are not covered by memberships or punch passes.', code: 'SPECIAL_NO_CREDITS' });
     if (booking.is_community_rate)
       return res.status(400).json({ error: 'Een Community Rate-ticket kan niet met credits worden gecombineerd.' });
     if (await queries.hasCreditsBookingForSlot(req.user.userId, booking.time_slot_id))
