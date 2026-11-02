@@ -1902,6 +1902,13 @@
       const statusColor = isPaused ? '#B7791F' : s.status === 'active' ? '#2E7D32' : s.status === 'past_due' ? '#C62828' : 'var(--text-muted)';
       const periodEnd = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '–';
       const resumesAt = s.pause_resumes_at ? new Date(s.pause_resumes_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+      // Credits: Unlimited heeft geen teller (credits_remaining is dan null)
+      const subCredits = s.credits_remaining === null || s.credits_remaining === undefined
+        ? '<span style="color:var(--text-muted);">Unlimited</span>'
+        : `<strong>${String(parseFloat(s.credits_remaining)).replace('.', ',')}</strong>`;
+      const cancelledNote = s.cancel_at_period_end && s.status !== 'expired'
+        ? `<div style="font-size:11px;color:#C62828;font-weight:600;">Opgezegd per einde periode</div>`
+        : '';
 
       const action = isPaused
         ? `<button class="btn btn--primary" data-sub-resume="${s.id}" style="font-size:12px;padding:6px 12px;">Hervatten</button>`
@@ -1915,7 +1922,8 @@
           </td>
           <td>${escapeHtml(s.plan_name)}</td>
           <td>${formatEur(s.price_cents)}</td>
-          <td><span style="color:${statusColor};font-weight:600;font-size:13px;">${statusLabel}</span>${resumesAt ? `<div style="font-size:11px;color:var(--text-muted);">Hervat op ${resumesAt}</div>` : ''}</td>
+          <td><span style="color:${statusColor};font-weight:600;font-size:13px;">${statusLabel}</span>${resumesAt ? `<div style="font-size:11px;color:var(--text-muted);">Hervat op ${resumesAt}</div>` : ''}${cancelledNote}</td>
+          <td>${subCredits}</td>
           <td>${periodEnd}</td>
           <td style="text-align:right;">${action}</td>
         </tr>`;
@@ -1929,6 +1937,7 @@
             <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Plan</th>
             <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Bedrag</th>
             <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Status</th>
+            <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Credits</th>
             <th style="text-align:left;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Periode eindigt</th>
             <th style="text-align:right;padding:12px 16px;font-weight:600;color:var(--text-muted);border-bottom:1px solid rgba(0,0,0,.08);">Actie</th>
           </tr>
