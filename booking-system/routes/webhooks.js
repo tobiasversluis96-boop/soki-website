@@ -5,8 +5,22 @@
 const express = require('express');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
+const { subscriptionPeriodEnd, invoiceSubscriptionId } = require('../utils/stripe-compat');
 
 const router = express.Router();
+
+// Periode-einde van een abonnement; staat het niet in de payload, dan via de
+// API ophalen (stripe-node gebruikt een vaste API-versie met het veld bovenaan)
+async function resolvePeriodEnd(stripeSub) {
+  const fromPayload = subscriptionPeriodEnd(stripeSub);
+  if (fromPayload || !stripeSub || !stripeSub.id) return fromPayload;
+  try {
+    return subscriptionPeriodEnd(await stripe.subscriptions.retrieve(stripeSub.id));
+  } catch (e) {
+    console.error(`Periode-einde van ${stripeSub.id} niet op te halen:`, e.message);
+    return null;
+  }
+}
 
 // Stripe requires raw body for webhook signature verification
 router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -122,7 +136,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
         // Fetch the subscription to get period_end
         const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
-        const periodEnd = new Date(stripeSub.current_period_end * 1000);
+        const periodEnd = await resolvePeriodEnd(stripeSub);
 
         const plans = await queries.getSubscriptionPlans();
         const plan  = plans.find(p => p.id === planId);
@@ -181,7 +195,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
-        const stripeSubId = invoice.subscription;
+        const stripeSubId = invoiceSubscriptionId(invoice);
         if (invoice.billing_reason === 'subscription_create' && stripeSubId) {
           // Eerste (SEPA-)incasso alsnog geslaagd: membership vrijgeven
           const activated = await queries.markSubscriptionActive(stripeSubId);
@@ -194,7 +208,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         if (!sub) break;
 
         const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
-        const periodEnd = new Date(stripeSub.current_period_end * 1000);
+        const periodEnd = await resolvePeriodEnd(stripeSub);
 
         const plans = await queries.getSubscriptionPlans();
         const plan  = plans.find(p => p.id === sub.plan_id);
@@ -208,7 +222,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
 
       case 'customer.subscription.updated': {
         const stripeSub = event.data.object;
-        const periodEnd = new Date(stripeSub.current_period_end * 1000);
+        const periodEnd = await resolvePeriodEnd(stripeSub);
 
         // If Stripe reports pause_collection, mirror locally as 'paused'.
         // If it's cleared (e.g. auto-resumed at resumes_at), mark resumed.
@@ -342,7 +356,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       // Note: 'invoice.payment_failed' must be enabled in Stripe Dashboard webhook settings
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        const stripeSubId = invoice.subscription;
+        const stripeSubId = invoiceSubscriptionId(invoice);
         if (!stripeSubId) break;
         // Stripe vuurt dit event bij elke incassopoging - alleen bij de eerste mailen
         if (invoice.attempt_count > 1) break;

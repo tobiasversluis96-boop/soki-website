@@ -22,6 +22,14 @@ const pool = new Pool({
 
 function getPool() { return pool; }
 
+// Ongeldige datums (bijv. new Date(NaN) uit een Stripe-veld dat ontbreekt)
+// nooit naar Postgres sturen: dat geeft "0NaN-NaN-NaN" en laat de query falen
+function validDateOrNull(d) {
+  if (d === null || d === undefined) return null;
+  const date = d instanceof Date ? d : new Date(d);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const SCHEMA = `
@@ -1913,6 +1921,9 @@ const queries = {
   // (SEPA-incasso onderweg): dan nog geen credits/Unlimited-toegang.
   createSubscription: async (userId, planId, stripeSubId, stripeCustomerId, creditsPerMonth, periodEnd, status = 'active') => {
     const creditsRemaining = creditsPerMonth; // null for unlimited
+    // Zonder periode-einde van Stripe: één maand vanaf nu (de volgende
+    // customer.subscription.updated zet de echte datum)
+    periodEnd = validDateOrNull(periodEnd) || new Date(Date.now() + 30 * 86400000);
     const resetAt = periodEnd;
     try {
       const { rows } = await pool.query(`
@@ -1939,9 +1950,9 @@ const queries = {
       UPDATE subscriptions
       SET status = CASE WHEN $2 = 'active' AND awaiting_first_payment THEN status ELSE $2 END,
           awaiting_first_payment = CASE WHEN $2 = 'expired' THEN FALSE ELSE awaiting_first_payment END,
-          current_period_end = $3, cancel_at_period_end = $4
+          current_period_end = COALESCE($3, current_period_end), cancel_at_period_end = $4
       WHERE stripe_subscription_id = $1
-    `, [stripeSubId, status, periodEnd, cancelAtPeriodEnd]);
+    `, [stripeSubId, status, validDateOrNull(periodEnd), cancelAtPeriodEnd]);
   },
 
   // Eerste incasso (SEPA) alsnog binnen: membership vrijgeven
@@ -1973,9 +1984,11 @@ const queries = {
     await pool.query(`
       UPDATE subscriptions
       SET credits_remaining = $2 + (COALESCE(credits_remaining, 0) - floor(COALESCE(credits_remaining, 0))),
-          credits_reset_at = $3, current_period_end = $3, status = 'active', period_started_at = NOW()
+          credits_reset_at = COALESCE($3, credits_reset_at + INTERVAL '1 month'),
+          current_period_end = COALESCE($3, current_period_end + INTERVAL '1 month'),
+          status = 'active', period_started_at = NOW()
       WHERE stripe_subscription_id = $1
-    `, [stripeSubId, creditsPerMonth, periodEnd]);
+    `, [stripeSubId, creditsPerMonth, validDateOrNull(periodEnd)]);
   },
 
   deductCredits: async (userId, creditsToUse) => {
