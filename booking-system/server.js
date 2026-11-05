@@ -646,7 +646,7 @@ setInterval(async () => {
     const { rows: stale } = await getPool().query(`
       SELECT id, stripe_payment_intent_id FROM bookings
       WHERE status = 'pending'
-        AND created_at < NOW() - INTERVAL '5 minutes'
+        AND created_at < NOW() - INTERVAL '10 minutes'
         AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')
     `);
     let cleaned = 0;
