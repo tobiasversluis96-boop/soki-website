@@ -635,7 +635,7 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000); // every hour
 
-// ─── Pending booking cleanup (runs every 5 minutes) ──────────────────────────
+// ─── Pending booking cleanup (runs every minute) ─────────────────────────────
 // Een onbetaalde boeking houdt plekken bezet. Korter vasthouden beperkt hoe
 // lang iemand met wegwerpaccounts een sessie "vol" kan laten lijken (en zo de
 // Community Rate blokkeert of anderen de betaalde wachtlijst in duwt).
@@ -646,7 +646,7 @@ setInterval(async () => {
     const { rows: stale } = await getPool().query(`
       SELECT id, stripe_payment_intent_id FROM bookings
       WHERE status = 'pending'
-        AND created_at < NOW() - INTERVAL '45 minutes'
+        AND created_at < NOW() - INTERVAL '5 minutes'
         AND COALESCE(stripe_payment_status, '') NOT IN ('succeeded', 'processing')
     `);
     let cleaned = 0;
@@ -677,7 +677,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('Pending cleanup error:', err.message);
   }
-}, 5 * 60 * 1000); // every 5 minutes
+}, 60 * 1000); // every minute
 
 // ─── Wachtlijst-refund (runs every hour) ─────────────────────────────────────
 // Vooruitbetaalde wachtlijstplekken die nooit tot een boeking zijn gepromoveerd
