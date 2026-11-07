@@ -146,6 +146,72 @@
       gap: 1.25rem;
     }
 
+    /* Foto's */
+    .rental-intro {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+
+    .rental-intro img,
+    .rental-photos img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 16px;
+      display: block;
+      min-height: 0;
+    }
+
+    .rental-intro img {
+      aspect-ratio: 3 / 2;
+    }
+
+    .rental-photos {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      height: min(80vh, 720px);
+    }
+
+    .rental-photos img:first-child {
+      grid-row: span 2;
+      object-position: center 30%;
+    }
+
+    .rental-banner {
+      display: block;
+      width: 100%;
+      height: min(70vh, 640px);
+      object-fit: cover;
+      object-position: center 60%;
+    }
+
+    @media (max-width: 860px) {
+      .rental-intro {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+      }
+      .rental-photos {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+        height: auto;
+      }
+      .rental-photos img:first-child {
+        grid-row: auto;
+        grid-column: span 2;
+        aspect-ratio: 4 / 5;
+      }
+      .rental-photos img {
+        aspect-ratio: 3 / 2;
+      }
+      .rental-banner {
+        height: 50vh;
+      }
+    }
+
     @media (max-width: 860px) {
       .rental-cards,
       .rental-incl,
@@ -212,10 +278,13 @@
 
   <!-- ===== INTRO ===== -->
   <section class="section">
-    <div class="container" style="max-width:760px;">
+    <div class="container rental-intro">
+      <div>
       <span class="eyebrow" data-i18n="rental.intro.eyebrow">Private hire</span>
       <h2 style="margin-top:0.5rem; margin-bottom:1rem;" data-i18n="rental.intro.h2">The sauna all to yourselves</h2>
       <p data-i18n="rental.intro.p">Book SOKI privately and the whole place is yours: the sauna, the ice baths and our listening lounge. For a team outing, a birthday, a bachelor(ette) party or any other occasion that deserves some warmth. We’re happy to help shape the session, with or without an Aufguss, music or drinks afterwards.</p>
+      </div>
+      <img src="images/rental-lounge.jpg" alt="The SOKI listening lounge with cushions, sofas and soft light" loading="lazy" />
     </div>
   </section>
 
@@ -248,6 +317,18 @@
           <h3 data-i18n="rental.for.events.h">Workshops, shoots &amp; events</h3>
           <p data-i18n="rental.for.events.p">Breathwork, yoga, a podcast recording or a photo shoot: our space lends itself to more than sauna alone. Tell us your idea.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===== FOTO'S ===== -->
+  <section class="section" style="padding-bottom:0;">
+    <div class="container">
+      <div class="rental-photos">
+        <img src="images/rental-sauna-group.jpg" alt="A group of friends laughing together in the sauna" loading="lazy" />
+        <img src="images/rental-ice-bath.jpg" alt="Two guests chatting at the ice bath" loading="lazy" />
+        <img src="images/rental-garden.jpg" alt="Guests cooling down outside the sauna at dusk" loading="lazy" />
       </div>
     </div>
   </section>
@@ -299,6 +380,10 @@
       </div>
     </div>
   </section>
+
+
+  <!-- ===== SFEERFOTO ===== -->
+  <img class="rental-banner" src="images/rental-chalet.jpg" alt="Two guests relaxing in the SOKI lounge on a sunny afternoon" loading="lazy" />
 
 
   <!-- ===== REQUEST FORM ===== -->
