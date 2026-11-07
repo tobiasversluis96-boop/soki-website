@@ -294,6 +294,7 @@ p {
 
 .nav__logo {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   opacity: 1;
   transition: opacity 0.4s ease;
@@ -341,14 +342,15 @@ p {
 .nav__links {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: 1.5rem;
+  margin-inline: var(--space-md);
 }
 
 .nav__links a {
   font-family: var(--font-sub);
   font-size: 0.8rem;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
   position: relative;
@@ -381,6 +383,7 @@ p {
 .nav__cta {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: var(--space-sm);
 }
 
@@ -1375,9 +1378,8 @@ p {
 .nav__links a,
 .nav__cta a { white-space: nowrap; }
 
-@media (max-width: 1640px) {
-  .nav__links { gap: 1.5rem; }
-  .nav__links a { letter-spacing: 0.08em; }
+@media (max-width: 1280px) {
+  .nav__links { gap: 1.1rem; }
 }
 
 @media (max-width: 1180px) {
