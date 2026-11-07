@@ -252,7 +252,7 @@ var SOKI_I18N = {
     'gallery.insta.p':     'Behind-the-scenes, DJ sets, session highlights and community moments. Follow us: @sokisocialsauna',
 
     /* --- Rental page --- */
-    'rental.h1':            'Rent SOKI',
+    'rental.h1':            'Want to rent SOKI?',
     'rental.hero.p':        'The whole sauna, exclusively for your group.',
     'rental.intro.eyebrow': 'Private hire',
     'rental.intro.h2':      'The sauna all to yourselves',
@@ -926,7 +926,7 @@ var SOKI_I18N = {
     'gallery.insta.p':     'Behind-the-scenes, DJ-sets, sessie-hoogtepunten en gemeenschapsmomenten. Volg ons: @sokisocialsauna',
 
     /* --- Verhuur-pagina --- */
-    'rental.h1':            'Huur SOKI af',
+    'rental.h1':            'SOKI afhuren?',
     'rental.hero.p':        'De hele sauna, exclusief voor jouw groep.',
     'rental.intro.eyebrow': 'Privé-verhuur',
     'rental.intro.h2':      'De sauna helemaal voor jullie alleen',
