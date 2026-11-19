@@ -550,7 +550,10 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
       }
-      .chart-inner { width: max-content; min-width: 100%; }
+      /* Scrollen knipt alles boven de grafiek af: extra ruimte zodat het
+         bedrag boven de hoogste staaf zichtbaar blijft */
+      .chart-inner { width: max-content; min-width: 100%; padding-top: 48px; }
+      .chart-grid { top: 48px; }
       .chart-col { flex: 0 0 52px; max-width: none; }
     }
   </style>
