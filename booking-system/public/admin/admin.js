@@ -347,6 +347,7 @@
         <div class="chart-label">${w.week.slice(5)}</div>
       </div>
     `).join('');
+    scrollChartToLatest('chart-columns');
     // Update chart title
     const titleEl = document.querySelector('#chart-revenue .table-card__title');
     if (titleEl) titleEl.textContent = 'Omzet per week (\u20AC)';
@@ -381,6 +382,13 @@
     });
 
     document.getElementById('monthly-chart-columns').innerHTML = cols.join('');
+    scrollChartToLatest('monthly-chart-columns');
+  }
+
+  // Op mobiel scrollt de grafiek horizontaal: begin bij de meest recente periode
+  function scrollChartToLatest(columnsId) {
+    const wrap = document.getElementById(columnsId)?.closest('.chart-wrap');
+    if (wrap) requestAnimationFrame(() => { wrap.scrollLeft = wrap.scrollWidth; });
   }
 
   function renderOccupancy(data) {

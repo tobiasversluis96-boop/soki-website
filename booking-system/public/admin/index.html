@@ -541,6 +541,17 @@
       .topbar h2 { font-size: 17px; }
       .topbar__right .btn { padding: 5px 10px; font-size: 11px; }
       .content-area { padding: 16px; }
+
+      /* Omzetgrafieken: vaste kolombreedte en horizontaal scrollen, zodat
+         alle weken/maanden leesbaar blijven op een smal scherm */
+      .chart-wrap {
+        padding: 16px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+      }
+      .chart-inner { width: max-content; min-width: 100%; }
+      .chart-col { flex: 0 0 52px; max-width: none; }
     }
   </style>
 </head>
@@ -1416,7 +1427,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20261102-1"></script>
+<script src="/admin/admin.js?v=20261119-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>
