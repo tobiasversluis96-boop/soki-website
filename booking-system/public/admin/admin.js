@@ -673,11 +673,18 @@
     if (moveBooking.group_size > free) notes.push('⚠️ Niet genoeg plek (' + Math.max(0, free) + ' vrij voor ' + moveBooking.group_size + ' pers.). Je kunt straks bewust overboeken.');
     if (s.session_name !== moveBooking.session_name) notes.push('Ander sessietype (' + s.session_name + ').');
     const credits = parseFloat(moveBooking.credits_used) || 0;
+    // Kantine combi gaat mee met de boeking: alleen het sessiedeel vergelijken
+    const addon = Number(moveBooking.kantine_addon_cents) || 0;
     if (!s.is_private && credits <= 0) {
       const newPrice = Number(s.price_cents) * moveBooking.group_size;
-      if (newPrice !== Number(moveBooking.total_cents))
-        notes.push('Prijsverschil: betaald ' + formatEur(moveBooking.total_cents) + ', nieuw slot kost ' + formatEur(newPrice) + '. De betaling blijft ongewijzigd, verreken het verschil zelf.');
+      const paidSession = Number(moveBooking.total_cents) - addon;
+      if (newPrice !== paidSession)
+        notes.push('Prijsverschil sessie: betaald ' + formatEur(paidSession) + (addon ? ' (excl. Kantine combi)' : '') +
+          ', nieuw slot kost ' + formatEur(newPrice) + (moveBooking.discount_code ? ' (er is korting gebruikt: ' + moveBooking.discount_code + ')' : '') +
+          '. De betaling blijft ongewijzigd, verreken het verschil zelf.');
     }
+    if (addon > 0)
+      notes.push('Kantine combi (' + formatEur(addon) + ') gaat mee naar de nieuwe datum; de QR-code werkt bij Kantine op de nieuwe avond.');
     info.textContent = notes.join(' ');
   });
 
