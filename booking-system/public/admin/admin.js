@@ -585,6 +585,7 @@
       return;
     }
 
+    lastBookings = bookings;
     tbody.innerHTML = bookings.map(b => `
       <tr>
         <td>${b.id}</td>
@@ -599,15 +600,123 @@
         <td>${formatBookingPayment(b)}${b.discount_code ? `<div style="font-size:11px;color:var(--muted)">🏷️ ${escapeHtml(b.discount_code)}</div>` : ''}</td>
         <td>${statusBadge(b.status)}</td>
         <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${b.status === 'confirmed' && isAdminUser
+            ? `<button class="btn btn--outline btn--sm" onclick="openMoveBooking(${b.id})">Verzetten</button>`
+            : ''}
           ${b.status !== 'cancelled' && isAdminUser
             ? `<button class="btn btn--danger btn--sm" onclick="cancelBooking(${b.id})">Annuleren</button>`
             : ''}
+          </div>
         </td>
       </tr>
     `).join('');
   }
 
   document.getElementById('filter-apply').addEventListener('click', loadBookings);
+
+  // ─── Boeking verzetten ────────────────────────────────────────────────────
+  // Kies een komend slot (90 dagen vooruit); de betaling blijft ongewijzigd,
+  // een prijsverschil verrekent de admin zelf.
+  var lastBookings = [];
+  let moveBooking = null;
+  let moveSlots = [];
+
+  function localYmd(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  window.openMoveBooking = async function (id) {
+    moveBooking = lastBookings.find(b => b.id === id);
+    if (!moveBooking) return;
+    const modal = document.getElementById('move-modal');
+    const sel = document.getElementById('move-slot-select');
+    document.getElementById('move-error').textContent = '';
+    document.getElementById('move-modal-info').textContent = '';
+    document.getElementById('move-notify').checked = true;
+    document.getElementById('move-modal-current').textContent =
+      '#' + moveBooking.id + ' · ' + moveBooking.customer_name + ' · ' + moveBooking.group_size + ' pers. · nu: ' +
+      moveBooking.session_name + ', ' + formatDate(moveBooking.date) + ' ' + moveBooking.start_time + '–' + moveBooking.end_time;
+    sel.innerHTML = '<option value="">Laden…</option>';
+    modal.classList.add('open');
+
+    const today = new Date();
+    const until = new Date(); until.setDate(until.getDate() + 90);
+    const nowStr = localYmd(today) + ' ' + String(today.getHours()).padStart(2, '0') + ':' + String(today.getMinutes()).padStart(2, '0');
+    try {
+      const slots = await api('/slots?from=' + localYmd(today) + '&to=' + localYmd(until));
+      moveSlots = (Array.isArray(slots) ? slots : [])
+        .filter(s => !s.is_cancelled && s.id !== moveBooking.time_slot_id && (String(s.date).slice(0, 10) + ' ' + s.start_time) > nowStr)
+        .sort((a, b) => (String(a.date).slice(0, 10) + a.start_time).localeCompare(String(b.date).slice(0, 10) + b.start_time));
+    } catch {
+      moveSlots = [];
+    }
+    if (!moveSlots.length) {
+      sel.innerHTML = '<option value="">Geen komende slots gevonden</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">Kies een slot…</option>' + moveSlots.map(s => {
+      const free = (s.max_capacity || s.type_capacity) - s.booked;
+      const label = formatDate(s.date) + ' ' + s.start_time + '–' + s.end_time + ' · ' + s.session_name +
+        (s.edition ? ' (' + s.edition + ')' : '') + (s.is_private ? ' · privé' : '') +
+        ' · ' + (free > 0 ? free + ' vrij' : 'vol');
+      return `<option value="${s.id}">${escapeHtml(label)}</option>`;
+    }).join('');
+  };
+
+  document.getElementById('move-slot-select').addEventListener('change', () => {
+    const info = document.getElementById('move-modal-info');
+    const s = moveSlots.find(x => x.id === parseInt(document.getElementById('move-slot-select').value));
+    if (!s || !moveBooking) { info.textContent = ''; return; }
+    const notes = [];
+    const free = (s.max_capacity || s.type_capacity) - s.booked;
+    if (moveBooking.group_size > free) notes.push('⚠️ Niet genoeg plek (' + Math.max(0, free) + ' vrij voor ' + moveBooking.group_size + ' pers.). Je kunt straks bewust overboeken.');
+    if (s.session_name !== moveBooking.session_name) notes.push('Ander sessietype (' + s.session_name + ').');
+    const credits = parseFloat(moveBooking.credits_used) || 0;
+    if (!s.is_private && credits <= 0) {
+      const newPrice = Number(s.price_cents) * moveBooking.group_size;
+      if (newPrice !== Number(moveBooking.total_cents))
+        notes.push('Prijsverschil: betaald ' + formatEur(moveBooking.total_cents) + ', nieuw slot kost ' + formatEur(newPrice) + '. De betaling blijft ongewijzigd, verreken het verschil zelf.');
+    }
+    info.textContent = notes.join(' ');
+  });
+
+  document.getElementById('move-modal-cancel').addEventListener('click', () => {
+    document.getElementById('move-modal').classList.remove('open');
+  });
+
+  async function submitMove(force) {
+    const slotId = parseInt(document.getElementById('move-slot-select').value);
+    const err = document.getElementById('move-error');
+    if (!slotId) { err.textContent = 'Kies eerst een slot.'; return; }
+    const btn = document.getElementById('move-modal-save');
+    btn.disabled = true;
+    err.textContent = '';
+    try {
+      const notify = document.getElementById('move-notify').checked;
+      const r = await api('/bookings/' + moveBooking.id + '/move', {
+        method: 'PATCH',
+        body: JSON.stringify({ slot_id: slotId, notify, force }),
+      });
+      if (r.code === 'NO_CAPACITY' || r.code === 'PRIVATE') {
+        btn.disabled = false;
+        if (confirm(r.error + (r.code === 'NO_CAPACITY' ? '\n\nToch verzetten en het slot overboeken?' : '\n\nToch verzetten?'))) submitMove(true);
+        return;
+      }
+      if (!r.ok) { err.textContent = r.error || 'Verzetten mislukt.'; btn.disabled = false; return; }
+      document.getElementById('move-modal').classList.remove('open');
+      btn.disabled = false;
+      const parts = ['Boeking #' + moveBooking.id + ' is verzet.'];
+      parts.push(notify ? (r.emailed ? 'De klant heeft een mail ontvangen.' : '⚠️ De mail aan de klant is niet gelukt, laat het de klant zelf weten.') : 'Er is geen mail gestuurd.');
+      if (r.overbooked) parts.push('Let op: het nieuwe slot is nu overboekt.');
+      alert(parts.join(' '));
+      loadBookings();
+    } catch {
+      err.textContent = 'Verzetten mislukt.';
+      btn.disabled = false;
+    }
+  }
+  document.getElementById('move-modal-save').addEventListener('click', () => submitMove(false));
 
   // Driekeuze: met terugbetaling / zonder / toch niet annuleren. Resolvet met
   // true, false of null (afgebroken), zodat "weg klikken" nooit stilletjes een

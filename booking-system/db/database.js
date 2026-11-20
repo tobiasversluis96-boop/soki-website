@@ -1640,6 +1640,51 @@ const queries = {
   // klant, admin en webhook nooit allebei refunden.
   // refundPct: welk deel van een (eventueel pas later binnenkomende) betaling
   // bij deze annulering wordt terugbetaald.
+  // Admin verzet een bevestigde boeking naar een ander slot. Slot-rij wordt
+  // gelockt (zelfde volgorde als createBooking) zodat een gelijktijdige
+  // boeking de laatste plek niet dubbel kan claimen. Met force mag het nieuwe
+  // slot overboekt raken (bewuste keuze van de admin). Herinnering en check-in
+  // worden gereset, want die horen bij de oude sessie.
+  moveBookingToSlot: async (bookingId, newSlotId, { force = false } = {}) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: slotRows } = await client.query(`
+        SELECT ts.id, COALESCE(ts.max_capacity, st.max_capacity) AS capacity
+        FROM time_slots ts
+        JOIN session_types st ON st.id = ts.session_type_id
+        WHERE ts.id = $1 AND ts.is_cancelled = FALSE
+        FOR UPDATE OF ts
+      `, [newSlotId]);
+      if (!slotRows[0]) throw Object.assign(new Error('Slot niet gevonden of geannuleerd.'), { code: 'SLOT_NOT_FOUND' });
+      const { rows: bRows } = await client.query(
+        'SELECT id, status, time_slot_id, group_size FROM bookings WHERE id = $1 FOR UPDATE', [bookingId]);
+      const booking = bRows[0];
+      if (!booking) throw Object.assign(new Error('Boeking niet gevonden.'), { code: 'BOOKING_NOT_FOUND' });
+      if (booking.status !== 'confirmed') throw Object.assign(new Error('Alleen bevestigde boekingen kunnen worden verzet.'), { code: 'NOT_CONFIRMED' });
+      if (booking.time_slot_id === newSlotId) throw Object.assign(new Error('De boeking staat al in dit slot.'), { code: 'SAME_SLOT' });
+      const { rows: countRows } = await client.query(
+        `SELECT COALESCE(SUM(group_size), 0)::int AS booked FROM bookings
+         WHERE time_slot_id = $1 AND status != 'cancelled' AND (hold_until IS NULL OR hold_until > NOW())`,
+        [newSlotId]
+      );
+      const spotsLeft = slotRows[0].capacity - countRows[0].booked;
+      if (!force && booking.group_size > spotsLeft)
+        throw Object.assign(new Error(`Nog maar ${Math.max(0, spotsLeft)} plek(ken) vrij in dit slot.`), { code: 'NO_CAPACITY', spots_left: Math.max(0, spotsLeft) });
+      await client.query(
+        'UPDATE bookings SET time_slot_id = $2, reminder_sent = FALSE, checked_in = FALSE WHERE id = $1',
+        [bookingId, newSlotId]
+      );
+      await client.query('COMMIT');
+      return { from_slot_id: booking.time_slot_id, overbooked: booking.group_size > spotsLeft };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   claimBookingCancel: async (id, refundPct = 100) => {
     const { rows } = await pool.query(
       `UPDATE bookings b SET status = 'cancelled', cancel_refund_pct = $2

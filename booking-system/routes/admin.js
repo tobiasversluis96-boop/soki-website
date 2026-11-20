@@ -8,7 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { queries } = require('../db/database');
-const { sendBookingConfirmation, sendBookingCancelledEmail } = require('../utils/email');
+const { sendBookingConfirmation, sendBookingCancelledEmail, sendBookingMovedEmail } = require('../utils/email');
 const { promoteWaitlist } = require('../utils/waitlist-promote');
 const { refundBookingCharge, cancelOpenIntent } = require('../utils/refunds');
 const { isSpecial } = require('../utils/special');
@@ -255,6 +255,70 @@ router.patch('/bookings/:id/cancel', requireAdmin, async (req, res) => {
     refunded_cents: refundedCents,
     credits_restored: creditsRestored,
     gift_restored_cents: giftRestored ? giftRestored.restored_cents : 0,
+  });
+});
+
+// Boeking verzetten naar een ander slot (in overleg met de klant).
+// Body: { slot_id, notify = true, force = false }. Betaling blijft ongewijzigd:
+// een prijsverschil verrekent de admin zelf (het verschil komt terug in de
+// response). force = bewust overboeken als het nieuwe slot vol zit.
+router.patch('/bookings/:id/move', requireAdmin, async (req, res) => {
+  const bookingId = parseInt(req.params.id);
+  const slotId    = parseInt(req.body && req.body.slot_id);
+  if (!bookingId || !slotId) return res.status(400).json({ error: 'slot_id is verplicht.' });
+  const notify = req.body.notify !== false;
+  const force  = req.body.force === true;
+
+  const booking = await queries.getBookingById(bookingId);
+  if (!booking) return res.status(404).json({ error: 'Boeking niet gevonden.' });
+  if (booking.status !== 'confirmed')
+    return res.status(400).json({ error: 'Alleen bevestigde boekingen kunnen worden verzet.' });
+
+  const slot = await queries.getSlotById(slotId);
+  if (!slot || slot.is_cancelled) return res.status(404).json({ error: 'Slot niet gevonden of geannuleerd.' });
+  const nlTime = require('../utils/nl-time');
+  if (!(nlTime.hoursUntil(slot.date, slot.start_time) > 0))
+    return res.status(400).json({ error: 'Dit slot is al begonnen of voorbij.' });
+  if (slot.is_private && !force)
+    return res.status(409).json({ code: 'PRIVATE', error: 'Dit is een privéslot. Weet je zeker dat deze boeking erin moet?' });
+  // Credits gelden niet voor specials (zelfde regel als bij boeken)
+  if (Number(booking.credits_used) > 0 && isSpecial(slot))
+    return res.status(400).json({ error: 'Deze boeking is (deels) met credits betaald en kan niet naar een special: specials vallen buiten het membership en de strippenkaart.' });
+
+  let moved;
+  try {
+    moved = await queries.moveBookingToSlot(bookingId, slotId, { force });
+  } catch (err) {
+    if (err.code === 'NO_CAPACITY') return res.status(409).json({ code: 'NO_CAPACITY', error: err.message, spots_left: err.spots_left });
+    if (['SLOT_NOT_FOUND', 'BOOKING_NOT_FOUND'].includes(err.code)) return res.status(404).json({ error: err.message });
+    if (['NOT_CONFIRMED', 'SAME_SLOT'].includes(err.code)) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+
+  const updated = await queries.getBookingById(bookingId);
+  const fromLabel = `${booking.date} ${booking.start_time}`;
+  queries.auditLog({ ...actorOf(req), action: 'booking_moved', target: `booking:${bookingId}`, detail: `slot ${moved.from_slot_id} (${fromLabel}) -> ${slotId} (${slot.date} ${slot.start_time})${moved.overbooked ? ' [overboekt]' : ''}${notify ? '' : ' [geen mail]'}`, ip: req.ip });
+
+  let emailed = false;
+  if (notify) {
+    try {
+      await sendBookingMovedEmail(updated, booking);
+      emailed = true;
+    } catch (e) {
+      console.error(`Move email failed for booking #${bookingId} (non-fatal):`, e.message);
+    }
+  }
+
+  // Plek in het oude slot is vrijgekomen: wachtlijst doorschuiven
+  await promoteWaitlist(booking);
+
+  const newPrice = slot.is_private ? null : Number(slot.price_cents) * (booking.group_size || 1);
+  res.json({
+    ok: true,
+    emailed,
+    overbooked: moved.overbooked,
+    paid_cents: booking.total_cents,
+    new_price_cents: newPrice,
   });
 });
 

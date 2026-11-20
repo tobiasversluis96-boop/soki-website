@@ -539,6 +539,43 @@ async function sendBookingCancelledEmail(booking, { refunded = false, refundedCe
   });
 }
 
+// Boeking door SOKI verzet naar een ander tijdslot (in overleg met de klant).
+// Kant-en-klare HTML, geen Brevo-template nodig.
+async function sendBookingMovedEmail(booking, oldBooking) {
+  const fmt = (date, locale) => {
+    const [y, m, d] = String(date).slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const newNl = fmt(booking.date, 'nl-NL'), newEn = fmt(booking.date, 'en-GB');
+  const oldNl = fmt(oldBooking.date, 'nl-NL'), oldEn = fmt(oldBooking.date, 'en-GB');
+  const session = `<strong>${escapeHtml(sessionLabel(booking))}</strong>`;
+  const oldSession = escapeHtml(sessionLabel(oldBooking));
+  const ticketUrl = `${process.env.BASE_URL || 'https://sokisocialsauna.nl'}/ticket?bid=${booking.id}&sig=${generateCheckinSig(booking.id)}`;
+  await getClient().transactionalEmails.sendTransacEmail({
+    to: [{ email: booking.customer_email, name: booking.customer_name }],
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name:  process.env.EMAIL_FROM_NAME || 'SOKI Social Sauna',
+    },
+    subject: `Je boeking is verzet naar ${newNl} / Your booking has been moved to ${newEn}`,
+    htmlContent: emailLayout('Je boeking is verzet', `
+        <p style="margin:0 0 16px;">Hoi ${escapeHtml(booking.customer_name)},</p>
+        <p style="margin:0 0 16px;">Zoals afgesproken hebben we je boeking verzet. Dit is je nieuwe sessie:<br>
+           <span style="color:${EMAIL_MUTED};">As agreed, we've moved your booking. This is your new session:</span></p>
+        <div style="background-color:#ffffff;border-left:4px solid #f2c299;padding:14px 18px;border-radius:0 4px 4px 0;margin:0 0 16px;">
+          ${session}<br>
+          ${newNl} &middot; ${booking.start_time}&ndash;${booking.end_time}<br>
+          <span style="color:${EMAIL_MUTED};">${newEn}</span><br>
+          <span style="color:${EMAIL_MUTED};">${booking.group_size} ${booking.group_size === 1 ? 'persoon / person' : 'personen / people'}</span>
+        </div>
+        <p style="margin:0 0 16px;color:${EMAIL_MUTED};font-size:14px;">Eerder geboekt / Previously booked: <s>${oldSession}, ${oldNl} ${oldBooking.start_time}&ndash;${oldBooking.end_time}</s></p>
+        <p style="margin:0 0 16px;">Je ticket blijft geldig en toont nu de nieuwe datum en tijd.<br>
+           <span style="color:${EMAIL_MUTED};">Your ticket stays valid and now shows the new date and time.</span></p>
+        ${emailButton(ticketUrl, 'Bekijk je ticket / View your ticket')}
+        <p style="margin:0;color:${EMAIL_MUTED};font-size:13px;">Klopt er iets niet? Antwoord op deze mail. / Something not right? Just reply to this email.</p>`),
+  });
+}
+
 async function sendContactFormEmail({ name, email, message }) {
   await getClient().transactionalEmails.sendTransacEmail({
     to: [{ email: 'hello@sokisocialsauna.nl', name: 'SOKI Social Sauna' }],
@@ -596,6 +633,7 @@ async function unsubscribeFromMarketingList(email) {
 module.exports = {
   sendBookingConfirmation,
   sendBookingCancelledEmail,
+  sendBookingMovedEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendReminderEmail,

@@ -1363,6 +1363,27 @@
   </div>
 </div>
 
+<!-- ── Boeking verzetten ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="move-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>Boeking verzetten</h3>
+    <p id="move-modal-current" style="color:var(--muted);font-size:14px;margin-bottom:14px"></p>
+    <div class="form-group">
+      <label class="form-label" for="move-slot-select">Nieuw tijdslot</label>
+      <select class="form-input" id="move-slot-select"></select>
+    </div>
+    <div id="move-modal-info" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:6px;cursor:pointer">
+      <input type="checkbox" id="move-notify" checked> Klant een mail sturen met de nieuwe datum en tijd
+    </label>
+    <div class="form-error" id="move-error"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn--outline" id="move-modal-cancel">Annuleren</button>
+      <button type="button" class="btn btn--primary" id="move-modal-save">Verzetten</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Refund choice modal (boeking annuleren) ───────────────────────────── -->
 <div class="modal-overlay" id="refund-modal">
   <div class="modal">
@@ -1430,7 +1451,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20261119-1"></script>
+<script src="/admin/admin.js?v=20261120-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>
