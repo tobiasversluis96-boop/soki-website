@@ -856,6 +856,16 @@
         </div>
 
         <div class="view" id="view-customers">
+          <div class="table-card" style="margin-bottom:20px">
+            <div class="table-card__header">
+              <span class="table-card__title">Aantal keer geweest</span>
+              <a id="visits-export-all" href="#" class="btn btn--outline btn--sm">↓ Alle klanten met aantal</a>
+            </div>
+            <div style="padding:16px 20px 20px">
+              <p style="font-size:13px;color:var(--muted);margin:0 0 12px">Klik op een aantal voor een CSV met de e-mailadressen van precies die klanten. Telt bevestigde boekingen van sessies die al geweest zijn. Mail voor marketing alleen klanten met marketing_opt_in = ja.</p>
+              <div id="visits-buckets" style="display:flex;flex-wrap:wrap;gap:8px"><div class="loading">Laden…</div></div>
+            </div>
+          </div>
           <div class="table-card">
             <div class="table-card__header">
               <span class="table-card__title">Klanten</span>
@@ -1451,7 +1461,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="/admin/admin.js?v=20261120-2"></script>
+<script src="/admin/admin.js?v=20261125-1"></script>
 <script src="/js/pw-toggle.js"></script>
 </body>
 </html>

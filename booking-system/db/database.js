@@ -928,6 +928,25 @@ const queries = {
     await pool.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = $1', [userId]);
   },
 
+  // Bezoeken per klant: bevestigde boekingen waarvan de sessie al begonnen of
+  // voorbij is (NL-tijd), zelfde definitie als "x× eerder geweest" in het
+  // rooster. Eén boeking = één bezoek, ongeacht de groepsgrootte.
+  getCustomerVisitCounts: async () => {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.name, u.email, u.marketing_opt_in_at,
+             COUNT(b.id)::int AS visits
+      FROM users u
+      LEFT JOIN bookings b ON b.user_id = u.id AND b.status = 'confirmed'
+        AND EXISTS (
+          SELECT 1 FROM time_slots ts WHERE ts.id = b.time_slot_id
+            AND (ts.date || ' ' || ts.start_time) <= to_char(NOW() AT TIME ZONE 'Europe/Amsterdam', 'YYYY-MM-DD HH24:MI')
+        )
+      GROUP BY u.id
+      ORDER BY visits DESC, u.name
+    `);
+    return rows;
+  },
+
   getAllUsers: async () => {
     const { rows } = await pool.query(`
       SELECT u.id, u.name, u.email, u.created_at, u.admin_notes, u.admin_notes_private, u.waiver_signed_at, u.discount_pct,

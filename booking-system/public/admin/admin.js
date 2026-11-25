@@ -1311,7 +1311,55 @@
     }
     if (!Array.isArray(allCustomers)) allCustomers = [];
     applyCustomerSearch();
+    loadVisitBuckets();
   }
+
+  // ─── Aantal keer geweest + export per aantal ──────────────────────────────
+  async function loadVisitBuckets() {
+    const el = document.getElementById('visits-buckets');
+    let buckets;
+    try {
+      buckets = await api('/customers/visits');
+    } catch {
+      buckets = null;
+    }
+    if (!Array.isArray(buckets)) { el.innerHTML = '<span style="color:#C62828;font-size:13px">Fout bij laden.</span>'; return; }
+    if (!buckets.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px">Nog geen klanten.</span>'; return; }
+    el.innerHTML = buckets.map(b => `
+      <button type="button" class="btn btn--outline btn--sm" data-visits="${b.visits}" title="Exporteer de ${b.customers} klant(en) die ${b.visits}× zijn geweest">
+        ${b.visits === 0 ? 'Nog niet geweest' : b.visits + '× geweest'} · <strong>${b.customers}</strong>
+      </button>`).join('');
+  }
+
+  async function downloadVisitsCsv(visits) {
+    try {
+      const qs = visits === null ? '' : '?visits=' + visits;
+      const res = await fetch('/api/admin/customers/visits/export.csv' + qs, {
+        headers: { 'Authorization': 'Bearer ' + adminToken },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = visits === null ? 'klanten-aantal-bezoeken.csv' : 'klanten-' + visits + 'x-geweest.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('CSV-export mislukt: ' + err.message);
+    }
+  }
+
+  document.getElementById('visits-buckets').addEventListener('click', e => {
+    const btn = e.target.closest('[data-visits]');
+    if (btn) downloadVisitsCsv(parseInt(btn.dataset.visits, 10));
+  });
+  document.getElementById('visits-export-all').addEventListener('click', e => {
+    e.preventDefault();
+    downloadVisitsCsv(null);
+  });
 
   function applyCustomerSearch() {
     const q = (document.getElementById('customer-search').value || '').trim().toLowerCase();

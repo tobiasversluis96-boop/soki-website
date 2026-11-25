@@ -644,6 +644,31 @@ router.get('/customers/export.csv', requireStaff('customers'), async (req, res) 
   res.send(header + rows);
 });
 
+// Verdeling: hoeveel klanten zijn 0, 1, 2, ... keer geweest
+router.get('/customers/visits', requireStaff('customers'), async (req, res) => {
+  const users = await queries.getCustomerVisitCounts();
+  const buckets = new Map();
+  for (const u of users) buckets.set(u.visits, (buckets.get(u.visits) || 0) + 1);
+  res.json([...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([visits, customers]) => ({ visits, customers })));
+});
+
+// Export van klanten met precies ?visits=N bezoeken (zonder parameter: iedereen)
+router.get('/customers/visits/export.csv', requireStaff('customers'), async (req, res) => {
+  const all = await queries.getCustomerVisitCounts();
+  const raw = req.query.visits;
+  const n = raw === undefined || raw === '' ? null : parseInt(raw, 10);
+  if (raw !== undefined && raw !== '' && !(Number.isInteger(n) && n >= 0))
+    return res.status(400).json({ error: 'visits moet een geheel getal zijn.' });
+  const users = n === null ? all : all.filter(u => u.visits === n);
+  queries.auditLog({ ...actorOf(req), action: 'csv_export', target: 'customers_visits', detail: `${n === null ? 'alle' : n + 'x'}: ${users.length} rows`, ip: req.ip });
+
+  const header = 'email,name,visits,marketing_opt_in\n';
+  const rows = users.map(u => [u.email, u.name, u.visits, u.marketing_opt_in_at ? 'ja' : 'nee'].map(csvCell).join(',')).join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="soki-klanten-${n === null ? 'alle-bezoeken' : n + 'x-geweest'}.csv"`);
+  res.send(header + rows);
+});
+
 router.get('/customers/:id', requireStaff('customers'), async (req, res) => {
   const bookings = await queries.getUserBookings(req.params.id);
   res.json(bookings);
